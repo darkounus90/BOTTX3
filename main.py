@@ -74,8 +74,15 @@ class TX3ProBot:
         self.news_filter = NewsFilter(logger=self.logger)
         self.trailing_stop = TrailingStopManager(logger=self.logger)
         
-        # Estrategia
-        self.strategy = EMACrossStrategy(logger=self.logger)
+        # Pro Features
+        self.news_filter = NewsFilter(logger=self.logger)
+        self.trailing_stop = TrailingStopManager(logger=self.logger)
+        
+        # Estrategias (Multi-Symbol Optimization)
+        self.strategies = {}
+        for symbol in BotConfig.WATCHLIST:
+            self.strategies[symbol] = EMACrossStrategy(logger=self.logger, symbol=symbol)
+            self.logger.info(f"✅ Estrategia cargada: {symbol}")
 
         # Cargar estado previo si existe
         self._restore_state()
