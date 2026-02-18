@@ -263,73 +263,85 @@ class TX3ProBot:
                     break
 
                 # ─── D. Filtros de Trading ─────────────────────────
-                # 1. Sesión
+                # 1. Sesión (Global)
                 if not self.session_filter.is_trading_allowed():
                     sleep_module.sleep(BotConfig.LOOP_INTERVAL_SECONDS)
                     continue
-                
-                # 2. Noticias
-                if not self.news_filter.is_safe_to_trade(self.strategy.symbol):
-                    sleep_module.sleep(BotConfig.LOOP_INTERVAL_SECONDS)
-                    continue
 
-                # 3. Riesgo (Warning Levels)
+                # 2. Riesgo Global (Warning Levels)
                 if not self.risk_manager.is_safe_to_trade():
                     sleep_module.sleep(BotConfig.LOOP_INTERVAL_SECONDS)
                     continue
 
-                # ─── E. Estrategia ─────────────────────────────────
-                # Solo si no hay posiciones (un trade a la vez)
-                if self.position_manager.get_open_positions_count() < BotConfig.MAX_OPEN_POSITIONS:
-                    signal = self.strategy.generate_signal()
-                    
-                    if signal:
-                        if self.dry_run:
-                            self.logger.info(f"🔍 DRY RUN SIGNAL: {signal['signal']} {signal['symbol']}")
-                        else:
-                            # Ejecutar orden
-                            # Calcular TP/SL
-                            order_type = mt5.ORDER_TYPE_BUY if signal['signal'] == 'BUY' else mt5.ORDER_TYPE_SELL
+                # ─── E. Loop por Símbolo (Diversificación) ─────────
+                for symbol in BotConfig.WATCHLIST:
+                    try:
+                        # a. Verificar Noticias por Símbolo
+                        if not self.news_filter.is_safe_to_trade(symbol):
+                            continue
+                        
+                        # b. Verificar Conexión con Símbolo
+                        if not self.connector.ensure_symbol_available(symbol):
+                            continue
+
+                        # c. Estrategia
+                        # Instanciar estrategia temporalmente o usar un dict de estrategias
+                        # Para simpleza, instanciamos aquí (ligero overhead, pero seguro)
+                        strategy = EMACrossStrategy(logger=self.logger, symbol=symbol)
+
+                        # Solo si no hemos llenado el cupo de posiciones
+                        if self.position_manager.get_open_positions_count() < BotConfig.MAX_OPEN_POSITIONS:
+                            signal = strategy.generate_signal()
                             
-                            result = self.position_manager.place_order(
-                                symbol=signal['symbol'],
-                                order_type=order_type,
-                                stop_loss_pips=signal['stop_loss_pips'],
-                                take_profit_pips=signal['take_profit_pips']
-                            )
-                            
-                            if result:
-                                # Registrar y Notificar
-                                acc = mt5.account_info()
-                                self.journal.record_open(
-                                    order_type=signal['signal'],
-                                    symbol=signal['symbol'],
-                                    volume=result['volume'],
-                                    price=result['price'],
-                                    sl=result['sl'],
-                                    tp=result['tp'],
-                                    sl_pips=signal['stop_loss_pips'],
-                                    tp_pips=signal['take_profit_pips'],
-                                    rr_ratio=signal['take_profit_pips']/signal['stop_loss_pips'],
-                                    balance=acc.balance,
-                                    equity=acc.equity,
-                                    daily_dd=self.risk_manager.check_daily_drawdown()["loss"],
-                                    overall_dd=self.risk_manager.check_overall_drawdown()["loss"],
-                                    session=self.session_filter.get_current_session(),
-                                    strategy=self.strategy.get_name(),
-                                    reason=signal.get('reason', '')
-                                )
-                                self.telegram.notify_trade_opened(
-                                    order_type=signal['signal'],
-                                    symbol=signal['symbol'],
-                                    volume=result['volume'],
-                                    price=result['price'],
-                                    sl=result['sl'],
-                                    tp=result['tp'],
-                                    sl_pips=signal['stop_loss_pips'],
-                                    tp_pips=signal['take_profit_pips'],
-                                    rr_ratio=signal['take_profit_pips']/signal['stop_loss_pips']
-                                )
+                            if signal:
+                                if self.dry_run:
+                                    self.logger.info(f"🔍 DRY RUN SIGNAL: {signal['signal']} {symbol}")
+                                else:
+                                    # Ejecutar orden
+                                    order_type = mt5.ORDER_TYPE_BUY if signal['signal'] == 'BUY' else mt5.ORDER_TYPE_SELL
+                                    
+                                    result = self.position_manager.place_order(
+                                        symbol=signal['symbol'],
+                                        order_type=order_type,
+                                        stop_loss_pips=signal['stop_loss_pips'],
+                                        take_profit_pips=signal['take_profit_pips']
+                                    )
+                                    
+                                    if result:
+                                        # Registrar y Notificar
+                                        acc = mt5.account_info()
+                                        self.journal.record_open(
+                                            order_type=signal['signal'],
+                                            symbol=signal['symbol'],
+                                            volume=result['volume'],
+                                            price=result['price'],
+                                            sl=result['sl'],
+                                            tp=result['tp'],
+                                            sl_pips=signal['stop_loss_pips'],
+                                            tp_pips=signal['take_profit_pips'],
+                                            rr_ratio=signal['take_profit_pips']/signal['stop_loss_pips'],
+                                            balance=acc.balance,
+                                            equity=acc.equity,
+                                            daily_dd=self.risk_manager.check_daily_drawdown()["loss"],
+                                            overall_dd=self.risk_manager.check_overall_drawdown()["loss"],
+                                            session=self.session_filter.get_current_session(),
+                                            strategy=strategy.get_name(),
+                                            reason=signal.get('reason', '')
+                                        )
+                                        self.telegram.notify_trade_opened(
+                                            order_type=signal['signal'],
+                                            symbol=signal['symbol'],
+                                            volume=result['volume'],
+                                            price=result['price'],
+                                            sl=result['sl'],
+                                            tp=result['tp'],
+                                            sl_pips=signal['stop_loss_pips'],
+                                            tp_pips=signal['take_profit_pips'],
+                                            rr_ratio=signal['take_profit_pips']/signal['stop_loss_pips']
+                                        )
+                    except Exception as e:
+                        self.logger.error(f"Error procesando {symbol}: {e}")
+                        continue
 
                 # ─── F. Verificar Fase Completada ──────────────────
                 status = self.phase_tracker.check_phase_complete()

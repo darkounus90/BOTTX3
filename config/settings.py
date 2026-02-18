@@ -58,10 +58,10 @@ class ChallengeConfig:
 class BotConfig:
     """Configuración de comportamiento del bot"""
 
-    # ─── RISK MANAGEMENT (MODO AGRESIVO 🦈) ──────────────────────────
-    MAX_RISK_PER_TRADE_PCT = 1.0         # 1.0% ($500) por trade - MÁS GANANCIA
+    # ─── RISK MANAGEMENT ──────────────────────────────────────────────
+    MAX_RISK_PER_TRADE_PCT = 0.5
     MAX_TRADES_PER_DAY = 5
-    MAX_OPEN_POSITIONS = 2               # Hasta 2 posiciones simultáneas
+    MAX_OPEN_POSITIONS = 1               # Solo 1 posición a la vez (conservador)
 
     # ─── EMERGENCY THRESHOLDS ─────────────────────────────────────────
     DAILY_DD_WARNING_PCT = 70            # Alerta al 70% ($1,750)
@@ -71,7 +71,7 @@ class BotConfig:
 
     # ─── STRATEGY ─────────────────────────────────────────────────────
     DEFAULT_SYMBOL = "EURUSD"
-    WATCHLIST = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD"]
+    WATCHLIST = ["EURUSD", "GBPUSD", "USDJPY"] # Diversificación: Euro, Libra, Yen
     DEFAULT_TIMEFRAME = "M15"
     EMA_FAST_PERIOD = 20
     EMA_SLOW_PERIOD = 50
@@ -79,10 +79,10 @@ class BotConfig:
     DEFAULT_TP_PIPS = 40
     MIN_RR_RATIO = 1.5
 
-    # ─── TRAILING STOP (MODO ASEGURAR 🛡️) ───────────────────────────
+    # ─── TRAILING STOP ────────────────────────────────────────────────
     TRAILING_STOP_ENABLED = True
-    TRAILING_ACTIVATION_PIPS = 15        # Activar rápido (asegurar BE pronto)
-    TRAILING_STEP_PIPS = 10              # Paso amplio para dejar correr hacia TP5
+    TRAILING_ACTIVATION_PIPS = 15        # Activar trailing tras +15 pips
+    TRAILING_STEP_PIPS = 5               # Mover SL cada 5 pips de ganancia
 
     # ─── ORDERS ───────────────────────────────────────────────────────
     MAGIC_NUMBER = 234000
