@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TX3 Pro Bot Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #0f172a; color: #e2e8f0; font-family: 'Inter', sans-serif; }
+        .card { background-color: #1e293b; border-radius: 0.5rem; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .stat-label { color: #94a3b8; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .stat-value { font-size: 1.5rem; font-weight: 700; margin-top: 0.25rem; }
+        .profit { color: #22c55e; }
+        .loss { color: #ef4444; }
+        .log-entry { font-family: monospace; font-size: 0.8rem; border-bottom: 1px solid #334155; padding: 2px 0; }
+    </style>
+</head>
+<body class="p-6">
+
+    <div class="max-w-7xl mx-auto space-y-6">
+        <!-- Header -->
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-white">TX3 Pro Bot <span class="text-blue-500">$50K</span></h1>
+                <p class="text-slate-400">Real-time Monitoring System</p>
+            </div>
+            <div class="flex space-x-4">
+                <span id="status-badge" class="px-3 py-1 rounded-full text-sm font-semibold bg-gray-700 text-gray-300">WAITING...</span>
+                <span id="phase-badge" class="px-3 py-1 rounded-full text-sm font-semibold bg-blue-900 text-blue-300">FASE ?</span>
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="card">
+                <div class="stat-label">Balance / Equity</div>
+                <div class="stat-value" id="balance">$0.00</div>
+                <div class="text-sm text-slate-400 mt-1" id="equity">Eq: $0.00</div>
+            </div>
+            <div class="card">
+                <div class="stat-label">Daily Profit</div>
+                <div class="stat-value" id="daily-profit">$0.00</div>
+                <div class="w-full bg-gray-700 rounded-full h-1.5 mt-2">
+                    <div class="bg-green-500 h-1.5 rounded-full" style="width: 0%" id="daily-progress"></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="stat-label">Daily Drawdown</div>
+                <div class="stat-value text-orange-400" id="daily-dd">$0.00</div>
+                <div class="text-xs text-slate-500 mt-1">Limit: $2,500 (5%)</div>
+                <div class="w-full bg-gray-700 rounded-full h-1.5 mt-2">
+                    <div class="bg-orange-500 h-1.5 rounded-full" style="width: 0%" id="daily-dd-bar"></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="stat-label">Total Drawdown</div>
+                <div class="stat-value text-red-400" id="overall-dd">$0.00</div>
+                <div class="text-xs text-slate-500 mt-1">Limit: $5,000 (10%)</div>
+                <div class="w-full bg-gray-700 rounded-full h-1.5 mt-2">
+                    <div class="bg-red-500 h-1.5 rounded-full" style="width: 0%" id="overall-dd-bar"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Open Positions -->
+            <div class="card col-span-2">
+                <h3 class="text-lg font-semibold mb-4">Open Positions</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left text-gray-400">
+                        <thead class="text-xs text-gray-500 uppercase bg-gray-800">
+                            <tr>
+                                <th class="px-4 py-2">Ticket</th>
+                                <th class="px-4 py-2">Symbol</th>
+                                <th class="px-4 py-2">Type</th>
+                                <th class="px-4 py-2">Vol</th>
+                                <th class="px-4 py-2">Price</th>
+                                <th class="px-4 py-2">P&L</th>
+                            </tr>
+                        </thead>
+                        <tbody id="positions-table">
+                            <!-- Rows injected via JS -->
+                            <tr><td colspan="6" class="text-center py-4">No open positions</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Live Logs -->
+            <div class="card h-96 flex flex-col">
+                <h3 class="text-lg font-semibold mb-2">Live Logs</h3>
+                <div id="logs-container" class="flex-1 overflow-y-auto bg-black/30 p-2 rounded text-xs space-y-1">
+                    <!-- Logs injected via JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+
+        const formatCurrency = (val) => {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
+        };
+
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+
+        socket.on('update', (data) => {
+            // Status Badges
+            document.getElementById('status-badge').textContent = data.status;
+            document.getElementById('status-badge').className = `px-3 py-1 rounded-full text-sm font-semibold ${data.status === 'RUNNING' ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`;
+            
+            document.getElementById('phase-badge').textContent = `FASE ${data.phase}`;
+
+            // Stats
+            document.getElementById('balance').textContent = formatCurrency(data.balance);
+            document.getElementById('equity').textContent = `Eq: ${formatCurrency(data.equity)}`;
+            
+            const dpEl = document.getElementById('daily-profit');
+            dpEl.textContent = formatCurrency(data.daily_profit);
+            dpEl.className = `stat-value ${data.daily_profit >= 0 ? 'profit' : 'loss'}`;
+
+            // Drawdown Bars
+            document.getElementById('daily-dd').textContent = formatCurrency(data.daily_dd);
+            const dailyPct = (data.daily_dd / 2500) * 100;
+            document.getElementById('daily-dd-bar').style.width = `${Math.min(dailyPct, 100)}%`;
+
+            document.getElementById('overall-dd').textContent = formatCurrency(data.overall_dd);
+            const overallPct = (data.overall_dd / 5000) * 100;
+            document.getElementById('overall-dd-bar').style.width = `${Math.min(overallPct, 100)}%`;
+
+            // Positions Table
+            const tbody = document.getElementById('positions-table');
+            tbody.innerHTML = '';
+            
+            if (data.open_positions && data.open_positions.length > 0) {
+                data.open_positions.forEach(pos => {
+                    const row = document.createElement('tr');
+                    const plClass = pos.profit >= 0 ? 'text-green-400' : 'text-red-400';
+                    row.className = 'border-b border-gray-800 hover:bg-gray-800/50';
+                    row.innerHTML = `
+                        <td class="px-4 py-2 font-mono">${pos.ticket}</td>
+                        <td class="px-4 py-2 font-bold">${pos.symbol}</td>
+                        <td class="px-4 py-2 ${pos.type === 'BUY' ? 'text-blue-400' : 'text-orange-400'}">${pos.type}</td>
+                        <td class="px-4 py-2">${pos.volume}</td>
+                        <td class="px-4 py-2">${pos.price_open}</td>
+                        <td class="px-4 py-2 ${plClass}">${formatCurrency(pos.profit)}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-slate-500">No open positions</td></tr>';
+            }
+        });
+
+        socket.on('log', (log) => {
+            const container = document.getElementById('logs-container');
+            const el = document.createElement('div');
+            el.className = 'log-entry text-gray-300';
+            let color = 'text-gray-300';
+            if (log.message.includes('ERROR') || log.message.includes('❌')) color = 'text-red-400';
+            if (log.message.includes('WARNING') || log.message.includes('⚠️')) color = 'text-yellow-400';
+            if (log.message.includes('SUCCESS') || log.message.includes('✅')) color = 'text-green-400';
+            
+            el.className = `log-entry ${color}`;
+            el.textContent = `[${log.timestamp}] ${log.message}`;
+            container.appendChild(el);
+            container.scrollTop = container.scrollHeight;
+        });
+    </script>
+</body>
+</html>
