@@ -161,9 +161,9 @@ class EMACrossStrategy(BaseStrategy):
         symbol_info = mt5.symbol_info(self.symbol)
         point = symbol_info.point if symbol_info else 0.00001
         
-        # ATR Multipliers: SL 1.5x, TP 3.0x (Ratio 1:2)
+        # ATR Multipliers: SL 1.5x, TP 5.0x (Home Run Strategy ⚾️)
         sl_dist = atr_value * 1.5
-        tp_dist = atr_value * 3.0
+        tp_dist = atr_value * 5.0
         
         sl_pips = round(sl_dist / (10 * point), 1)
         tp_pips = round(tp_dist / (10 * point), 1)
