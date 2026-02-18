@@ -58,10 +58,10 @@ class ChallengeConfig:
 class BotConfig:
     """Configuración de comportamiento del bot"""
 
-    # ─── RISK MANAGEMENT ──────────────────────────────────────────────
-    MAX_RISK_PER_TRADE_PCT = 0.5
+    # ─── RISK MANAGEMENT (MODO AGRESIVO 🦈) ──────────────────────────
+    MAX_RISK_PER_TRADE_PCT = 1.0         # 1.0% ($500) por trade - MÁS GANANCIA
     MAX_TRADES_PER_DAY = 5
-    MAX_OPEN_POSITIONS = 1               # Solo 1 posición a la vez (conservador)
+    MAX_OPEN_POSITIONS = 2               # Hasta 2 posiciones simultáneas
 
     # ─── EMERGENCY THRESHOLDS ─────────────────────────────────────────
     DAILY_DD_WARNING_PCT = 70            # Alerta al 70% ($1,750)
@@ -79,10 +79,10 @@ class BotConfig:
     DEFAULT_TP_PIPS = 40
     MIN_RR_RATIO = 1.5
 
-    # ─── TRAILING STOP ────────────────────────────────────────────────
+    # ─── TRAILING STOP (MODO ASEGURAR 🛡️) ───────────────────────────
     TRAILING_STOP_ENABLED = True
-    TRAILING_ACTIVATION_PIPS = 20        # Activar trailing tras +20 pips (damos más aire)
-    TRAILING_STEP_PIPS = 10              # Mover SL cada 10 pips (menos "ruido")
+    TRAILING_ACTIVATION_PIPS = 15        # Activar rápido (asegurar BE pronto)
+    TRAILING_STEP_PIPS = 10              # Paso amplio para dejar correr hacia TP5
 
     # ─── ORDERS ───────────────────────────────────────────────────────
     MAGIC_NUMBER = 234000
