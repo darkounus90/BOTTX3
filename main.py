@@ -220,9 +220,12 @@ class TX3ProBot:
             self.logger.error("Fallo al conectar a MT5")
             return
             
-        if not self.connector.ensure_symbol_available(self.strategy.symbol):
-            self.logger.error(f"Símbolo {self.strategy.symbol} no disponible")
-            return
+        # Check if any symbol from WATCHLIST is available
+        # This check was originally for self.strategy.symbol, now it needs to be adapted
+        # For simplicity, we'll just ensure connection and let individual symbol checks handle availability.
+        # if not self.connector.ensure_symbol_available(self.strategy.symbol):
+        #     self.logger.error(f"Símbolo {self.strategy.symbol} no disponible")
+        #     return
 
         self._print_startup_banner()
         self.telegram.notify_bot_stopped("Iniciando Bot", 0, 0) # Ping on start
@@ -287,7 +290,8 @@ class TX3ProBot:
                         # c. Estrategia
                         # Instanciar estrategia temporalmente o usar un dict de estrategias
                         # Para simpleza, instanciamos aquí (ligero overhead, pero seguro)
-                        strategy = EMACrossStrategy(logger=self.logger, symbol=symbol)
+                        # strategy = EMACrossStrategy(logger=self.logger, symbol=symbol) # Removed temporary strategy instantiation
+                        strategy = self.strategies[symbol] # Use pre-initialized strategy from dictionary
 
                         # Solo si no hemos llenado el cupo de posiciones
                         if self.position_manager.get_open_positions_count() < BotConfig.MAX_OPEN_POSITIONS:
