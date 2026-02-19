@@ -2,11 +2,13 @@
 📱 Telegram Notifier - Notificaciones en Tiempo Real
 ======================================================
 Envía notificaciones a Telegram cuando:
+- Se inicia o detiene el bot
 - Se ejecuta/cierra un trade
 - Drawdown llega a niveles de alerta/emergencia
 - Se completa una fase
 - Resumen diario
 - Errores críticos
+- Reconexión a MT5
 """
 
 import requests
@@ -28,6 +30,7 @@ class TelegramNotifier:
         self.enabled = TelegramConfig.ENABLED
         self.token = TelegramConfig.BOT_TOKEN
         self.chat_id = TelegramConfig.CHAT_ID
+        self._start_time = datetime.now()
 
         if self.enabled and (not self.token or not self.chat_id):
             self.enabled = False
@@ -36,7 +39,6 @@ class TelegramNotifier:
             )
         elif self.enabled:
             self.logger.success("Telegram Notifier activado ✅")
-            self._send("🤖 *TX3 Pro Bot iniciado*\n⏱ " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
     def _send(self, message: str, parse_mode: str = "Markdown") -> bool:
         """Envía un mensaje a Telegram"""
@@ -66,6 +68,65 @@ class TelegramNotifier:
             self.logger.error(f"Telegram error: {str(e)}")
             return False
 
+    # ─── Notificaciones de Estado del Bot ──────────────────────────────
+
+    def notify_bot_started(
+        self,
+        phase: int,
+        dry_run: bool,
+        balance: float,
+        watchlist: list,
+    ):
+        """Notifica que el bot se inició correctamente"""
+        mode = "🔍 SIMULACIÓN" if dry_run else "🟢 EN VIVO"
+        symbols = ", ".join(watchlist) if watchlist else "N/A"
+
+        msg = (
+            f"🚀 *BOT INICIADO*\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"📋 Fase: *{phase}*\n"
+            f"🎮 Modo: *{mode}*\n"
+            f"💰 Balance: `${balance:,.2f}`\n"
+            f"📊 Pares: `{symbols}`\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"✅ Todos los sistemas operativos\n"
+            f"⏱ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        )
+        self._send(msg)
+
+    def notify_bot_stopped(self, reason: str, balance: float, profit: float):
+        """Notifica que el bot se detuvo"""
+        # Calcular tiempo de ejecución
+        uptime = datetime.now() - self._start_time
+        hours, remainder = divmod(int(uptime.total_seconds()), 3600)
+        minutes, _ = divmod(remainder, 60)
+        uptime_str = f"{hours}h {minutes}m"
+
+        profit_sign = "+" if profit >= 0 else ""
+        profit_emoji = "📈" if profit >= 0 else "📉"
+
+        msg = (
+            f"🛑 *BOT DETENIDO*\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"📝 Razón: _{reason}_\n"
+            f"💰 Balance final: `${balance:,.2f}`\n"
+            f"{profit_emoji} P&L sesión: `{profit_sign}${profit:,.2f}`\n"
+            f"⏱ Tiempo activo: `{uptime_str}`\n"
+            f"🕐 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        )
+        self._send(msg)
+
+    def notify_reconnection(self, attempt: int):
+        """Notifica que el bot se reconectó a MT5"""
+        msg = (
+            f"🔄 *RECONEXIÓN MT5*\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"✅ Conexión restablecida\n"
+            f"🔁 Intento: `#{attempt}`\n"
+            f"⏱ {datetime.now().strftime('%H:%M:%S')}"
+        )
+        self._send(msg)
+
     # ─── Notificaciones de Trading ────────────────────────────────────
 
     def notify_trade_opened(
@@ -85,15 +146,17 @@ class TelegramNotifier:
             return
 
         emoji = "🟢" if order_type == "BUY" else "🔴"
+        direction = "COMPRA" if order_type == "BUY" else "VENTA"
+
         msg = (
-            f"{emoji} *TRADE ABIERTO*\n"
+            f"{emoji} *TRADE ABIERTO — {direction}*\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"📊 *{order_type}* {symbol}\n"
+            f"📊 Par: *{symbol}*\n"
             f"📦 Volumen: `{volume:.2f}` lotes\n"
-            f"💰 Precio: `{price:.5f}`\n"
-            f"🛑 SL: `{sl:.5f}` (-{sl_pips:.0f} pips)\n"
-            f"🎯 TP: `{tp:.5f}` (+{tp_pips:.0f} pips)\n"
-            f"⚖️ R:R: `1:{rr_ratio:.1f}`\n"
+            f"💰 Entrada: `{price:.5f}`\n"
+            f"🛑 SL: `{sl:.5f}` (`-{sl_pips:.0f}` pips)\n"
+            f"🎯 TP: `{tp:.5f}` (`+{tp_pips:.0f}` pips)\n"
+            f"⚖️ Riesgo/Beneficio: `1:{rr_ratio:.1f}`\n"
             f"⏱ {datetime.now().strftime('%H:%M:%S')}"
         )
         self._send(msg)
@@ -111,16 +174,22 @@ class TelegramNotifier:
         if not TelegramConfig.NOTIFY_ON_CLOSE:
             return
 
-        emoji = "✅" if profit >= 0 else "❌"
+        if profit >= 0:
+            emoji = "✅"
+            result = "GANANCIA"
+        else:
+            emoji = "❌"
+            result = "PÉRDIDA"
+
         profit_sign = "+" if profit >= 0 else ""
 
         msg = (
-            f"{emoji} *TRADE CERRADO*\n"
+            f"{emoji} *TRADE CERRADO — {result}*\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"📊 {order_type} {symbol} ({volume:.2f} lots)\n"
-            f"💰 P&L: `{profit_sign}${profit:.2f}`\n"
+            f"📊 {order_type} *{symbol}* (`{volume:.2f}` lots)\n"
+            f"💰 Resultado: `{profit_sign}${profit:.2f}`\n"
             f"📏 Pips: `{profit_sign}{pips:.1f}`\n"
-            f"⏱ Duración: {duration}\n"
+            f"⏱ Duración: `{duration}`\n"
             f"🕐 {datetime.now().strftime('%H:%M:%S')}"
         )
         self._send(msg)
@@ -132,12 +201,16 @@ class TelegramNotifier:
         if not TelegramConfig.NOTIFY_ON_DD_WARNING:
             return
 
+        dd_label = "DIARIO" if dd_type.upper() == "DAILY" else "TOTAL"
+        remaining = limit - loss
+
         msg = (
-            f"⚠️ *ALERTA DRAWDOWN {dd_type.upper()}*\n"
+            f"⚠️ *ALERTA DRAWDOWN {dd_label}*\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"📉 Pérdida: `${loss:,.2f}` / `${limit:,.2f}`\n"
+            f"📉 Pérdida actual: `${loss:,.2f}`\n"
+            f"🚧 Límite máximo: `${limit:,.2f}`\n"
             f"📊 Nivel: `{pct:.1f}%` del límite\n"
-            f"🛑 Margen: `${limit - loss:,.2f}`\n"
+            f"🛡️ Margen restante: `${remaining:,.2f}`\n"
             f"⏱ {datetime.now().strftime('%H:%M:%S')}"
         )
         self._send(msg)
@@ -147,12 +220,16 @@ class TelegramNotifier:
         if not TelegramConfig.NOTIFY_ON_DD_EMERGENCY:
             return
 
+        dd_label = "DIARIO" if dd_type.upper() == "DAILY" else "TOTAL"
+
         msg = (
-            f"🚨🚨🚨 *EMERGENCIA {dd_type.upper()}* 🚨🚨🚨\n"
+            f"🚨🚨🚨 *EMERGENCIA DRAWDOWN {dd_label}* 🚨🚨🚨\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"📉 Pérdida: `${loss:,.2f}` / `${limit:,.2f}`\n"
             f"⚡ CERRANDO TODAS LAS POSICIONES\n"
             f"🛑 Bot detenido por seguridad\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"⚠️ _Revisa tu cuenta antes de reiniciar_\n"
             f"⏱ {datetime.now().strftime('%H:%M:%S')}"
         )
         self._send(msg)
@@ -165,17 +242,18 @@ class TelegramNotifier:
             return
 
         if phase == 1:
-            next_step = "▶️ Procede a la *Fase 2*"
+            next_step = "▶️ Siguiente paso: *Fase 2* (5% target)"
         else:
-            next_step = "💰 *¡CUENTA FONDEADA!*\nSolicita tu primer payout"
+            next_step = "💰 *¡CUENTA FONDEADA!*\n🎁 Solicita tu primer payout"
 
         msg = (
             f"🎉🎉🎉 *¡FASE {phase} COMPLETADA!* 🎉🎉🎉\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"💰 Profit: `+${profit:,.2f}`\n"
+            f"💰 Profit total: `+${profit:,.2f}`\n"
             f"📅 Días rentables: `{days}`\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
             f"{next_step}\n"
-            f"⏱ {datetime.now().strftime('%H:%M:%S')}"
+            f"⏱ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         )
         self._send(msg)
 
@@ -199,17 +277,24 @@ class TelegramNotifier:
             return
 
         p_emoji = "📈" if day_profit >= 0 else "📉"
+        day_sign = "+" if day_profit >= 0 else ""
         progress_pct = (total_profit / profit_target * 100) if profit_target > 0 else 0
+
+        # Barra de progreso visual
+        filled = int(progress_pct / 10)
+        bar = "▓" * min(filled, 10) + "░" * max(10 - filled, 0)
 
         msg = (
             f"📋 *RESUMEN DIARIO — FASE {phase}*\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"{p_emoji} Hoy: `{'+'if day_profit>=0 else ''}${day_profit:,.2f}`\n"
-            f"💰 Total: `${total_profit:,.2f}` / `${profit_target:,.2f}` ({progress_pct:.0f}%)\n"
+            f"{p_emoji} Hoy: `{day_sign}${day_profit:,.2f}`\n"
+            f"💰 Total: `${total_profit:,.2f}` / `${profit_target:,.2f}`\n"
+            f"📊 Progreso: `[{bar}]` `{progress_pct:.0f}%`\n"
             f"📅 Días rentables: `{profitable_days}/{min_days}`\n"
-            f"📊 Trades hoy: `{trades_today}` | Win rate: `{win_rate:.0f}%`\n"
-            f"📉 DD diario: `${daily_dd:,.2f}/$2,500`\n"
-            f"📉 DD total: `${overall_dd:,.2f}/$5,000`\n"
+            f"🔢 Trades hoy: `{trades_today}` | Win rate: `{win_rate:.0f}%`\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"📉 DD diario: `${daily_dd:,.2f}` / `$2,500`\n"
+            f"📉 DD total: `${overall_dd:,.2f}` / `$5,000`\n"
             f"⏱ {datetime.now().strftime('%Y-%m-%d %H:%M')}"
         )
         self._send(msg)
@@ -225,18 +310,8 @@ class TelegramNotifier:
             f"❌ *ERROR CRÍTICO*\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"`{error_message[:500]}`\n"
-            f"⏱ {datetime.now().strftime('%H:%M:%S')}"
-        )
-        self._send(msg)
-
-    def notify_bot_stopped(self, reason: str, balance: float, profit: float):
-        """Notifica que el bot se detuvo"""
-        msg = (
-            f"🛑 *BOT DETENIDO*\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"📝 Razón: {reason}\n"
-            f"💰 Balance: `${balance:,.2f}`\n"
-            f"📊 Profit: `{'+'if profit>=0 else ''}${profit:,.2f}`\n"
-            f"⏱ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            f"⚠️ _El bot continúa operando_\n"
+            f"⏱ {datetime.now().strftime('%H:%M:%S')}"
         )
         self._send(msg)

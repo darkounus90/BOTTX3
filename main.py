@@ -264,7 +264,12 @@ class TX3ProBot:
                 self.risk_manager.equity_inicio_dia = max(real_balance, account_info.equity)
         
         self._print_startup_banner()
-        self.telegram.notify_bot_stopped("Iniciando Bot", 0, 0) # Ping on start
+        self.telegram.notify_bot_started(
+            phase=self.phase,
+            dry_run=self.dry_run,
+            balance=real_balance if account_info else 0,
+            watchlist=BotConfig.WATCHLIST,
+        )
 
         self.running = True
         
