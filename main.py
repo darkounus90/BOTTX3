@@ -101,8 +101,13 @@ class TX3ProBot:
                 self.phase_tracker.daily_profits = state.get("daily_profits", [])
                 self.phase_tracker.total_trading_days = state.get("total_trading_days", 0)
                 
+                # Restaurar balance inicial real (capturado de MT5)
+                saved_balance = state.get("balance_inicial", 0)
+                if saved_balance > 0:
+                    self.risk_manager.balance_inicial = saved_balance
+                    self.phase_tracker.balance_inicial = saved_balance
+                
                 # Restaurar equity inicio día (solo si es el mismo día)
-                # Una implementación más robusta verificaría la fecha
                 saved_equity = state.get("equity_inicio_dia", 0)
                 if saved_equity > 0:
                      self.risk_manager.equity_inicio_dia = saved_equity
@@ -234,13 +239,32 @@ class TX3ProBot:
         #     self.logger.error(f"Símbolo {self.strategy.symbol} no disponible")
         #     return
 
+        # ─── Capturar balance real de MT5 ──────────────────────────
+        account_info = mt5.account_info()
+        if account_info:
+            real_balance = account_info.balance
+            # Si no hay estado guardado previo, usar el balance real de MT5
+            # como referencia en lugar del valor fijo de ChallengeConfig
+            state = self.state_manager.load_state()
+            if state and state.get("balance_inicial", 0) > 0:
+                # Restaurar el balance inicial guardado previamente
+                initial_ref = state["balance_inicial"]
+                self.logger.info(f"💾 Balance inicial restaurado: ${initial_ref:,.2f}")
+            else:
+                # Primera ejecución: usar balance actual de MT5
+                initial_ref = real_balance
+                self.logger.info(f"🆕 Balance inicial capturado de MT5: ${initial_ref:,.2f}")
+            
+            # Propagar a todos los módulos
+            self.risk_manager.balance_inicial = initial_ref
+            self.phase_tracker.balance_inicial = initial_ref
+            
+            # Setup equity inicio día si es necesario
+            if self.risk_manager.equity_inicio_dia == ChallengeConfig.BALANCE_INICIAL:
+                self.risk_manager.equity_inicio_dia = max(real_balance, account_info.equity)
+        
         self._print_startup_banner()
         self.telegram.notify_bot_stopped("Iniciando Bot", 0, 0) # Ping on start
-
-        # Setup inicial de equity diario si es necesario
-        account_info = mt5.account_info()
-        if account_info and self.risk_manager.equity_inicio_dia == ChallengeConfig.BALANCE_INICIAL:
-            self.risk_manager.equity_inicio_dia = max(account_info.balance, account_info.equity)
 
         self.running = True
         

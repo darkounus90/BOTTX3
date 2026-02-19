@@ -31,6 +31,15 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 logger = None
 
 
+@socketio.on("connect")
+def handle_connect():
+    """Envía datos actuales inmediatamente al conectarse un cliente"""
+    socketio.emit("update", dashboard_data)
+    # Enviar logs existentes
+    for log_entry in dashboard_data.get("logs", []):
+        socketio.emit("log", log_entry)
+
+
 def update_dashboard_data(new_data: dict):
     """Actualiza los datos del dashboard y emite evento"""
     global dashboard_data
