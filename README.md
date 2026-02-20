@@ -95,6 +95,21 @@ Verás un panel de control con:
 
 ---
 
+## 6️⃣ Control Remoto (Telegram)
+
+Puedes enviar comandos desde Telegram directamente a tu bot para consultar su estado en tiempo real. 
+
+### Comandos Soportados:
+-   `/status` → Estado general (Balance, Equity, P&L, etc.)
+-   `/positions` → Lista de operaciones abiertas
+-   `/profit` → Resumen interactivo de ganancias desde inicio
+-   `/risk` → Vista en gráfica visual del nivel de Drawdown Actual
+-   `/help` → Lista de todos los comandos
+
+*Para que funcione el control remoto, debes asegurarte de haber establecido las variables `TELEGRAM_BOT_TOKEN` y `TELEGRAM_CHAT_ID` como se indica en el paso 3 y enviarle mensaje desde la misma cuenta con ese `CHAT_ID`.*
+
+---
+
 ## 6️⃣ Solución de Problemas Comunes
 
 ### ❌ `ModuleNotFoundError: No module named 'MetaTrader5'`
@@ -119,3 +134,4 @@ Verás un panel de control con:
 | **Fase 1** | `python main.py --phase 1` |
 | **Fase 2** | `python main.py --phase 2` |
 | **Simular** | `python main.py --phase 1 --dry-run` |
+| **Telegram Ayuda** | Enviar `/help` al bot en Telegram |
