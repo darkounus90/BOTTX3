@@ -43,14 +43,14 @@ class EMACrossStrategy(BaseStrategy):
         self.ema_slow = BotConfig.EMA_SLOW_PERIOD       # 50
         self.ema_trend = 200                             # Filtro Tendencia H1
         self.adx_period = 14                             
-        self.adx_threshold = 15                          # Flexibilizado para tomar más trades
+        self.adx_threshold = 18                          # Aumentado para eliminar ruido en M5
         self.rsi_period = 14
         self.atr_period = 14                             
         self.bars_needed = 300                           
 
         self.logger.info(
             f"🚀 Dynamic Momentum Pro inicializada | {self.symbol}\n"
-            f"   TF: M15 | EMAs: {self.ema_fast}/{self.ema_slow} | Filtros: ADX>{self.adx_threshold}, RSI, H1 Trend"
+            f"   TF: {BotConfig.DEFAULT_TIMEFRAME} | EMAs: {self.ema_fast}/{self.ema_slow} | Filtros: ADX>{self.adx_threshold}, RSI, H1 Trend"
         )
 
     def get_name(self) -> str:
