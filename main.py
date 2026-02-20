@@ -41,6 +41,7 @@ from utils.telegram_notifier import TelegramNotifier
 from utils.trade_journal import TradeJournal
 from utils.state_manager import StateManager
 from dashboard.app import run_dashboard, update_dashboard_data, add_dashboard_log
+from utils.telegram_commands import TelegramCommandHandler
 
 
 class TX3ProBot:
@@ -61,6 +62,7 @@ class TX3ProBot:
         
         # Notificaciones y Persistencia
         self.telegram = TelegramNotifier(logger=self.logger)
+        self.telegram_commands = TelegramCommandHandler(logger=self.logger, bot_reference=self)
         self.state_manager = StateManager(logger=self.logger)
         self.journal = TradeJournal(logger=self.logger, phase=phase)
 
@@ -226,6 +228,8 @@ class TX3ProBot:
                 daemon=True
             )
             dash_thread.start()
+
+        self.telegram_commands.start()
 
         # 2. Conexión y Setup
         if not self.connector.connect():
