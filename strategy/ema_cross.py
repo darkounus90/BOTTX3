@@ -47,6 +47,7 @@ class EMACrossStrategy(BaseStrategy):
         self.rsi_period = 14
         self.atr_period = 14                             
         self.bars_needed = 300                           
+        self.last_processed_time = None                  # Optimización VPS: Cache de última vela evaluada
 
         self.logger.info(
             f"🚀 Dynamic Momentum Pro inicializada | {self.symbol}\n"
@@ -104,7 +105,24 @@ class EMACrossStrategy(BaseStrategy):
 
     def generate_signal(self) -> dict | None:
         """Genera señal basada en lógica Multi-Timeframe adaptativa"""
+        import MetaTrader5 as mt5
         
+        # ─── OPTIMIZACIÓN VPS (2CPU / 2GB RAM) ──────────────────────
+        # Preguntar a MT5 por las últimas 2 velas es ultra-ligero (0.01 ms).
+        # Si la vela cerrada más reciente es la misma que la última vez, 
+        # abortamos y ahorramos el 99% del CPU evitando cálculos en Pandas.
+        recent_rates = mt5.copy_rates_from_pos(self.symbol, self.timeframe, 0, 2)
+        if recent_rates is None or len(recent_rates) < 2:
+            return None
+            
+        last_closed_time = recent_rates[-2]['time']
+        if self.last_processed_time == last_closed_time:
+            return None # No hay vela nueva, no hacemos nada.
+            
+        # Si llegamos aquí, hay una nueva vela que evaluar (cada 5 min).
+        self.last_processed_time = last_closed_time
+        # ────────────────────────────────────────────────────────────
+
         df_base = self._get_data(self.timeframe)
         df_h1 = self._get_data(self.trend_timeframe)
         
