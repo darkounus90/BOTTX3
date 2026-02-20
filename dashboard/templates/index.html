@@ -1,246 +1,494 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TX3 Pro Bot Dashboard</title>
+    <title>TX3 Pro Bot | Mission Control</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- External Libs -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        txbase: '#0B0F19',
+                        txpanel: 'rgba(17, 24, 39, 0.7)',
+                        txborder: 'rgba(55, 65, 81, 0.4)',
+                        txaccent: '#3B82F6',
+                        txdanger: '#EF4444',
+                        txsuccess: '#10B981',
+                        txwarning: '#F59E0B'
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
     <style>
-        body { background-color: #0f172a; color: #e2e8f0; font-family: 'Inter', sans-serif; }
-        .card { background-color: #1e293b; border-radius: 0.5rem; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        .stat-label { color: #94a3b8; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; }
-        .stat-value { font-size: 1.5rem; font-weight: 700; margin-top: 0.25rem; }
-        .profit { color: #22c55e; }
-        .loss { color: #ef4444; }
-        .log-entry { font-family: monospace; font-size: 0.8rem; border-bottom: 1px solid #334155; padding: 2px 0; }
+        body {
+            background-color: #0B0F19;
+            color: #E2E8F0;
+            background-image:
+                radial-gradient(circle at 15% 50%, rgba(29, 78, 216, 0.15), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.15), transparent 25%);
+            background-attachment: fixed;
+            overflow-x: hidden;
+        }
+
+        /* Glassmorphism Classes */
+        .glass-panel {
+            background: var(--txpanel, rgba(17, 24, 39, 0.6));
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--txborder, rgba(55, 65, 81, 0.4));
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            border-radius: 1rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-panel:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        /* Specific text gradients */
+        .text-gradient {
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .gradient-blue {
+            background-image: linear-gradient(to right, #60A5FA, #3B82F6);
+        }
+
+        .gradient-green {
+            background-image: linear-gradient(to right, #34D399, #10B981);
+        }
+
+        .gradient-red {
+            background-image: linear-gradient(to right, #F87171, #EF4444);
+        }
+
+        /* Custom Scrollbar for Logs */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(55, 65, 81, 0.8);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(75, 85, 99, 1);
+        }
+
+        /* Log Entries */
+        .log-entry {
+            padding: 6px 10px;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            transition: background-color 0.2s;
+        }
+
+        .log-entry:hover {
+            background-color: rgba(255, 255, 255, 0.03);
+        }
+
+        .glow-dot {
+            box-shadow: 0 0 10px currentColor;
+        }
     </style>
 </head>
-<body class="p-6">
 
-    <div class="max-w-7xl mx-auto space-y-6">
-        <!-- Header -->
-        <div class="flex justify-between items-center">
-            <div>
-                <h1 class="text-3xl font-bold text-white">TX3 Pro Bot <span class="text-blue-500">$50K</span></h1>
-                <p class="text-slate-400">Real-time Monitoring System</p>
-            </div>
-            <div class="flex space-x-4">
-                <span id="status-badge" class="px-3 py-1 rounded-full text-sm font-semibold bg-gray-700 text-gray-300">WAITING...</span>
-                <span id="phase-badge" class="px-3 py-1 rounded-full text-sm font-semibold bg-blue-900 text-blue-300">FASE ?</span>
-            </div>
-        </div>
+<body class="min-h-screen p-4 md:p-8 flex flex-col items-center">
 
-        <!-- Stats Grid -->
+    <!-- Main Container -->
+    <div class="w-full max-w-7xl space-y-8 animate-fade-in-up">
+
+        <!-- Navbar / Header -->
+        <header
+            class="glass-panel p-6 flex flex-col md:flex-row justify-between items-center gap-4 relative overflow-hidden">
+            <!-- Decorative light sweep -->
+            <div
+                class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-50">
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div
+                    class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-900 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                    <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-bold tracking-tight text-white">TX3 Pro <span
+                            class="text-blue-500 font-light">$50K</span></h1>
+                    <p class="text-sm text-gray-400 font-mono tracking-wider mt-1">MISSION CONTROL SYSTEM</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <div id="phase-badge"
+                    class="px-4 py-1.5 rounded-lg text-sm font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-[0_0_15px_rgba(99,102,241,0.15)]">
+                    FASE ?
+                </div>
+                <div id="status-badge"
+                    class="px-4 py-1.5 rounded-lg text-sm font-bold bg-gray-500/10 text-gray-400 border border-gray-500/20">
+                    WAITING...
+                </div>
+            </div>
+        </header>
+
+        <!-- KPI Dashboard Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div class="card">
-                <div class="stat-label">Balance / Equity</div>
-                <div class="stat-value" id="balance">$0.00</div>
-                <div class="text-sm text-slate-400 mt-1" id="equity">Eq: $0.00</div>
-            </div>
-            <div class="card">
-                <div class="stat-label">Daily Profit</div>
-                <div class="stat-value" id="daily-profit">$0.00</div>
-                <div class="w-full bg-gray-700 rounded-full h-1.5 mt-2">
-                    <div class="bg-green-500 h-1.5 rounded-full" style="width: 0%" id="daily-progress"></div>
+
+            <!-- Balance Card -->
+            <div class="glass-panel p-6 relative overflow-hidden group">
+                <div
+                    class="absolute -right-6 -top-6 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all">
+                </div>
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Account Balance</h3>
+                <div class="text-3xl font-bold text-white tracking-tight" id="balance">$0.00</div>
+                <div class="mt-3 flex items-center justify-between text-sm border-t border-gray-800 pt-3">
+                    <span class="text-gray-500">Equity Live</span>
+                    <span class="font-mono text-blue-400 font-medium" id="equity">$0.00</span>
                 </div>
             </div>
-            <div class="card">
-                <div class="stat-label">Daily Drawdown</div>
-                <div class="stat-value text-orange-400" id="daily-dd">$0.00</div>
-                <div class="text-xs text-slate-500 mt-1">Limit: $2,500 (5%)</div>
-                <div class="w-full bg-gray-700 rounded-full h-1.5 mt-2">
-                    <div class="bg-orange-500 h-1.5 rounded-full" style="width: 0%" id="daily-dd-bar"></div>
+
+            <!-- Profit Card -->
+            <div class="glass-panel p-6 relative overflow-hidden group">
+                <div
+                    class="absolute -right-6 -top-6 w-24 h-24 bg-green-500/10 rounded-full blur-2xl group-hover:bg-green-500/20 transition-all">
+                </div>
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Daily Profit</h3>
+                <div class="text-3xl font-bold text-gray-500" id="daily-profit">$0.00</div>
+                <div class="mt-3 flex flex-col gap-1 border-t border-gray-800 pt-3">
+                    <div class="flex justify-between text-xs text-gray-500">
+                        <span>Progress</span>
+                        <span id="daily-pct-text">0.0%</span>
+                    </div>
+                    <div class="w-full bg-gray-800/80 rounded-full h-1.5 overflow-hidden">
+                        <div class="bg-gradient-to-r from-emerald-400 to-green-500 h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(16,185,129,0.5)]"
+                            style="width: 0%" id="daily-progress"></div>
+                    </div>
                 </div>
             </div>
-            <div class="card">
-                <div class="stat-label">Total Drawdown</div>
-                <div class="stat-value text-red-400" id="overall-dd">$0.00</div>
-                <div class="text-xs text-slate-500 mt-1">Limit: $5,000 (10%)</div>
-                <div class="w-full bg-gray-700 rounded-full h-1.5 mt-2">
-                    <div class="bg-red-500 h-1.5 rounded-full" style="width: 0%" id="overall-dd-bar"></div>
+
+            <!-- Daily DD Card -->
+            <div class="glass-panel p-6 relative overflow-hidden group">
+                <div
+                    class="absolute -right-6 -top-6 w-24 h-24 bg-orange-500/10 rounded-full blur-2xl group-hover:bg-orange-500/20 transition-all">
+                </div>
+                <div class="flex justify-between items-start">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Daily Drawdown</h3>
+                    <span class="text-[0.65rem] border border-gray-700 text-gray-400 px-2 py-0.5 rounded-md">LIMIT
+                        5%</span>
+                </div>
+                <div class="text-3xl font-bold text-orange-400 tracking-tight" id="daily-dd">$0.00</div>
+                <div
+                    class="mt-3 w-full bg-gray-800/80 rounded-full h-1.5 overflow-hidden border-t border-gray-800 pt-4">
+                    <div class="bg-gradient-to-r from-orange-400 to-red-500 h-1.5 rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(249,115,22,0.5)]"
+                        style="width: 0%" id="daily-dd-bar"></div>
                 </div>
             </div>
+
+            <!-- Total DD Card -->
+            <div class="glass-panel p-6 relative overflow-hidden group">
+                <div
+                    class="absolute -right-6 -top-6 w-24 h-24 bg-red-500/10 rounded-full blur-2xl group-hover:bg-red-500/20 transition-all">
+                </div>
+                <div class="flex justify-between items-start">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Max Drawdown</h3>
+                    <span class="text-[0.65rem] border border-gray-700 text-gray-400 px-2 py-0.5 rounded-md">LIMIT
+                        10%</span>
+                </div>
+                <div class="text-3xl font-bold text-red-400 tracking-tight" id="overall-dd">$0.00</div>
+                <div
+                    class="mt-3 w-full bg-gray-800/80 rounded-full h-1.5 overflow-hidden border-t border-gray-800 pt-4">
+                    <div class="bg-gradient-to-r from-red-600 to-rose-500 h-1.5 rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(225,29,72,0.5)]"
+                        style="width: 0%" id="overall-dd-bar"></div>
+                </div>
+            </div>
+
         </div>
 
+        <!-- Lower Section Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Open Positions -->
-            <div class="card col-span-2">
-                <h3 class="text-lg font-semibold mb-4">Open Positions</h3>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left text-gray-400">
-                        <thead class="text-xs text-gray-500 uppercase bg-gray-800">
+
+            <!-- Open Positions Table -->
+            <div class="glass-panel col-span-2 flex flex-col overflow-hidden">
+                <div class="p-5 border-b border-gray-800 bg-gray-900/40 flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+                            <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-white tracking-wide">Live Positions</h3>
+                    </div>
+                    <span class="text-xs text-gray-500 font-mono" id="positions-count">Active: 0</span>
+                </div>
+
+                <div class="overflow-x-auto flex-1 p-2">
+                    <table class="w-full text-sm text-left align-middle">
+                        <thead class="text-xs text-gray-500 font-mono tracking-wider border-b border-gray-800/50">
                             <tr>
-                                <th class="px-4 py-2">Ticket</th>
-                                <th class="px-4 py-2">Symbol</th>
-                                <th class="px-4 py-2">Type</th>
-                                <th class="px-4 py-2">Vol</th>
-                                <th class="px-4 py-2">Price</th>
-                                <th class="px-4 py-2">P&L</th>
+                                <th class="px-4 py-3 font-medium">TICKET</th>
+                                <th class="px-4 py-3 font-medium">ASSET</th>
+                                <th class="px-4 py-3 font-medium">DIRECTION</th>
+                                <th class="px-4 py-3 font-medium">LOTS</th>
+                                <th class="px-4 py-3 font-medium">ENTRY</th>
+                                <th class="px-4 py-3 font-medium text-right">PROFIT</th>
                             </tr>
                         </thead>
-                        <tbody id="positions-table">
-                            <!-- Rows injected via JS -->
-                            <tr><td colspan="6" class="text-center py-4">No open positions</td></tr>
+                        <tbody id="positions-table" class="font-mono text-sm">
+                            <tr>
+                                <td colspan="6" class="text-center py-12 text-gray-600">No active positions currently
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- Live Logs -->
-            <div class="card h-96 flex flex-col">
-                <h3 class="text-lg font-semibold mb-2">Live Logs</h3>
-                <div id="logs-container" class="flex-1 overflow-y-auto bg-black/30 p-2 rounded text-xs space-y-1">
+            <!-- Terminal / Live Logs -->
+            <div class="glass-panel h-[400px] flex flex-col overflow-hidden">
+                <div class="p-4 border-b border-gray-800 bg-gray-900/60 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+                            </path>
+                        </svg>
+                        <h3 class="text-sm font-bold text-gray-200 tracking-widest uppercase">System Terminal</h3>
+                    </div>
+                </div>
+
+                <div id="logs-container"
+                    class="flex-1 overflow-y-auto p-4 font-mono bg-[#050510] shadow-inner space-y-1.5 scroll-smooth">
                     <!-- Logs injected via JS -->
+                    <div class="log-entry text-gray-500 italic">Initializing subsystem...</div>
                 </div>
             </div>
         </div>
+
+        <!-- Footer -->
+        <footer class="flex justify-between items-center text-xs font-mono text-gray-500 pt-4 px-2">
+            <div id="connection-status"
+                class="flex items-center gap-3 bg-gray-900/50 px-3 py-1.5 rounded-full border border-gray-800">
+                <span class="inline-block w-2.5 h-2.5 rounded-full bg-gray-600"></span>
+                <span>SYSTEM OFFLINE</span>
+            </div>
+            <div id="last-update-time" class="tracking-widest opacity-60">SYNC: --:--:--</div>
+        </footer>
+
     </div>
 
-    <!-- Connection Status Footer -->
-    <div class="mt-6 flex justify-between items-center text-xs text-slate-500 px-2">
-        <div id="connection-status" class="flex items-center gap-2">
-            <span class="inline-block w-2 h-2 rounded-full bg-gray-500"></span>
-            <span>Connecting...</span>
-        </div>
-        <div id="last-update-time">Last update: --</div>
-    </div>
-
+    <!-- Application Logic -->
     <script>
         const socket = io();
         let isConnected = false;
 
         const formatCurrency = (val) => {
-            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(val || 0);
         };
 
         function setConnectionStatus(connected) {
             isConnected = connected;
             const el = document.getElementById('connection-status');
             if (connected) {
-                el.innerHTML = '<span class="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span><span>Live Connected</span>';
+                el.innerHTML = '<span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 glow-dot animate-pulse"></span><span class="text-emerald-500 font-bold">LIVE SOCKET</span>';
+                el.classList.add('border-emerald-500/30', 'bg-emerald-500/5');
             } else {
-                el.innerHTML = '<span class="inline-block w-2 h-2 rounded-full bg-red-500"></span><span>Disconnected (polling...)</span>';
+                el.innerHTML = '<span class="inline-block w-2.5 h-2.5 rounded-full bg-rose-500"></span><span class="text-rose-500">POLLING BACKUP</span>';
+                el.classList.remove('border-emerald-500/30', 'bg-emerald-500/5');
             }
         }
 
         function updateUI(data) {
             if (!data || typeof data !== 'object') return;
 
-            // Last Update Time
-            document.getElementById('last-update-time').textContent = 
-                `Last update: ${data.last_update || new Date().toLocaleTimeString()}`;
+            // Sync Time
+            document.getElementById('last-update-time').textContent = `SYNC: ${data.last_update || new Date().toLocaleTimeString()}`;
 
-            // Status Badges
+            // Phase and Status
+            const phaseBadge = document.getElementById('phase-badge');
+            phaseBadge.textContent = `PHASE ${data.phase || '?'}`;
+
             const statusEl = document.getElementById('status-badge');
             statusEl.textContent = data.status || 'UNKNOWN';
-            statusEl.className = `px-3 py-1 rounded-full text-sm font-semibold ${data.status === 'RUNNING' ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`;
-            
-            document.getElementById('phase-badge').textContent = `FASE ${data.phase || '?'}`;
+            if (data.status === 'RUNNING') {
+                statusEl.className = "px-4 py-1.5 rounded-lg text-sm font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]";
+            } else {
+                statusEl.className = "px-4 py-1.5 rounded-lg text-sm font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30";
+            }
 
-            // Stats
+            // Financial KPIs
             document.getElementById('balance').textContent = formatCurrency(data.balance);
-            document.getElementById('equity').textContent = `Eq: ${formatCurrency(data.equity)}`;
-            
+            document.getElementById('equity').textContent = formatCurrency(data.equity);
+
+            // Daily Profit Logic
             const dpEl = document.getElementById('daily-profit');
-            dpEl.textContent = formatCurrency(data.daily_profit);
-            dpEl.className = `stat-value ${(data.daily_profit || 0) >= 0 ? 'profit' : 'loss'}`;
+            const dailyVal = data.daily_profit || 0;
+            dpEl.textContent = formatCurrency(dailyVal);
+            if (dailyVal > 0) {
+                dpEl.className = "text-3xl font-bold text-gradient gradient-green tracking-tight";
+            } else if (dailyVal < 0) {
+                dpEl.className = "text-3xl font-bold text-gradient gradient-red tracking-tight";
+            } else {
+                dpEl.className = "text-3xl font-bold text-gray-500 tracking-tight";
+            }
 
-            // Drawdown Bars
+            // Drawdowns
             document.getElementById('daily-dd').textContent = formatCurrency(data.daily_dd);
-            const dailyPct = ((data.daily_dd || 0) / 2500) * 100;
-            document.getElementById('daily-dd-bar').style.width = `${Math.min(dailyPct, 100)}%`;
-
             document.getElementById('overall-dd').textContent = formatCurrency(data.overall_dd);
-            const overallPct = ((data.overall_dd || 0) / 5000) * 100;
-            document.getElementById('overall-dd-bar').style.width = `${Math.min(overallPct, 100)}%`;
+
+            // Progress bars (Assumes Phase 1 limit of 2500 & 5000)
+            const dpt = ((data.daily_dd || 0) / 2500) * 100;
+            document.getElementById('daily-dd-bar').style.width = `${Math.min(dpt, 100)}%`;
+
+            const opt = ((data.overall_dd || 0) / 5000) * 100;
+            document.getElementById('overall-dd-bar').style.width = `${Math.min(opt, 100)}%`;
 
             // Positions Table
             const tbody = document.getElementById('positions-table');
-            tbody.innerHTML = '';
-            
+            const pCount = document.getElementById('positions-count');
+
             if (data.open_positions && data.open_positions.length > 0) {
+                tbody.innerHTML = '';
+                pCount.textContent = `Active: ${data.open_positions.length}`;
+
                 data.open_positions.forEach(pos => {
                     const row = document.createElement('tr');
-                    const plClass = pos.profit >= 0 ? 'text-green-400' : 'text-red-400';
-                    row.className = 'border-b border-gray-800 hover:bg-gray-800/50';
+                    const isBuy = pos.type === 'BUY';
+                    const isProfitable = pos.profit >= 0;
+
+                    row.className = 'border-b border-gray-800/40 hover:bg-gray-800/40 transition-colors group';
                     row.innerHTML = `
-                        <td class="px-4 py-2 font-mono">${pos.ticket}</td>
-                        <td class="px-4 py-2 font-bold">${pos.symbol}</td>
-                        <td class="px-4 py-2 ${pos.type === 'BUY' ? 'text-blue-400' : 'text-orange-400'}">${pos.type}</td>
-                        <td class="px-4 py-2">${pos.volume}</td>
-                        <td class="px-4 py-2">${pos.price_open}</td>
-                        <td class="px-4 py-2 ${plClass}">${formatCurrency(pos.profit)}</td>
+                        <td class="px-4 py-3 text-gray-400">#${pos.ticket}</td>
+                        <td class="px-4 py-3 font-bold text-white group-hover:text-blue-400 transition-colors">${pos.symbol}</td>
+                        <td class="px-4 py-3">
+                            <span class="px-2 py-1 rounded text-[0.7rem] font-bold ${isBuy ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-orange-500/10 text-orange-400 border border-orange-500/20'}">
+                                ${pos.type}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-gray-300">${pos.volume.toFixed(2)}</td>
+                        <td class="px-4 py-3 text-gray-400">${pos.price_open}</td>
+                        <td class="px-4 py-3 text-right font-bold ${isProfitable ? 'text-emerald-400' : 'text-rose-400'}">
+                            ${isProfitable ? '+' : ''}${formatCurrency(pos.profit)}
+                        </td>
                     `;
                     tbody.appendChild(row);
                 });
             } else {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-slate-500">No open positions</td></tr>';
+                pCount.textContent = 'Active: 0';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-gray-600">No active positions currently</td></tr>';
             }
         }
 
         function addLogEntry(log) {
             const container = document.getElementById('logs-container');
             const el = document.createElement('div');
-            let color = 'text-gray-300';
-            if (log.message && (log.message.includes('ERROR') || log.message.includes('❌'))) color = 'text-red-400';
-            if (log.message && (log.message.includes('WARNING') || log.message.includes('⚠️'))) color = 'text-yellow-400';
-            if (log.message && (log.message.includes('SUCCESS') || log.message.includes('✅'))) color = 'text-green-400';
-            
-            el.className = `log-entry ${color}`;
-            el.textContent = `[${log.timestamp || ''}] ${log.message || ''}`;
+
+            let colorClass = 'text-gray-400';
+            const msg = log.message || '';
+
+            // Smart log coloring
+            if (msg.includes('ERROR') || msg.includes('🚨') || msg.includes('❌') || msg.includes('🛑')) {
+                colorClass = 'text-rose-400 bg-rose-500/5 border-l-2 border-rose-500';
+            } else if (msg.includes('WARNING') || msg.includes('⚠️') || msg.includes('⏱️')) {
+                colorClass = 'text-amber-400 bg-amber-500/5 border-l-2 border-amber-500';
+            } else if (msg.includes('SUCCESS') || msg.includes('✅') || msg.includes('🚀') || msg.includes('💰')) {
+                colorClass = 'text-emerald-400 border-l-2 border-emerald-500 pl-2';
+            } else if (msg.includes('BUY') || msg.includes('SELL') || msg.includes('Trade')) {
+                colorClass = 'text-blue-300 border-l-2 border-blue-500 pl-2';
+            } else {
+                colorClass = 'text-gray-400 pl-2 border-l-2 border-gray-700';
+            }
+
+            el.className = `log-entry ${colorClass} font-mono`;
+
+            // Format timestamp slightly dimmer than text
+            const timeStr = log.timestamp ? `<span class="text-gray-600 mr-2 text-[0.7rem]">[${log.timestamp}]</span>` : '';
+            el.innerHTML = `${timeStr}<span>${msg}</span>`;
+
             container.appendChild(el);
+
+            // Auto scroll to bottom
             container.scrollTop = container.scrollHeight;
+
+            // Limit logs in DOM to prevent lag (keep last 100)
+            if (container.children.length > 100) {
+                container.removeChild(container.firstChild);
+            }
         }
 
-        // ── Socket.IO Events ──────────────────────────────────────
-        socket.on('connect', () => {
-            console.log('🟢 Socket.IO connected');
-            setConnectionStatus(true);
-        });
+        // ── WebSocket Initialization ──────────────────────────────
+        socket.on('connect', () => { setConnectionStatus(true); });
+        socket.on('disconnect', () => { setConnectionStatus(false); });
+        socket.on('update', (data) => { updateUI(data); });
+        socket.on('log', (log) => { addLogEntry(log); });
 
-        socket.on('disconnect', () => {
-            console.log('🔴 Socket.IO disconnected');
-            setConnectionStatus(false);
-        });
-
-        socket.on('update', (data) => {
-            updateUI(data);
-        });
-
-        socket.on('log', (log) => {
-            addLogEntry(log);
-        });
-
-        // ── API Polling Fallback ──────────────────────────────────
-        // Fetch initial data immediately on page load
+        // ── Polling Fallback ──────────────────────────────────────
         async function fetchStatus() {
             try {
                 const res = await fetch('/api/status');
                 const data = await res.json();
                 updateUI(data);
-                // Also load existing logs on first fetch
+
                 if (data.logs && data.logs.length > 0) {
                     const container = document.getElementById('logs-container');
-                    if (container.children.length === 0) {
+                    if (container.children.length <= 1) { // Only if relatively empty
+                        container.innerHTML = '';
                         data.logs.forEach(log => addLogEntry(log));
                     }
                 }
-            } catch (err) {
-                console.warn('API fetch failed:', err);
-            }
+            } catch (err) { console.warn('API fetch failed:', err); }
         }
 
-        // Initial fetch on page load
         fetchStatus();
-
-        // Poll every 10 seconds as fallback (in case WebSocket fails)
-        setInterval(() => {
-            if (!isConnected) {
-                fetchStatus();
-            }
-        }, 10000);
+        setInterval(() => { if (!isConnected) fetchStatus(); }, 5000);
     </script>
 </body>
+
 </html>
