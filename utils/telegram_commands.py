@@ -44,7 +44,7 @@ class TelegramCommandHandler:
 
     def _poll_updates(self):
         """Revisa mensajes nuevos cada 3 segundos"""
-        while self.running and self.bot.running:
+        while self.running:
             try:
                 url = f"{self.url_base}getUpdates"
                 params = {"timeout": 3}
