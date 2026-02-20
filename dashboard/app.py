@@ -25,7 +25,14 @@ dashboard_data = {
     "logs": [],
 }
 
-app = Flask(__name__)
+import os
+import sys
+
+if getattr(sys, 'frozen', False):
+    template_folder = os.path.join(sys._MEIPASS, 'dashboard', 'templates')
+    app = Flask(__name__, template_folder=template_folder)
+else:
+    app = Flask(__name__)
 app.config["SECRET_KEY"] = DashboardConfig.SECRET_KEY
 socketio = SocketIO(app, cors_allowed_origins="*")
 logger = None
