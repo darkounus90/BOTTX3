@@ -139,6 +139,15 @@ class PositionManager:
         # 1 pip = 10 points para pares de 5 dígitos
         pip_in_points = 10 * point
 
+        # ─── Validar Spread Dinámico ─────────────────────────────────
+        current_spread_pips = (tick.ask - tick.bid) / pip_in_points
+        if current_spread_pips > BotConfig.MAX_SPREAD_PIPS:
+            self.logger.warning(
+                f"⚠️ Operación rechazada: Spread muy alto en {symbol} "
+                f"({current_spread_pips:.1f} pips > {BotConfig.MAX_SPREAD_PIPS} max)"
+            )
+            return None
+
         if order_type == mt5.ORDER_TYPE_BUY:
             price = tick.ask
             sl = price - (stop_loss_pips * pip_in_points)

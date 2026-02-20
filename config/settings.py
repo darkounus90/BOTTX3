@@ -88,6 +88,7 @@ class BotConfig:
     MAGIC_NUMBER = 234000
     DEVIATION = 20
     ORDER_COMMENT_PREFIX = "TX3_Pro"
+    MAX_SPREAD_PIPS = 1.5                # Filtro: No operar si el spread es mayor a 1.5 pips
 
     # ─── TIMING ───────────────────────────────────────────────────────
     LOOP_INTERVAL_SECONDS = 30

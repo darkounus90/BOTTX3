@@ -168,3 +168,17 @@ class SessionFilter:
             now.hour == BotConfig.DAILY_RESET_HOUR_EST
             and now.minute == BotConfig.DAILY_RESET_MINUTE_EST
         )
+
+    def is_friday_forced_close_time(self) -> bool:
+        """
+        Verifica si es viernes por la tarde para cerrar todas las posiciones
+        y evitar operar durante el fin de semana (Regla de Prop Firms).
+        Se ejecuta a las 3:45 PM EST (15:45).
+        """
+        now = datetime.now()
+        # 4 = Viernes en Python datetime.weekday()
+        if now.weekday() == 4:
+            # 15:45 PM EST = 3:45 PM
+            if now.hour == 15 and now.minute >= 45:
+                return True
+        return False

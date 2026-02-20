@@ -301,6 +301,18 @@ class TX3ProBot:
                     self.running = False
                     break
 
+                # ─── C.1 Cierre Obligatorio de Fin de Semana ───────
+                if self.session_filter.is_friday_forced_close_time():
+                    # Evitar ejecutar cierre 2 veces si ya cerró
+                    if self.position_manager.get_open_positions_count() > 0:
+                        self.logger.critical("⏱️ CIERRE DE VIERNES (Evitando Weekend Hold)")
+                        self.telegram.notify_error("⏱️ CIERRE OBLIGATORIO DE VIERNES EJECUTADO")
+                        self.risk_manager.emergency_close_all() # Reutilizamos la función de emergencia para cerrar todo
+                    
+                    # No operamos por el resto del día de todos modos
+                    sleep_module.sleep(BotConfig.LOOP_INTERVAL_SECONDS)
+                    continue
+
                 # ─── D. Filtros de Trading ─────────────────────────
                 # 1. Sesión (Global)
                 if not self.session_filter.is_trading_allowed():
