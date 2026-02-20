@@ -64,34 +64,50 @@ class BotLogger:
     def info(self, message: str):
         colored = self._colorize(f"ℹ️  {message}", "CYAN")
         self.logger.info(colored)
+        from dashboard.app import add_dashboard_log
+        add_dashboard_log(colored)
 
     def success(self, message: str):
         colored = self._colorize(f"✅ {message}", "GREEN")
         self.logger.info(colored)
+        from dashboard.app import add_dashboard_log
+        add_dashboard_log(colored)
 
     def warning(self, message: str):
         colored = self._colorize(f"⚠️  {message}", "YELLOW")
         self.logger.warning(colored)
+        from dashboard.app import add_dashboard_log
+        add_dashboard_log(colored)
 
     def error(self, message: str):
         colored = self._colorize(f"❌ {message}", "RED")
         self.logger.error(colored)
+        from dashboard.app import add_dashboard_log
+        add_dashboard_log(colored)
 
     def critical(self, message: str):
         colored = self._colorize(f"🚨 {message}", "RED")
         self.logger.critical(colored)
+        from dashboard.app import add_dashboard_log
+        add_dashboard_log(colored)
 
     def trade(self, message: str):
         colored = self._colorize(f"📊 {message}", "MAGENTA")
         self.logger.info(colored)
+        from dashboard.app import add_dashboard_log
+        add_dashboard_log(colored)
 
     def risk(self, message: str):
         colored = self._colorize(f"🛡️  {message}", "YELLOW")
         self.logger.info(colored)
+        from dashboard.app import add_dashboard_log
+        add_dashboard_log(colored)
 
     def phase(self, message: str):
         colored = self._colorize(f"🎯 {message}", "BLUE")
         self.logger.info(colored)
+        from dashboard.app import add_dashboard_log
+        add_dashboard_log(colored)
 
     def separator(self, char: str = "─", length: int = 60):
         line = char * length
