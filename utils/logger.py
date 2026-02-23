@@ -134,11 +134,11 @@ class BotLogger:
         self.separator()
         self.risk("ESTADO DE DRAWDOWN")
         self.risk(
-            f"  Diario:  ${daily_loss:>8.2f} / ${daily_limit:>8.2f}  "
+            f"  Diario: -${daily_loss:>8.2f} / -${daily_limit:>8.2f}  "
             f"({daily_pct:5.1f}%)  Margen: ${daily_limit - daily_loss:>8.2f}"
         )
         self.risk(
-            f"  Total:   ${overall_loss:>8.2f} / ${overall_limit:>8.2f}  "
+            f"  Total:  -${overall_loss:>8.2f} / -${overall_limit:>8.2f}  "
             f"({overall_pct:5.1f}%)  Margen: ${overall_limit - overall_loss:>8.2f}"
         )
 

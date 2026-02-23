@@ -44,11 +44,11 @@ class PhaseTracker:
         )
 
     def get_current_profit(self) -> float:
-        """Obtiene el profit actual desde el balance inicial"""
+        """Obtiene el profit actual (incluye flotante) desde el balance inicial"""
         account_info = mt5.account_info()
         if account_info is None:
             return 0.0
-        return account_info.balance - self.balance_inicial
+        return account_info.equity - self.balance_inicial
 
     def update_daily_profit(self):
         """Actualiza el profit del día actual"""
