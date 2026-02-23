@@ -43,6 +43,10 @@ from utils.trade_journal import TradeJournal
 from utils.state_manager import StateManager
 from dashboard.app import run_dashboard, update_dashboard_data, add_dashboard_log
 from utils.telegram_commands import TelegramCommandHandler
+from core.smc_scanner import SMCScanner
+from core.portfolio_manager import PortfolioManager
+from strategy.q_learning_agent import QLearningAgent
+from utils.telegram_commands import TelegramCommandHandler
 
 
 class TX3ProBot:
@@ -78,6 +82,11 @@ class TX3ProBot:
         self.news_filter = NewsFilter(logger=self.logger)
         self.trailing_stop = TrailingStopManager(logger=self.logger)
         self.oracle = GeminiOracle(logger=self.logger)
+        
+        # Next-Gen Institutional features
+        self.smc_scanner = SMCScanner(logger=self.logger)
+        self.portfolio_manager = PortfolioManager(logger=self.logger)
+        self.q_agent = QLearningAgent(logger=self.logger)
         
         # Estrategias (Multi-Symbol Optimization)
         self.strategies = {}
@@ -353,8 +362,9 @@ class TX3ProBot:
                         threading.Thread(target=self._run_ml_trainer, daemon=True).start()
                         self.last_training_day = now.day
 
-                # ─── B. Trailing Stop ──────────────────────────────
+                # ─── B. Trailing Stop & Hedging ──────────────────────────────
                 self.trailing_stop.update_trailing_stops()
+                self.position_manager.manage_hedging()
 
                 # ─── C. Verificar Riesgo (Emergencia) ──────────────
                 if self.risk_manager.should_emergency_close():
@@ -420,12 +430,26 @@ class TX3ProBot:
                             
                             if signal:
                                 # a. Verificar Noticias por Símbolo con IA (Alineación Técnico vs Fundamental)
-                                if not self.news_filter.is_safe_to_trade(symbol, signal['signal']):
-                                    continue
+                                if getattr(BotConfig, "NEWS_KILLZONES_ENABLED", True):
+                                    if not self.news_filter.is_safe_to_trade(symbol, signal['signal']):
+                                        continue
                                 
                                 # d. Verificar Escudo Anti-Correlación (Evitar pares múltiples muy atados)
                                 if not self.position_manager.check_correlation_shield(symbol):
                                     continue
+                                    
+                                # SMC Detector (Order Blocks y Liquidez)
+                                if getattr(BotConfig, "SMC_ENABLED", False):
+                                    if not self.smc_scanner.scan_context(symbol, signal['signal']):
+                                        continue
+                                        
+                                # Q-Learning Agent (Intervención de Reinforcement Learning)
+                                if getattr(BotConfig, "Q_LEARNING_ENABLED", False):
+                                    state = (signal.get('adx', 20) > 18, signal['signal'])
+                                    rl_action = self.q_agent.decide(state, signal['signal'])
+                                    if rl_action == "HOLD":
+                                        continue
+                                    signal['signal'] = rl_action
                                     
                                 # e. Juez Supremo: ORÁCULO LLM (Gemini)
                                 if self.oracle.enabled:
@@ -448,12 +472,18 @@ class TX3ProBot:
                                     order_type = mt5.ORDER_TYPE_BUY if signal['signal'] == 'BUY' else mt5.ORDER_TYPE_SELL
                                     probability = signal.get("probability", None)
                                     
+                                    # Multiplicador Volumétrico de Portafolio
+                                    port_weight = 1.0
+                                    if getattr(BotConfig, "PORTFOLIO_REBALANCING", False):
+                                        port_weight = self.portfolio_manager.get_weight(symbol)
+                                    
                                     result = self.position_manager.place_order(
                                         symbol=signal['symbol'],
                                         order_type=order_type,
                                         stop_loss_pips=signal['stop_loss_pips'],
                                         take_profit_pips=signal['take_profit_pips'],
-                                        probability=probability
+                                        probability=probability,
+                                        portfolio_weight=port_weight
                                     )
                                     
                                     if result:

@@ -31,6 +31,7 @@ class PositionManager:
             symbol: Par de divisas (e.g., "EURUSD")
             stop_loss_pips: Distancia del stop loss en pips
             probability: Probabilidad de éxito estimada por la IA (opcional)
+            portfolio_weight: Multiplicador de riesgo del Heatmap de liquidez
 
         Returns:
             Tamaño de posición en lotes, o None si hay error
@@ -56,6 +57,11 @@ class PositionManager:
             elif probability < 55:
                 risk_pct = 0.2 * kelly_fraction  # Dudoso -> Reducir riesgo para proteger capital
             self.logger.info(f"⚖️ Kelly Criterion Activo (F={kelly_fraction}): Probabilidad {probability:.1f}% -> Ajustando riesgo final a {risk_pct:.2f}%")
+
+        # Si existe rebalanceo de portafolio, ajustamos peso
+        if getattr(BotConfig, "PORTFOLIO_REBALANCING", False) and 'portfolio_weight' in locals() and portfolio_weight:
+            risk_pct *= portfolio_weight
+            self.logger.info(f"⚖️ Rebalanceo Activo: Modificando riesgo a {risk_pct:.2f}% por calor volumétrico")
 
         # Riesgo en dólares
         risk_amount = balance * (risk_pct / 100)
@@ -112,6 +118,7 @@ class PositionManager:
         stop_loss_pips: float,
         take_profit_pips: float,
         probability: float = None,
+        **kwargs
     ) -> dict | None:
         """
         Coloca una orden con STOP LOSS y TAKE PROFIT obligatorios.
@@ -144,7 +151,9 @@ class PositionManager:
             return None
 
         # ─── Calcular tamaño de posición ─────────────────────────────
-        volume = self.calculate_position_size(symbol, stop_loss_pips, probability)
+        # Obtenemos kwarg portfolio_weight si viene
+        weight = kwargs.get('portfolio_weight', 1.0)
+        volume = self.calculate_position_size(symbol, stop_loss_pips, probability, portfolio_weight=weight)
         if volume is None:
             return None
 
@@ -346,3 +355,71 @@ class PositionManager:
         """Resetea el contador diario de trades"""
         self.trades_today = 0
         self.logger.info(f"Contador de trades diarios reseteado")
+        
+    def manage_hedging(self):
+        """
+        Cobertura Silenciosa (Hedging).
+        Escanea si algún trade está perdiendo más del 80% de la distancia a su Stop Loss.
+        Si es así, en lugar de aceptar la pérdida, abre una operación contraria 
+        del mismo lotaje para congelar (Hedge) la equidad.
+        """
+        if not getattr(BotConfig, "HEDGING_ENABLED", False):
+            return
+            
+        open_positions = self.get_open_positions()
+        if not open_positions:
+            return
+            
+        for pos in open_positions:
+            # Si en en el commentario hay 'HEDGE' ignoramos para no atraparnos en bucle
+            if "HEDGE" in pos.comment:
+                continue
+                
+            entry_price = pos.price_open
+            sl_price = pos.sl
+            current_price = mt5.symbol_info_tick(pos.symbol).bid if pos.type == mt5.ORDER_TYPE_BUY else mt5.symbol_info_tick(pos.symbol).ask
+            
+            if sl_price == 0:
+                continue
+                
+            total_risk_dist = abs(entry_price - sl_price)
+            current_loss_dist = entry_price - current_price if pos.type == mt5.ORDER_TYPE_BUY else current_price - entry_price
+
+            if total_risk_dist > 0:
+                loss_pct = current_loss_dist / total_risk_dist
+                
+                # Si estamos al 80% del SL en pérdida
+                if loss_pct >= 0.80 and pos.profit < 0:
+                    self.logger.critical(f"🛡️ HEDGING DE EMERGENCIA: Posición #{pos.ticket} ({pos.symbol}) en 80% de riesgo.")
+                    
+                    hedge_type = mt5.ORDER_TYPE_SELL if pos.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
+                    price_h = mt5.symbol_info_tick(pos.symbol).bid if hedge_type == mt5.ORDER_TYPE_SELL else mt5.symbol_info_tick(pos.symbol).ask
+                    
+                    request = {
+                        "action": mt5.TRADE_ACTION_DEAL,
+                        "symbol": pos.symbol,
+                        "volume": pos.volume, # Mismo lotaje
+                        "type": hedge_type,
+                        "price": price_h,
+                        "sl": 0.0, # Congelado sin SL temporalmente
+                        "tp": 0.0,
+                        "deviation": BotConfig.DEVIATION,
+                        "magic": BotConfig.MAGIC_NUMBER,
+                        "comment": f"HEDGE_P{self.phase}_T{pos.ticket}",
+                        "type_time": mt5.ORDER_TIME_GTC,
+                        "type_filling": mt5.ORDER_FILLING_IOC,
+                    }
+                    res = mt5.order_send(request)
+                    if res and res.retcode == mt5.TRADE_RETCODE_DONE:
+                        self.logger.success(f"✅ Cobertura Silenciosa Ejecutada. Pérdida congelada en {pos.symbol}.")
+                        
+                        # Modificamos la posición original para quitarle el SL y que no salte
+                        req_modify = {
+                             "action": mt5.TRADE_ACTION_SLTP,
+                             "position": pos.ticket,
+                             "symbol": pos.symbol,
+                             "sl": 0.0,
+                             "tp": 0.0,
+                             "magic": BotConfig.MAGIC_NUMBER
+                        }
+                        mt5.order_send(req_modify)

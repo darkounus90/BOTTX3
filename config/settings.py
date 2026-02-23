@@ -73,6 +73,14 @@ class BotConfig:
     # ─── STRATEGY ─────────────────────────────────────────────────────
     ORACLE_ENABLED = True                # Habilita o deshabilita la conciencia del CIO Gemini
     SIMULATE_50K_CHALLENGE = True        # Fuerza límites de DD y loteajes asumiendo cuenta de 50k
+    
+    # ─── NEXT-GEN INSTITUTIONAL ARMORY ─────────────────────────────────
+    SMC_ENABLED = True                   # Detector de Liquidez (Order Blocks & FVG)
+    NEWS_KILLZONES_ENABLED = True        # Radar Alta Frecuencia (Cierre agresivo antes de NFP/CPI)
+    PORTFOLIO_REBALANCING = True         # Mapa de Calor Volumétrico (Asignación dinámica entre divisas)
+    Q_LEARNING_ENABLED = True            # Agente Q-Learning Offline (Simulación de RL con poco recurso)
+    HEDGING_ENABLED = True               # Cobertura Silenciosa para trades perdedores al 80% del SL
+    
     MODE_FILTERS = "STRICT"              # "STRICT" o "RELAXED"
     DEFAULT_SYMBOL = "EURUSD"
     WATCHLIST = ["EURUSD", "GBPUSD", "USDJPY"] # Diversificación: Euro, Libra, Yen
