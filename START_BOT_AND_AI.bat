@@ -21,6 +21,7 @@ echo.
 set TELEGRAM_BOT_TOKEN=8407569871:AAFwcNzt8Mk0U0Bp3MGwT6OAaxHzRhy-2zg
 set TELEGRAM_CHAT_ID=1176201993
 set DASHBOARD_SECRET=tx3-pro-bot-secret
+set HUGGINGFACE_TOKEN=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
 
 echo [3/3] 🚀 Arrancando Bot Principal en Fase 1...
 echo ==========================================================
