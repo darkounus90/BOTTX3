@@ -15,6 +15,7 @@
     <!-- External Libs -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <!-- Tailwind Config -->
     <script>
@@ -250,6 +251,71 @@
 
         </div>
 
+        <!-- Middle Analytics Section Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Equity Curve Chart -->
+            <div class="glass-panel col-span-1 md:col-span-2 p-5 flex flex-col min-h-[250px] relative overflow-hidden">
+                <div class="flex justify-between items-center mb-4 relative z-10">
+                    <h3 class="text-sm font-bold text-gray-200 tracking-widest uppercase flex items-center gap-2">
+                        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z">
+                            </path>
+                        </svg>
+                        Bot Equity Curve (Live)
+                    </h3>
+                </div>
+                <!-- Div with explicit height constraints so the canvas doesn't expand infinitely -->
+                <div class="flex-grow relative w-full h-[200px]"
+                    style="position: relative; height: 200px; width: 100%;">
+                    <canvas id="equityChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Complex Stats Tracker -->
+            <div class="glass-panel p-5 flex flex-col min-h-[250px] justify-between relative overflow-hidden group">
+                <div class="absolute -right-6 -top-6 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl transition-all">
+                </div>
+                <div>
+                    <h3
+                        class="text-sm font-bold text-gray-200 tracking-widest uppercase border-b border-gray-800 pb-2 mb-4 relative z-10">
+                        Phase Progress</h3>
+
+                    <div class="flex justify-between items-center mb-3 text-sm relative z-10">
+                        <span class="text-gray-400">Profit Target</span>
+                        <span class="font-mono font-bold text-blue-400" id="stat-target">$0.00</span>
+                    </div>
+
+                    <div class="flex justify-between items-center mb-3 text-sm relative z-10">
+                        <span class="text-gray-400">Días Rentables</span>
+                        <span class="font-mono font-bold text-gray-200"><span id="stat-days" class="text-white">0</span>
+                            <span class="text-gray-600">/ 0</span></span>
+                    </div>
+
+                    <div class="flex justify-between items-center mb-3 text-sm relative z-10">
+                        <span class="text-gray-400">Consistencia (40%)</span>
+                        <span
+                            class="text-xs px-2 py-0.5 rounded-md font-bold bg-gray-500/10 text-gray-400 border border-gray-500/20 shadow-sm"
+                            id="stat-consistency">ESPERANDO</span>
+                    </div>
+
+                    <div
+                        class="flex justify-between items-center text-sm relative z-10 mt-4 border-t border-gray-800 pt-3">
+                        <span class="text-gray-400">Win Rate <span
+                                class="text-[0.6rem] ml-1 bg-gray-800 px-1 py-0.5 rounded text-gray-400">ESTIMADO</span></span>
+                        <span class="font-mono font-bold text-purple-400" id="stat-winrate">0.0%</span>
+                    </div>
+                </div>
+
+                <div
+                    class="bg-gray-900/60 p-4 rounded-lg border border-gray-800 mt-4 relative z-10 flex justify-between items-center">
+                    <span class="text-xs text-gray-500 uppercase tracking-widest font-bold">Total Trades Hoy</span>
+                    <span class="text-xl font-mono font-bold text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]"
+                        id="stat-trades">0</span>
+                </div>
+            </div>
+        </div>
+
         <!-- Lower Section Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -333,6 +399,72 @@
             return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(val || 0);
         };
 
+        // Initialize Chart.js safely
+        let equityChart = null;
+        function initChart() {
+            const ctx = document.getElementById('equityChart');
+            if (!ctx) return;
+
+            Chart.defaults.color = "rgba(156, 163, 175, 0.7)";
+            Chart.defaults.font.family = "'JetBrains Mono', monospace";
+
+            equityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [], // Timestamps
+                    datasets: [{
+                        label: 'Live Equity',
+                        data: [], // Values
+                        borderColor: '#3B82F6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0, // hide dots for cleaner look
+                        pointHoverRadius: 4,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(17, 24, 39, 0.9)',
+                            titleColor: '#9CA3AF',
+                            bodyColor: '#fff',
+                            borderColor: 'rgba(59, 130, 246, 0.3)',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function (context) {
+                                    return ' Equity: ' + formatCurrency(context.parsed.y);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false, drawBorder: false },
+                            ticks: { maxTicksLimit: 5, autoSkip: true }
+                        },
+                        y: {
+                            grid: { color: 'rgba(55, 65, 81, 0.3)', drawBorder: false },
+                            ticks: {
+                                callback: function (value) { return '$' + value; },
+                                maxTicksLimit: 5
+                            }
+                        }
+                    },
+                    interaction: { mode: 'nearest', axis: 'x', intersect: false }
+                }
+            });
+        }
+
+        // Ejecutar inicializacion del chart al cargar
+        document.addEventListener('DOMContentLoaded', initChart);
+
         function setConnectionStatus(connected) {
             isConnected = connected;
             const el = document.getElementById('connection-status');
@@ -389,6 +521,33 @@
 
             const opt = ((data.overall_dd || 0) / 5000) * 100;
             document.getElementById('overall-dd-bar').style.width = `${Math.min(opt, 100)}%`;
+
+            // Advanced Stats
+            if (data.profit_target) document.getElementById('stat-target').textContent = formatCurrency(data.profit_target);
+            if (data.min_days !== undefined) document.getElementById('stat-days').innerHTML = `<span class="text-white">${data.profitable_days || 0}</span> <span class="text-gray-600">/ ${data.min_days}</span>`;
+            if (data.total_trades !== undefined) document.getElementById('stat-trades').textContent = data.total_trades;
+            if (data.win_rate !== undefined) document.getElementById('stat-winrate').textContent = `${(data.win_rate).toFixed(1)}%`;
+
+            if (data.consistency_met !== undefined) {
+                const conEl = document.getElementById('stat-consistency');
+                if (data.consistency_met) {
+                    conEl.textContent = '✔️ OK';
+                    conEl.className = 'text-xs px-2 py-0.5 rounded-md font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-sm';
+                } else {
+                    conEl.textContent = '❌ PELIGRO';
+                    conEl.className = 'text-xs px-2 py-0.5 rounded-md font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 shadow-sm';
+                }
+            }
+
+            // Update Equity Chart
+            if (equityChart && data.equity_history && data.equity_history.length > 0) {
+                const labels = data.equity_history.map(pt => pt.time);
+                const eqData = data.equity_history.map(pt => pt.equity);
+
+                equityChart.data.labels = labels;
+                equityChart.data.datasets[0].data = eqData;
+                equityChart.update('none'); // silent update without huge animations
+            }
 
             // Positions Table
             const tbody = document.getElementById('positions-table');

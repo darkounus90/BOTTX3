@@ -20,6 +20,13 @@ dashboard_data = {
     "daily_profit": 0.0,
     "daily_dd": 0.0,
     "overall_dd": 0.0,
+    "profit_target": 0.0,
+    "profitable_days": 0,
+    "min_days": 0,
+    "consistency_met": True,
+    "total_trades": 0,
+    "win_rate": 0.0,
+    "equity_history": [],
     "open_positions": [],
     "last_update": "",
     "logs": [],
@@ -50,6 +57,19 @@ def handle_connect():
 def update_dashboard_data(new_data: dict):
     """Actualiza los datos del dashboard y emite evento"""
     global dashboard_data
+    
+    # Manejar equity history temporal (últimos 50 puntos para no usar memoria)
+    if "equity" in new_data:
+        current_time = new_data.get("last_update", "00:00")
+        current_equity = new_data["equity"]
+        
+        # Evitar duplicados seguidos
+        if not dashboard_data["equity_history"] or dashboard_data["equity_history"][-1]["time"] != current_time:
+             dashboard_data["equity_history"].append({"time": current_time, "equity": current_equity})
+             
+        if len(dashboard_data["equity_history"]) > 50:
+            dashboard_data["equity_history"].pop(0)
+
     dashboard_data.update(new_data)
     socketio.emit("update", dashboard_data)
 

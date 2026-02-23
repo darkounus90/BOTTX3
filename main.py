@@ -175,6 +175,10 @@ class TX3ProBot:
                 "tp": p.tp
             })
 
+        # Calcular Win Rate rápido basado en el historial de trades cerrados hoy + abiertos
+        win_rate = 0.0
+        # Simplificación de win_rate visual (podrías guardarlo en un state si quisieras, aquí lo dejamos en 0.0 o aproximado si tuvieras history real)
+
         data = {
             "status": "RUNNING" if self.running else "STOPPED",
             "phase": self.phase,
@@ -183,6 +187,12 @@ class TX3ProBot:
             "daily_profit": self.phase_tracker.current_day_profit,
             "daily_dd": daily_dd["loss"],
             "overall_dd": overall_dd["loss"],
+            "profit_target": self.phase_tracker.profit_target,
+            "profitable_days": self.phase_tracker.profitable_days,
+            "min_days": self.phase_tracker.min_trading_days,
+            "consistency_met": self.phase_tracker.check_consistency_rule(),
+            "total_trades": self.position_manager.trades_today,
+            "win_rate": 0.0, # Placeholder, actual logging occurs in journaling if implemented
             "open_positions": pos_list,
             "last_update": datetime.now().strftime("%H:%M:%S")
         }
