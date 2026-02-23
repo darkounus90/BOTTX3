@@ -30,11 +30,16 @@
 El bot está diseñado con un enfoque modular e institucional, separando la lógica para mayor mantenibilidad:
 
 - `main.py`: Punto de entrada principal. Orquesta los ciclos de trading, hilos de ejecución secundaria, mutación genética y dashboard en tiempo real.
-- `config/settings.py`: Archivo maestro de configuración. Aquí se centralizan los parámetros de riesgo (`KELLY_FRACTION`), filtros (`MODE_FILTERS = STRICT/RELAXED`), llaves secretas y metas de negocio. Ningún número está _hardcodeado_ en los scripts.
-- `core/`: Cerebro operativo del bot. Contiene `risk_manager.py` (Gestión de DD y emergencias), `position_manager.py` (Cálculo de lote por Kelly Fractional y colocación de órdenes), y los filtros de sesión/noticias.
-- `strategy/`: Estrategias de trading. Contiene las reglas matemáticas y de ML (`ema_cross.py`, `ml_random_forest.py`) requeridas para ejecutar las entradas al mercado.
-- `dashboard/`: Sistema de interfaz web con Flask y WebSockets para monitorear el PnL y estado del bot remotamente.
-- `utils/`: Herramientas auxiliares, como el `telegram_commands.py` (Remote Control de Telegram), sistema de Logging, persistencia de JSON de estado, y el conector API con MT5.
+- `config/settings.py`: Archivo maestro de configuración. Aquí se centralizan los parámetros de riesgo (`KELLY_FRACTION`), filtros institucionales, llaves secretas y metas de negocio. Ningún número está _hardcodeado_ en los scripts.
+- `core/`: Cerebro operativo avanzado. Contiene:
+  - `risk_manager.py` (Gestión estricta de límites de Prop Firms).
+  - `position_manager.py` (Cálculo dinámico matemático usando Kelly Criterion).
+  - `smc_scanner.py` (Detector de Order Blocks y FVG - Liquidez bancaria).
+  - `llm_oracle.py` (Conciencia AI actuando como CIO analizando MTF vía Gemini).
+  - `portfolio_manager.py` (Rebalanceo dinámico de riesgo por volatilidad relativa).
+- `strategy/`: Estrategias de trading. Contiene matemática (`ema_cross.py`) y Reinforcement Learning (`q_learning_agent.py` para optimización autónoma).
+- `dashboard/`: Sistema web con Flask y WebSockets para monitorear el PnL.
+- `utils/`: Herramientas auxiliares (`telegram_commands.py` para control remoto, logs de sistema, conector MT5).
 
 ---
 
@@ -56,19 +61,19 @@ Este script Inteligente se encargará automáticamente de:
 
 ## 3️⃣ Configuración Avanzada (Tokens e IA)
 
-Si quieres notificaciones en Telegram y usar el máximo potencial de la Inteligencia Artificial (FinBERT) para leer noticias globales, puedes editar directamente el archivo **`START_BOT_AND_AI.bat`** (Click derecho > Editar) y configurar tus llaves:
+Si quieres usar el **Cerebro Oráculo de Gemini** (CIO Institucional) y las notificaciones remotas de Telegram, debes configurar variables de entorno o editar tu script de inicio `.bat`/`.sh`:
 
 ```bat
 :: Configura tus credenciales aquí:
 set TELEGRAM_BOT_TOKEN="tu_token_aqui"
 set TELEGRAM_CHAT_ID="tu_chat_id_aqui"
 set DASHBOARD_SECRET="tu_contraseña_web"
-set HUGGINGFACE_TOKEN="tu_token_hf_aqui"
+set GEMINI_API_KEY="tu_token_google_gemini_aqui"
 ```
 
-> **Nota sobre la IA**: Si no configuras el `HUGGINGFACE_TOKEN`, el bot utilizará un filtro de "palabras clave" tradicional como respaldo para leer las noticias económicas.
+> **Nota sobre el Oráculo AI**: Si no configuras el `GEMINI_API_KEY`, el oráculo CIO se desactivará automáticamente y el bot operará 100% en Modo Quant Matemático puro sin validación narrativa.
 
-**Opcional:** Edita `config/settings.py` para ajustar parámetros como lotaje, riesgo, u horarios, aunque los valores por defecto están optimizados para el **Challenge de $50k**.
+**Opcional:** Edita `config/settings.py` para encender o apagar módulos institucionales como `SMC_ENABLED` o el Agente de Aprendizaje Reforzado `Q_LEARNING_ENABLED`.
 
 ---
 
@@ -117,15 +122,17 @@ Puedes enviar comandos desde Telegram directamente a tu bot para consultar su es
 
 ### Comandos Soportados:
 -   `/status` → Estado general (Balance, Equity, P&L, etc.)
--   `/positions` → Lista de operaciones abiertas
--   `/profit` → Resumen interactivo de ganancias desde inicio
--   `/risk` → Vista en gráfica visual del nivel de Drawdown Actual
--   `/pause` ⏸️ → Pausa temporalmente el bot (deja de abrir posiciones)
+-   `/positions` → Lista de operaciones abiertas interactiva
+-   `/profit` → Resumen de ganancias y equidad flotante
+-   `/risk` → Vista gráfica del Drawdown Diario y Total con advertencias
+-   `/ask <pregunta>` 🧠 → Habla directamente con el Oráculo AI en vivo (Gemini)
+-   `/report` 📝 → Genera un análisis narrativo del estado de la cuenta por el CIO
+-   `/pause` ⏸️ → Pausa temporalmente el escaneo de nuevas oportunidades
 -   `/resume` ▶️ → Reanuda la operativa normal del bot
--   `/flat` 🧹 → Cierra de emergencia todas las posiciones abiertas
--   `/help` → Lista de todos los comandos
+-   `/flat` 🧹 → Cierra de emergencia todas las posiciones a precio de mercado
+-   `/help` ℹ️ → Menú de todos los comandos
 
-*Para que funcione el control remoto, debes asegurarte de haber establecido las variables `TELEGRAM_BOT_TOKEN` y `TELEGRAM_CHAT_ID` como se indica en el paso 3 y enviarle mensaje desde la misma cuenta con ese `CHAT_ID`.*
+*Para que funcione el control remoto, debes asegurarte de configurar las variables `TELEGRAM_BOT_TOKEN` y `TELEGRAM_CHAT_ID` en el sistema.*
 
 ---
 
