@@ -89,7 +89,7 @@ class GeminiOracle:
             f"- Gatillo Técnico: {reason}\n"
             f"- Hora del Servidor: {now.strftime('%H:%M EST')}\n\n"
             f"ACTÚA COMO CIO: ¿Apruebas arriesgar capital institucional en este trade basándote en la alineación del contexto MTF y conceptos SMC actuales? Rechaza si M15 contradice macro H1 peligrosamente o estás sobre un posible Liquidity Grab.\n"
-            f"(Responde SOLAMENTE un objeto JSON puro con 'decision'='APPROVED|REJECTED' y 'reason'='Motivo en 10 palabras')."
+            f"(Responde SOLAMENTE un objeto JSON puro con 'decision'='APPROVED|REJECTED', 'reason'='Motivo en 10 palabras', y 'confidence'=número del 0 al 100 indicando probabilidad real de éxito)."
         )
         
         self.logger.info(f"🧠 Consultando CIO Gemini para revisar el trade {signal_type} en {symbol}...")
@@ -110,13 +110,14 @@ class GeminiOracle:
                 decision_data = json.loads(text)
                 final_decision = decision_data.get("decision", "APPROVED").upper()
                 final_reason = decision_data.get("reason", "No reason provided")
+                confidence = float(decision_data.get("confidence", 50.0))
                 
                 if final_decision == "APPROVED":
-                    self.logger.success(f"👁️‍🗨️ ORACLE APROBÓ: {final_reason}")
+                    self.logger.success(f"👁️‍🗨️ ORACLE APROBÓ ({confidence}% conf.): {final_reason}")
                 else:
-                    self.logger.warning(f"👁️‍🗨️ ORACLE VETÓ (RECHAZÓ) EL TRADE: {final_reason}")
+                    self.logger.warning(f"👁️‍🗨️ ORACLE VETÓ ({confidence}% conf.): {final_reason}")
                     
-                return {"decision": final_decision, "reason": final_reason}
+                return {"decision": final_decision, "reason": final_reason, "confidence": confidence}
                 
             except json.JSONDecodeError:
                 # Si Gemini responde fuera de formato, ser cautelosos y abortar

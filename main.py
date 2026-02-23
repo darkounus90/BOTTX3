@@ -465,6 +465,7 @@ class TX3ProBot:
                                     else:
                                         # Añadir la razón del oráculo al comentario del Trade
                                         signal['reason'] += f" | 𓂀 {oracle_resp.get('reason')}"
+                                        signal['probability'] = oracle_resp.get('confidence', 50.0)
                                         
                                 if self.dry_run:
                                     self.logger.info(f"🔍 DRY RUN SIGNAL: {signal['signal']} {symbol}")
