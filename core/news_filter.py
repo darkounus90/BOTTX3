@@ -11,6 +11,7 @@ import requests
 from datetime import datetime, timedelta
 from config.settings import BotConfig
 from utils.logger import BotLogger
+from core.ai_sentiment import AISentimentAnalyzer
 
 
 class NewsFilter:
@@ -56,6 +57,8 @@ class NewsFilter:
         self.enabled = BotConfig.NEWS_FILTER_ENABLED
         self.avoid_before = BotConfig.NEWS_AVOID_MINUTES_BEFORE
         self.avoid_after = BotConfig.NEWS_AVOID_MINUTES_AFTER
+        
+        self.ai_analyzer = AISentimentAnalyzer(logger=self.logger)
 
         # Cache de noticias del día
         self._cached_events: list[dict] = []
@@ -67,12 +70,12 @@ class NewsFilter:
                 f"Antes: {self.avoid_before}min | Después: {self.avoid_after}min"
             )
 
-    def is_safe_to_trade(self, symbol: str = "EURUSD") -> bool:
+    def is_safe_to_trade(self, symbol: str = "EURUSD", technical_signal: str = None) -> bool:
         """
-        Verifica si es seguro operar el símbolo dado.
+        Verifica si es seguro operar el símbolo dado basándose en calendario e IA.
 
         Returns:
-            True si no hay noticias de alto impacto cercanas
+            True si no hay noticias de alto impacto cercanas, o si la IA confirma la entrada.
         """
         if not self.enabled:
             return True
@@ -99,6 +102,45 @@ class NewsFilter:
             if window_start <= now <= window_end:
                 time_to_event = (event_time - now).total_seconds() / 60
 
+                if technical_signal:
+                    # IA interviene para decidir si ignoramos la regla de "no operar"
+                    forecast = event.get('forecast')
+                    previous = event.get('previous')
+                    
+                    try:
+                        expected_val = float(str(forecast).replace('K', '000').replace('M', '000000').replace('%', '')) if forecast else None
+                        actual_val = float(str(previous).replace('K', '000').replace('M', '000000').replace('%', '')) if previous else None
+                    except ValueError:
+                        expected_val, actual_val = None, None
+
+                    sentiment_result = self.ai_analyzer.evaluate_news_impact(
+                        title=event.get('title', 'Unknown'),
+                        expected=expected_val,
+                        actual=actual_val
+                    )
+                    
+                    is_aligned = self.ai_analyzer.should_trade_news(sentiment_result, technical_signal)
+                    
+                    if is_aligned:
+                        if time_to_event > 0:
+                            self.logger.warning(f"🚀 IA ALINEADA: Operando pre-noticia ({time_to_event:.0f}m) | {symbol}")
+                        else:
+                            self.logger.warning(f"🚀 IA ALINEADA: Operando post-noticia ({abs(time_to_event):.0f}m) | {symbol}")
+                        return True
+                    else:
+                        if time_to_event > 0:
+                            self.logger.warning(
+                                f"🚫 DIVERGENCIA IA/NOTICIA en {time_to_event:.0f} min | "
+                                f"No operar {symbol}"
+                            )
+                        else:
+                            self.logger.warning(
+                                f"🚫 DIVERGENCIA IA/NOTICIA hace {abs(time_to_event):.0f} min | "
+                                f"Esperando post-noticia"
+                            )
+                        return False
+
+                # Comportamiento original si no hay señal técnica (ej. llamado desde risk manager)
                 if time_to_event > 0:
                     self.logger.warning(
                         f"📰 NOTICIA en {time_to_event:.0f} min: "

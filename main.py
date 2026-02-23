@@ -218,6 +218,33 @@ class TX3ProBot:
         else:
             self.daily_reset_done = False
 
+    def _run_genetic_optimizer(self):
+        """Ejecuta la optimización genética en segundo plano"""
+        try:
+            import subprocess
+            import os
+            script_path = os.path.join(os.path.dirname(__file__), "scripts", "genetic_optimizer.py")
+            subprocess.run(["python", script_path], check=True)
+            self.logger.success("🧬 Mutación genética completada. Parámetros actualizados.")
+        except Exception as e:
+            self.logger.error(f"Error en Mutación Genética: {e}")
+
+    def _run_ml_trainer(self):
+        """Ejecuta el reentrenamiento del cerebro IA en segundo plano"""
+        try:
+            import subprocess
+            import os
+            script_path = os.path.join(os.path.dirname(__file__), "scripts", "train_ml_model.py")
+            subprocess.run(["python", script_path], check=True)
+            # Reinstanciar la estrategia con el nuevo cerebro
+            for symbol in BotConfig.WATCHLIST:
+                if type(self.strategies.get(symbol)).__name__ == "MLRandomForestStrategy":
+                    from strategy.ml_random_forest import MLRandomForestStrategy
+                    self.strategies[symbol] = MLRandomForestStrategy(logger=self.logger, symbol=symbol)
+            self.logger.success("🧠 Cerebro IA reentrenado y recargado en memoria.")
+        except Exception as e:
+            self.logger.error(f"Error entrenando IA: {e}")
+
     def run(self):
         """Loop principal"""
         # 1. Iniciar Dashboard en thread
@@ -293,6 +320,22 @@ class TX3ProBot:
                 # Guardado periódico
                 if datetime.now().minute % 5 == 0 and datetime.now().second < 5:
                     self._save_state()
+                    
+                # ─── Mantenimiento Automático (ML y Mutación) ───────
+                now = datetime.now()
+                # Mutación genética (Sábado a la medianoche)
+                if now.weekday() == 5 and now.hour == 0 and now.minute == 0 and now.second < 30:
+                    if not hasattr(self, 'last_mutation_day') or self.last_mutation_day != now.day:
+                        self.logger.banner("🧬 Iniciando Auto-Mutación Genética Semanal...")
+                        threading.Thread(target=self._run_genetic_optimizer, daemon=True).start()
+                        self.last_mutation_day = now.day
+
+                # Reentrenamiento de Cerebro (Domingo a la medianoche)
+                if now.weekday() == 6 and now.hour == 0 and now.minute == 0 and now.second < 30:
+                    if not hasattr(self, 'last_training_day') or self.last_training_day != now.day:
+                        self.logger.banner("🧠 Iniciando Reentrenamiento de Cerebro IA Semanal...")
+                        threading.Thread(target=self._run_ml_trainer, daemon=True).start()
+                        self.last_training_day = now.day
 
                 # ─── B. Trailing Stop ──────────────────────────────
                 self.trailing_stop.update_trailing_stops()
@@ -331,36 +374,39 @@ class TX3ProBot:
                 # ─── E. Loop por Símbolo (Diversificación) ─────────
                 for symbol in BotConfig.WATCHLIST:
                     try:
-                        # a. Verificar Noticias por Símbolo
-                        if not self.news_filter.is_safe_to_trade(symbol):
-                            continue
-                        
                         # b. Verificar Conexión con Símbolo
                         if not self.connector.ensure_symbol_available(symbol):
                             continue
 
                         # c. Estrategia
-                        # Instanciar estrategia temporalmente o usar un dict de estrategias
-                        # Para simpleza, instanciamos aquí (ligero overhead, pero seguro)
-                        # strategy = EMACrossStrategy(logger=self.logger, symbol=symbol) # Removed temporary strategy instantiation
-                        strategy = self.strategies[symbol] # Use pre-initialized strategy from dictionary
+                        strategy = self.strategies[symbol]
 
                         # Solo si no hemos llenado el cupo de posiciones
                         if self.position_manager.get_open_positions_count() < BotConfig.MAX_OPEN_POSITIONS:
                             signal = strategy.generate_signal()
                             
                             if signal:
+                                # a. Verificar Noticias por Símbolo con IA (Alineación Técnico vs Fundamental)
+                                if not self.news_filter.is_safe_to_trade(symbol, signal['signal']):
+                                    continue
+                                
+                                # d. Verificar Escudo Anti-Correlación (Evitar pares múltiples muy atados)
+                                if not self.position_manager.check_correlation_shield(symbol):
+                                    continue
+                                    
                                 if self.dry_run:
                                     self.logger.info(f"🔍 DRY RUN SIGNAL: {signal['signal']} {symbol}")
                                 else:
-                                    # Ejecutar orden
+                                    # Ejecutar orden con IA Sizing (Kelly Criterion si trae probabilidad)
                                     order_type = mt5.ORDER_TYPE_BUY if signal['signal'] == 'BUY' else mt5.ORDER_TYPE_SELL
+                                    probability = signal.get("probability", None)
                                     
                                     result = self.position_manager.place_order(
                                         symbol=signal['symbol'],
                                         order_type=order_type,
                                         stop_loss_pips=signal['stop_loss_pips'],
-                                        take_profit_pips=signal['take_profit_pips']
+                                        take_profit_pips=signal['take_profit_pips'],
+                                        probability=probability
                                     )
                                     
                                     if result:

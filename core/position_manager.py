@@ -21,15 +21,16 @@ class PositionManager:
         self.trades_today = 0
         self.max_trades_per_day = BotConfig.MAX_TRADES_PER_DAY
 
-    def calculate_position_size(self, symbol: str, stop_loss_pips: float) -> float | None:
+    def calculate_position_size(self, symbol: str, stop_loss_pips: float, probability: float = None) -> float | None:
         """
         Calcula el tamaño de posición basado en:
-        - Riesgo máximo: 0.5% del balance por trade
+        - Riesgo máximo: 0.5% del balance por trade (O Kelly Criterion dinámico)
         - Stop loss en pips
 
         Args:
             symbol: Par de divisas (e.g., "EURUSD")
             stop_loss_pips: Distancia del stop loss en pips
+            probability: Probabilidad de éxito estimada por la IA (opcional)
 
         Returns:
             Tamaño de posición en lotes, o None si hay error
@@ -41,8 +42,19 @@ class PositionManager:
 
         balance = account_info.balance
 
-        # Riesgo en dólares: 0.5% del balance
-        risk_amount = balance * (BotConfig.MAX_RISK_PER_TRADE_PCT / 100)
+        # Kelly Criterion dinámico (Position Sizing Inteligente)
+        risk_pct = BotConfig.MAX_RISK_PER_TRADE_PCT
+        if probability is not None and probability > 0:
+            if probability >= 75:
+                risk_pct = 1.2  # Alta convicción -> Aumentar riesgo
+            elif probability >= 60:
+                risk_pct = 0.8  # Buena convicción
+            elif probability < 55:
+                risk_pct = 0.2  # Dudoso -> Reducir riesgo para proteger capital
+            self.logger.info(f"⚖️ Kelly Criterion Activo: Probabilidad {probability:.1f}% -> Ajustando riesgo a {risk_pct}%")
+
+        # Riesgo en dólares
+        risk_amount = balance * (risk_pct / 100)
 
         # Obtener info del símbolo
         symbol_info = mt5.symbol_info(symbol)
@@ -75,7 +87,7 @@ class PositionManager:
 
         self.logger.trade(f"Position Size calculado:")
         self.logger.trade(f"  Balance:    ${balance:,.2f}")
-        self.logger.trade(f"  Riesgo:     ${risk_amount:,.2f} ({BotConfig.MAX_RISK_PER_TRADE_PCT}%)")
+        self.logger.trade(f"  Riesgo:     ${risk_amount:,.2f} ({risk_pct}%)")
         self.logger.trade(f"  SL Pips:    {stop_loss_pips}")
         self.logger.trade(f"  Lotes:      {position_size:.2f}")
 
@@ -87,6 +99,7 @@ class PositionManager:
         order_type: int,
         stop_loss_pips: float,
         take_profit_pips: float,
+        probability: float = None,
     ) -> dict | None:
         """
         Coloca una orden con STOP LOSS y TAKE PROFIT obligatorios.
@@ -96,6 +109,7 @@ class PositionManager:
             order_type: mt5.ORDER_TYPE_BUY o mt5.ORDER_TYPE_SELL
             stop_loss_pips: Distancia del SL en pips
             take_profit_pips: Distancia del TP en pips
+            probability: Probabilidad de éxito estimada por la IA (opcional)
 
         Returns:
             Dict con info de la orden, o None si hay error
@@ -118,7 +132,7 @@ class PositionManager:
             return None
 
         # ─── Calcular tamaño de posición ─────────────────────────────
-        volume = self.calculate_position_size(symbol, stop_loss_pips)
+        volume = self.calculate_position_size(symbol, stop_loss_pips, probability)
         if volume is None:
             return None
 
@@ -232,6 +246,35 @@ class PositionManager:
     def get_open_positions_count(self) -> int:
         """Retorna el número de posiciones abiertas del bot"""
         return len(self.get_open_positions())
+
+    def check_correlation_shield(self, symbol: str) -> bool:
+        """
+        Escudo Anti-Correlación (Multi-Asset Analysis).
+        Evita tener múltiples posiciones que dependan de la misma base macroeconómica.
+        """
+        open_positions = self.get_open_positions()
+        if not open_positions:
+            return True
+
+        # Logica ultra rápida para evitar "Risk Cascades" en USD
+        has_usd = "USD" in symbol
+        
+        for pos in open_positions:
+            if has_usd and ("USD" in pos.symbol) and (pos.symbol != symbol):
+                self.logger.warning(
+                    f"🛡️ ESCUDO ANTI-CORRELACIÓN: {symbol} bloqueado porque "
+                    f"ya existe una posición abierta en {pos.symbol}. (Se evita acumular USD Risk)"
+                )
+                return False
+                
+            # Logica para EUR (Ej evitar EURUSD y EURJPY al mismo tiempo)
+            if "EUR" in symbol and ("EUR" in pos.symbol) and (pos.symbol != symbol):
+                 self.logger.warning(
+                    f"🛡️ ESCUDO ANTI-CORRELACIÓN: {symbol} bloqueado para no exponer doble riesgo en el Euro."
+                )
+                 return False
+
+        return True
 
     def close_position(self, ticket: int) -> bool:
         """
