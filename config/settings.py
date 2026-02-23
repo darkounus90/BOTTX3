@@ -79,7 +79,7 @@ class BotConfig:
     NEWS_KILLZONES_ENABLED = True        # Radar Alta Frecuencia (Cierre agresivo antes de NFP/CPI)
     PORTFOLIO_REBALANCING = True         # Mapa de Calor Volumétrico (Asignación dinámica entre divisas)
     Q_LEARNING_ENABLED = True            # Agente Q-Learning Offline (Simulación de RL con poco recurso)
-    HEDGING_ENABLED = True               # Cobertura Silenciosa para trades perdedores al 80% del SL
+    HEDGING_ENABLED = False              # Cobertura Silenciosa para trades perdedores al 80% del SL
     
     MODE_FILTERS = "STRICT"              # "STRICT" o "RELAXED"
     DEFAULT_SYMBOL = "EURUSD"
