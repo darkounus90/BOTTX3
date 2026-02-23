@@ -25,40 +25,43 @@
 
 ---
 
-## 2️⃣ Instalación del Bot
+## 2️⃣ Instalación y Arranque Rápido (1-Click)
 
-Abre una terminal (PowerShell o CMD) en la carpeta del bot y ejecuta:
+La forma más sencilla y automatizada de ejecutar el bot, instalar sus dependencias, y preparar su "Cerebro de Inteligencia Artificial" es usar el script de arranque incluido.
 
-```bash
-# 1. Crear entorno virtual (opcional pero recomendado)
-python -m venv venv
-.\venv\Scripts\activate
+1. Abre tu carpeta del bot en Windows o tu VPS.
+2. Dale doble clic al archivo **`START_BOT_AND_AI.bat`** (o ejecútalo desde tu consola PowerShell con `.\START_BOT_AND_AI.bat`).
 
-# 2. Instalar dependencias
-pip install -r requirements.txt
-```
+Este script Inteligente se encargará automáticamente de:
+- Verificar e instalar las librerías necesarias de Python.
+- Descargar el historial de MetaTrader y entrenar la memoria algorítmica (Machine Learning).
+- Iniciar el Bot en Fase 1 y levantar el servidor del Dashboard.
 
-> Si ves un error como `ModuleNotFoundError: No module named 'MetaTrader5'`, significa que no se instalaron las dependencias o estás intentando instalarlo en Mac/Linux (donde no está disponible).
+> Si ves un error como `ModuleNotFoundError: No module named 'MetaTrader5'`, asegúrate de tener Python instalado correctamente en tu Windows y de haber marcado la casilla "Add to PATH" durante la instalación.
 
 ---
 
-## 3️⃣ Configuración (Opcional)
+## 3️⃣ Configuración Avanzada (Tokens e IA)
 
-Si quieres notificaciones en Telegram, configura las variables de entorno antes de ejecutar el bot.
+Si quieres notificaciones en Telegram y usar el máximo potencial de la Inteligencia Artificial (FinBERT) para leer noticias globales, puedes editar directamente el archivo **`START_BOT_AND_AI.bat`** (Click derecho > Editar) y configurar tus llaves:
 
-**En PowerShell:**
-```powershell
-$env:TELEGRAM_BOT_TOKEN="tu_token_aqui"
-$env:TELEGRAM_CHAT_ID="tu_chat_id_aqui"
+```bat
+:: Configura tus credenciales aquí:
+set TELEGRAM_BOT_TOKEN="tu_token_aqui"
+set TELEGRAM_CHAT_ID="tu_chat_id_aqui"
+set DASHBOARD_SECRET="tu_contraseña_web"
+set HUGGINGFACE_TOKEN="tu_token_hf_aqui"
 ```
+
+> **Nota sobre la IA**: Si no configuras el `HUGGINGFACE_TOKEN`, el bot utilizará un filtro de "palabras clave" tradicional como respaldo para leer las noticias económicas.
 
 **Opcional:** Edita `config/settings.py` para ajustar parámetros como lotaje, riesgo, u horarios, aunque los valores por defecto están optimizados para el **Challenge de $50k**.
 
 ---
 
-## 4️⃣ Ejecución del Bot
+## 4️⃣ Ejecución Manual del Bot
 
-El bot tiene 3 modos principales. Elige el que corresponda a tu fase actual:
+Si prefieres la terminal en lugar del script `.bat`, el bot tiene 3 modos principales. Elige el que corresponda a tu fase actual:
 
 ### 🔵 FASE 1 (Objetivo 10% = $5,000)
 ```bash
@@ -110,28 +113,31 @@ Puedes enviar comandos desde Telegram directamente a tu bot para consultar su es
 
 ---
 
-## 6️⃣ Solución de Problemas Comunes
+## 7️⃣ Solución de Problemas Comunes
 
 ### ❌ `ModuleNotFoundError: No module named 'MetaTrader5'`
--   **Causa**: No has instalado las librerías o estás en Mac/Linux.
--   **Solución**: Ejecuta `pip install -r requirements.txt` en **Windows**.
+-   **Causa**: No has instalado las librerías o estás intentando correr el bot en Mac/Linux nativo.
+-   **Solución**: Ejecuta el archivo `START_BOT_AND_AI.bat` en **Windows**.
 
 ### ❌ `Fallo al conectar a MT5`
 -   **Causa**: La terminal MT5 no está abierta o no coincide la cuenta.
--   **Solución**: Abre la terminal MT5 visualmente y asegúrate de que el log diga "Connected".
+-   **Solución**: Abre la terminal MT5 visualmente, loguéate, y asegúrate de que el botón superior "Auto Trading" esté activado.
+
+### ❌ Error descargando datos de Machine Learning (`❌ No hay datos para EURUSD`)
+-   **Causa**: El mercado está cerrado cerrado por fin de semana, o en tu broker la divisa se llama distinto (Ej. EURUSD.pro).
+-   **Solución**: Si es fin de semana el bot creará automáticamente un cerebro de emergencia para no detenerse. Si falla entre semana, edita `scripts/train_ml_model.py` para usar el sufijo correcto de tu broker.
 
 ### ❌ El bot no abre operaciones
 -   **Causa**: Puede ser por horario (fuera de sesión), spread alto, o noticias.
--   **Solución**: Revisa los logs en el Dashboard o la terminal. Si dice "Mercado cerrado" o "Spread alto", es comportamiento normal de protección.
+-   **Solución**: Revisa los logs en el Dashboard o la terminal. Si dice "Mercado cerrado" o "Spread alto", es comportamiento normal de protección de capital.
 
 ---
 
-## 📋 Resumen de Comandos
+## 📋 Resumen de Comandos Rápidas
 
 | Acción | Comando |
 | :--- | :--- |
-| **Instalar** | `pip install -r requirements.txt` |
-| **Fase 1** | `python main.py --phase 1` |
-| **Fase 2** | `python main.py --phase 2` |
-| **Simular** | `python main.py --phase 1 --dry-run` |
+| **Arranque Inteligente** | `.\START_BOT_AND_AI.bat` |
+| **Simular (Fase 1)** | `python main.py --phase 1 --dry-run` |
+| **Re-entrenar IA** | `python scripts/train_ml_model.py` |
 | **Telegram Ayuda** | Enviar `/help` al bot en Telegram |
