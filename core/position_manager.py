@@ -64,19 +64,27 @@ class PositionManager:
             self.logger.error(f"Símbolo {symbol} no encontrado")
             return None
 
-        # Valor del pip
-        # Para la mayoría de pares forex, 1 pip = 10 * point
-        pip_value = symbol_info.trade_tick_value
-        if pip_value <= 0:
-            self.logger.error(f"Valor del pip inválido para {symbol}: {pip_value}")
+        # --- CÁLCULO BULLETPROOF DEL PIP VALUE ---
+        point = symbol_info.point
+        tick_size = symbol_info.trade_tick_size
+        tick_value = symbol_info.trade_tick_value
+        
+        if tick_value <= 0 or tick_size <= 0 or point <= 0:
+            self.logger.error(f"Información de tick inválida para {symbol}")
             return None
+            
+        # Determinar tamaño real de 1 pip (0.01 para pares JPY, 0.0001 para el resto)
+        pip_size = 0.01 if "JPY" in symbol else 0.0001
+        
+        # Calcular cuánto vale financieramente 1 PIP exacto para 1 Lote Standard
+        pip_value_per_lot = (pip_size / tick_size) * tick_value
 
         # Calcular lotes
         if stop_loss_pips <= 0:
             self.logger.error(f"Stop loss inválido: {stop_loss_pips} pips")
             return None
 
-        position_size = risk_amount / (stop_loss_pips * pip_value)
+        position_size = risk_amount / (stop_loss_pips * pip_value_per_lot)
 
         # Ajustar a los límites del símbolo
         min_lot = symbol_info.volume_min
