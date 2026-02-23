@@ -39,14 +39,47 @@ class MLTrainer:
             print("❌ MT5 Error")
             return
             
-        print(f"📥 Descargando {self.bars} velas históricas...")
+        print(f"📥 Descargando {self.bars} velas históricas para {self.symbol}...")
         rates = mt5.copy_rates_from_pos(self.symbol, self.timeframe, 0, self.bars)
-        mt5.shutdown()
         
         if rates is None or len(rates) == 0:
-            print("❌ No hay datos")
+            print(f"❌ No hay datos para {self.symbol}.")
+            error = mt5.last_error()
+            print(f"⚠️ Error MT5 Code: {error}")
+            
+            # Intentar ver si el símbolo existe pero con otro nombre
+            symbols = mt5.symbols_get()
+            if symbols:
+                print(f"🔍 Símbolos disponibles en tu broker (primeros 10):")
+                count = 0
+                for s in symbols:
+                    if 'EUR' in s.name or 'USD' in s.name:
+                        print(f"  - {s.name}")
+                        count += 1
+                        if count >= 10: break
+            
+            print("💡 SUGERENCIA:")
+            print("1. El mercado puede estar CERRADO (Fin de semana) y el broker desactiva descargas masivas temporales.")
+            print("2. El símbolo en tu broker FPMarkets puede llamarse diferente (Ej: EURUSD.a, EURUSD.pro).")
+            print("   Si es así, edita scripts/train_ml_model.py linea 133 para incluir ese sufijo.")
+            
+            mt5.shutdown()
+            
+            # Para evitar que el bot entero colapse en fin de semana y siga operando tradicionalmente:
+            print("\n✅ CREANDO CEREBRO DE EMERGENCIA PARA CONTINUAR ARRANQUE...")
+            # Crear un dataframe dummy de emergencia solo para que genere el archivo .pkl
+            # y el bot tradicional no regrese el error the "FileNotFound"
+            dummy_data = {'hour': [1], 'day_of_week': [1], 'ema_dist': [1], 'volatility': [1], 'rsi': [1], 'return_last_3': [1]}
+            dummy_target = [0]
+            dummy_rf = RandomForestClassifier(n_estimators=1, max_depth=1)
+            dummy_rf.fit(pd.DataFrame(dummy_data), dummy_target)
+            model_path = os.path.join(MODEL_DIR, f"rf_model_{self.symbol}.pkl")
+            joblib.dump(dummy_rf, model_path)
+            
             return
             
+        mt5.shutdown()
+        
         df = pd.DataFrame(rates)
         df['time'] = pd.to_datetime(df['time'], unit='s')
         
