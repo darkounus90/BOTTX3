@@ -24,27 +24,11 @@ class RiskManager:
     def __init__(self, logger: BotLogger):
         self.logger = logger
 
-        # Límites del challenge
-        self.balance_inicial = ChallengeConfig.BALANCE_INICIAL
-        self.max_daily_loss = ChallengeConfig.MAX_DAILY_DRAWDOWN
-        self.max_overall_loss = ChallengeConfig.MAX_OVERALL_DRAWDOWN
+        # Inicializa base, pero los límites se calcularán dinámicamente con las properties
+        self._balance_inicial = ChallengeConfig.BALANCE_INICIAL
 
         # Umbral del día: se actualiza al resetear (5 PM EST)
         self.equity_inicio_dia = ChallengeConfig.BALANCE_INICIAL
-
-        # Umbrales de emergencia (cerrar antes de violar límites)
-        self.daily_warning_threshold = (
-            self.max_daily_loss * BotConfig.DAILY_DD_WARNING_PCT / 100
-        )
-        self.daily_emergency_threshold = (
-            self.max_daily_loss * BotConfig.DAILY_DD_EMERGENCY_PCT / 100
-        )
-        self.overall_warning_threshold = (
-            self.max_overall_loss * BotConfig.OVERALL_DD_WARNING_PCT / 100
-        )
-        self.overall_emergency_threshold = (
-            self.max_overall_loss * BotConfig.OVERALL_DD_EMERGENCY_PCT / 100
-        )
 
         # Estado
         self.is_daily_warning = False
@@ -52,11 +36,39 @@ class RiskManager:
         self.is_overall_warning = False
         self.is_overall_emergency = False
 
-        self.logger.risk(
-            f"Risk Manager inicializado | "
-            f"Daily Max: ${self.max_daily_loss:,.0f} | "
-            f"Overall Max: ${self.max_overall_loss:,.0f}"
-        )
+        self.logger.risk("Risk Manager inicializado (Modo de Cálculo Dinámico).")
+
+    @property
+    def balance_inicial(self):
+        return self._balance_inicial
+
+    @balance_inicial.setter
+    def balance_inicial(self, value):
+        self._balance_inicial = value
+
+    @property
+    def max_daily_loss(self):
+        return self.balance_inicial * (ChallengeConfig.MAX_DAILY_DRAWDOWN_PCT / 100.0)
+
+    @property
+    def max_overall_loss(self):
+        return self.balance_inicial * (ChallengeConfig.MAX_OVERALL_DRAWDOWN_PCT / 100.0)
+
+    @property
+    def daily_warning_threshold(self):
+        return self.max_daily_loss * (BotConfig.DAILY_DD_WARNING_PCT / 100.0)
+
+    @property
+    def daily_emergency_threshold(self):
+        return self.max_daily_loss * (BotConfig.DAILY_DD_EMERGENCY_PCT / 100.0)
+
+    @property
+    def overall_warning_threshold(self):
+        return self.max_overall_loss * (BotConfig.OVERALL_DD_WARNING_PCT / 100.0)
+
+    @property
+    def overall_emergency_threshold(self):
+        return self.max_overall_loss * (BotConfig.OVERALL_DD_EMERGENCY_PCT / 100.0)
 
     # ─── Verificaciones de Drawdown ───────────────────────────────────
 

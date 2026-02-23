@@ -356,8 +356,20 @@ class TX3ProBot:
 
                 # ─── C. Verificar Riesgo (Emergencia) ──────────────
                 if self.risk_manager.should_emergency_close():
-                    self.logger.critical("🚨 CIERRE DE EMERGENCIA")
-                    self.telegram.notify_drawdown_emergency("TOTAL", 0, 0)
+                    daily_dd = self.risk_manager.check_daily_drawdown()
+                    overall_dd = self.risk_manager.check_overall_drawdown()
+                    
+                    if daily_dd["level"] in ("EMERGENCY", "VIOLATED"):
+                        dd_type = "DIARIO"
+                        loss = daily_dd["loss"]
+                        limit = daily_dd["limit"]
+                    else:
+                        dd_type = "TOTAL"
+                        loss = overall_dd["loss"]
+                        limit = overall_dd["limit"]
+                        
+                    self.logger.critical(f"🚨 CIERRE DE EMERGENCIA ({dd_type})")
+                    self.telegram.notify_drawdown_emergency(dd_type, loss, limit)
                     self.risk_manager.emergency_close_all()
                     self.running = False
                     break
