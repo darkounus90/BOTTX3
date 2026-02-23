@@ -80,22 +80,35 @@ class AISentimentAnalyzer:
         """Un analizador de sentimiento NLP offline de respaldo."""
         try:
             from textblob import TextBlob
-            analysis = TextBlob(text)
-            polarity = analysis.sentiment.polarity
             
-            # TextBlob polarity ranges from -1 to +1
-            if polarity > 0.15:
-                return {"label": "positive", "score": min(0.5 + (polarity / 2), 0.99)}
-            elif polarity < -0.15:
-                # bear score mapped to 0-1 range logic
-                return {"label": "negative", "score": min(0.5 + (abs(polarity) / 2), 0.99)}
-            else:
-                return {"label": "neutral", "score": 0.80}
+            # --- NOVEDAD: CAPA VADER (Excelente para Finanzas) ---
+            try:
+                from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+                vader = SentimentIntensityAnalyzer()
+                vader_score = vader.polarity_scores(text)['compound']
+                
+                if vader_score >= 0.05:
+                     return {"label": "positive", "score": min(0.5 + (vader_score / 2), 0.99)}
+                elif vader_score <= -0.05:
+                     return {"label": "negative", "score": min(0.5 + (abs(vader_score) / 2), 0.99)}
+                else:
+                     return {"label": "neutral", "score": 0.80}
+            except ImportError:
+                # Si no hay VADER, caemos a TextBlob (Tercera Capa)
+                analysis = TextBlob(text)
+                polarity = analysis.sentiment.polarity
+                
+                if polarity > 0.15:
+                    return {"label": "positive", "score": min(0.5 + (polarity / 2), 0.99)}
+                elif polarity < -0.15:
+                    return {"label": "negative", "score": min(0.5 + (abs(polarity) / 2), 0.99)}
+                else:
+                    return {"label": "neutral", "score": 0.80}
         except ImportError:
-            # Si ni TextBlob está disponible, usamos el léxico más arcaico
+            # Si ni TextBlob ni VADER están instalados, usamos el léxico arcaico (Cuarta Capa)
             text_lower = text.lower()
-            bullish_words = ['surge', 'jump', 'rise', 'higher', 'beat', 'growth', 'positive', 'up', 'increase', 'soar']
-            bearish_words = ['fall', 'drop', 'decline', 'lower', 'miss', 'contract', 'negative', 'down', 'decrease', 'plunge']
+            bullish_words = ['surge', 'jump', 'rise', 'higher', 'beat', 'growth', 'positive', 'up', 'increase', 'soar', 'bull']
+            bearish_words = ['fall', 'drop', 'decline', 'lower', 'miss', 'contract', 'negative', 'down', 'decrease', 'plunge', 'bear']
             
             bull_score = sum(1 for word in bullish_words if word in text_lower)
             bear_score = sum(1 for word in bearish_words if word in text_lower)
