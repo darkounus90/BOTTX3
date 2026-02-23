@@ -38,10 +38,22 @@ class GeminiOracle:
             else:
                 try:
                     genai.configure(api_key=self.api_key)
-                    # Usamos gemini-pro por máxima compatibilidad con SDKs antiguos
-                    self.model = genai.GenerativeModel(model_name="gemini-pro")
+                    
+                    # Auto-detector de modelo compatible (Anti error 404 API v1beta)
+                    target_model = "gemini-1.5-flash-latest" # Fallback por defecto
+                    for m in genai.list_models():
+                        if 'generateContent' in m.supported_generation_methods:
+                            name = m.name.replace("models/", "")
+                            # Preferir flash o pro si está en los disponibles
+                            if 'flash' in name:
+                                target_model = name
+                                break
+                            elif 'pro' in name:
+                                target_model = name
+                                
+                    self.model = genai.GenerativeModel(model_name=target_model)
                     self.system_ready = True
-                    self.logger.success("👁️‍🗨️ LLM ORACLE (Gemini Pro) Despertó y está Vigilando.")
+                    self.logger.success(f"👁️‍🗨️ LLM ORACLE ({target_model}) Despertó y está Vigilando.")
                 except Exception as e:
                     self.logger.error(f"Error inicializando Gemini Oracle: {e}")
                     self.enabled = False
