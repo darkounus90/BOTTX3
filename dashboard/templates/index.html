@@ -167,6 +167,10 @@
             </div>
 
             <div class="flex items-center gap-3">
+                <div id="mode-badge"
+                    class="px-4 py-1.5 rounded-lg text-sm font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.15)] hidden md:block">
+                    LIVE
+                </div>
                 <div id="phase-badge"
                     class="px-4 py-1.5 rounded-lg text-sm font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-[0_0_15px_rgba(99,102,241,0.15)]">
                     FASE ?
@@ -307,11 +311,21 @@
                     </div>
                 </div>
 
-                <div
-                    class="bg-gray-900/60 p-4 rounded-lg border border-gray-800 mt-4 relative z-10 flex justify-between items-center">
-                    <span class="text-xs text-gray-500 uppercase tracking-widest font-bold">Total Trades Hoy</span>
-                    <span class="text-xl font-mono font-bold text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]"
-                        id="stat-trades">0</span>
+                <div class="flex gap-4 mt-4 relative z-10 w-full">
+                    <div
+                        class="bg-gray-900/60 p-3 rounded-lg border border-gray-800 flex-1 flex flex-col justify-center items-center">
+                        <span
+                            class="text-[0.65rem] text-gray-500 uppercase tracking-widest font-bold mb-1 text-center leading-tight">Trades<br>Hoy</span>
+                        <span class="text-xl font-mono font-bold text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]"
+                            id="stat-trades">0</span>
+                    </div>
+                    <div
+                        class="bg-gray-900/60 p-3 rounded-lg border border-gray-800 flex-1 flex flex-col justify-center items-center">
+                        <span
+                            class="text-[0.65rem] text-gray-500 uppercase tracking-widest font-bold mb-1 text-center leading-tight">Kelly<br>Frac.</span>
+                        <span class="text-xl font-mono font-bold text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]"
+                            id="stat-kelly">0.25</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -483,14 +497,28 @@
             // Sync Time
             document.getElementById('last-update-time').textContent = `SYNC: ${data.last_update || new Date().toLocaleTimeString()}`;
 
-            // Phase and Status
+            // Phase, Mode and Status
             const phaseBadge = document.getElementById('phase-badge');
             phaseBadge.textContent = `PHASE ${data.phase || '?'}`;
+
+            if (data.mode) {
+                const modeBadge = document.getElementById('mode-badge');
+                if (modeBadge) {
+                    modeBadge.textContent = data.mode;
+                    if (data.mode === 'DEMO') {
+                        modeBadge.className = "px-4 py-1.5 rounded-lg text-sm font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 hidden md:block";
+                    } else {
+                        modeBadge.className = "px-4 py-1.5 rounded-lg text-sm font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.15)] hidden md:block";
+                    }
+                }
+            }
 
             const statusEl = document.getElementById('status-badge');
             statusEl.textContent = data.status || 'UNKNOWN';
             if (data.status === 'RUNNING') {
                 statusEl.className = "px-4 py-1.5 rounded-lg text-sm font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]";
+            } else if (data.status === 'PAUSED') {
+                statusEl.className = "px-4 py-1.5 rounded-lg text-sm font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.1)]";
             } else {
                 statusEl.className = "px-4 py-1.5 rounded-lg text-sm font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30";
             }
@@ -527,6 +555,10 @@
             if (data.min_days !== undefined) document.getElementById('stat-days').innerHTML = `<span class="text-white">${data.profitable_days || 0}</span> <span class="text-gray-600">/ ${data.min_days}</span>`;
             if (data.total_trades !== undefined) document.getElementById('stat-trades').textContent = data.total_trades;
             if (data.win_rate !== undefined) document.getElementById('stat-winrate').textContent = `${(data.win_rate).toFixed(1)}%`;
+            if (data.kelly_fraction !== undefined) {
+                const kellyEl = document.getElementById('stat-kelly');
+                if (kellyEl) kellyEl.textContent = data.kelly_fraction.toFixed(2);
+            }
 
             if (data.consistency_met !== undefined) {
                 const conEl = document.getElementById('stat-consistency');

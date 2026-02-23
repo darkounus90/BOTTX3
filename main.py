@@ -55,6 +55,7 @@ class TX3ProBot:
         self.dry_run = dry_run
         self.running = False
         self.daily_reset_done = False
+        self.is_paused = False
 
         # ─── Inicializar componentes ─────────────────────────────────
         self.logger = BotLogger(name="TX3Bot")
@@ -145,6 +146,7 @@ class TX3ProBot:
         self.logger.banner("🤖 TX3 PRO BOT $50K - PROFESSIONAL")
         self.logger.info(f"  Fase:          {self.phase}")
         self.logger.info(f"  Modo:          {'🔍 DRY RUN' if self.dry_run else '🟢 LIVE'}")
+        self.logger.info(f"  Estado:        {'⏸️ PAUSADO' if self.is_paused else '▶️ ACTIVO'}")
         self.logger.info(f"  Dashboard:     http://{DashboardConfig.HOST}:{DashboardConfig.PORT}")
         self.logger.info(f"  News Filter:   {'✅ Enabled' if self.news_filter.enabled else '❌ Disabled'}")
         self.logger.info(f"  Trailing Stop: {'✅ Enabled' if self.trailing_stop.enabled else '❌ Disabled'}")
@@ -180,7 +182,9 @@ class TX3ProBot:
         # Simplificación de win_rate visual (podrías guardarlo en un state si quisieras, aquí lo dejamos en 0.0 o aproximado si tuvieras history real)
 
         data = {
-            "status": "RUNNING" if self.running else "STOPPED",
+            "status": "PAUSED" if self.is_paused else ("RUNNING" if self.running else "STOPPED"),
+            "mode": "DEMO" if self.dry_run else "LIVE",
+            "kelly_fraction": BotConfig.KELLY_FRACTION,
             "phase": self.phase,
             "balance": account["balance"] if account else 0,
             "equity": account["equity"] if account else 0,
@@ -371,6 +375,11 @@ class TX3ProBot:
                     continue
 
                 # ─── D. Filtros de Trading ─────────────────────────
+                # 0. Telegram Pause
+                if self.is_paused:
+                    sleep_module.sleep(BotConfig.LOOP_INTERVAL_SECONDS)
+                    continue
+
                 # 1. Sesión (Global)
                 if not self.session_filter.is_trading_allowed():
                     sleep_module.sleep(BotConfig.LOOP_INTERVAL_SECONDS)

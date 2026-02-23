@@ -44,14 +44,16 @@ class PositionManager:
 
         # Kelly Criterion dinámico (Position Sizing Inteligente)
         risk_pct = BotConfig.MAX_RISK_PER_TRADE_PCT
+        kelly_fraction = BotConfig.KELLY_FRACTION
+        
         if probability is not None and probability > 0:
             if probability >= 75:
-                risk_pct = 1.2  # Alta convicción -> Aumentar riesgo
+                risk_pct = 1.2 * kelly_fraction  # Alta convicción -> Aumentar riesgo
             elif probability >= 60:
-                risk_pct = 0.8  # Buena convicción
+                risk_pct = 0.8 * kelly_fraction  # Buena convicción
             elif probability < 55:
-                risk_pct = 0.2  # Dudoso -> Reducir riesgo para proteger capital
-            self.logger.info(f"⚖️ Kelly Criterion Activo: Probabilidad {probability:.1f}% -> Ajustando riesgo a {risk_pct}%")
+                risk_pct = 0.2 * kelly_fraction  # Dudoso -> Reducir riesgo para proteger capital
+            self.logger.info(f"⚖️ Kelly Criterion Activo (F={kelly_fraction}): Probabilidad {probability:.1f}% -> Ajustando riesgo final a {risk_pct:.2f}%")
 
         # Riesgo en dólares
         risk_amount = balance * (risk_pct / 100)

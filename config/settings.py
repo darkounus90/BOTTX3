@@ -60,6 +60,7 @@ class BotConfig:
 
     # ─── RISK MANAGEMENT ──────────────────────────────────────────────
     MAX_RISK_PER_TRADE_PCT = 0.5
+    KELLY_FRACTION = 0.25                # Mitiga el crecimiento exponencial del kelly original
     MAX_TRADES_PER_DAY = 5
     MAX_OPEN_POSITIONS = 1               # Solo 1 posición a la vez (conservador)
 
@@ -70,6 +71,7 @@ class BotConfig:
     OVERALL_DD_EMERGENCY_PCT = 85        # Cierre al 85% ($4,250)
 
     # ─── STRATEGY ─────────────────────────────────────────────────────
+    MODE_FILTERS = "STRICT"              # "STRICT" o "RELAXED"
     DEFAULT_SYMBOL = "EURUSD"
     WATCHLIST = ["EURUSD", "GBPUSD", "USDJPY"] # Diversificación: Euro, Libra, Yen
     DEFAULT_TIMEFRAME = "M5"             # M5 para entradas más rápidas

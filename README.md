@@ -25,6 +25,19 @@
 
 ---
 
+## 2️⃣ Arquitectura del Proyecto
+
+El bot está diseñado con un enfoque modular e institucional, separando la lógica para mayor mantenibilidad:
+
+- `main.py`: Punto de entrada principal. Orquesta los ciclos de trading, hilos de ejecución secundaria, mutación genética y dashboard en tiempo real.
+- `config/settings.py`: Archivo maestro de configuración. Aquí se centralizan los parámetros de riesgo (`KELLY_FRACTION`), filtros (`MODE_FILTERS = STRICT/RELAXED`), llaves secretas y metas de negocio. Ningún número está _hardcodeado_ en los scripts.
+- `core/`: Cerebro operativo del bot. Contiene `risk_manager.py` (Gestión de DD y emergencias), `position_manager.py` (Cálculo de lote por Kelly Fractional y colocación de órdenes), y los filtros de sesión/noticias.
+- `strategy/`: Estrategias de trading. Contiene las reglas matemáticas y de ML (`ema_cross.py`, `ml_random_forest.py`) requeridas para ejecutar las entradas al mercado.
+- `dashboard/`: Sistema de interfaz web con Flask y WebSockets para monitorear el PnL y estado del bot remotamente.
+- `utils/`: Herramientas auxiliares, como el `telegram_commands.py` (Remote Control de Telegram), sistema de Logging, persistencia de JSON de estado, y el conector API con MT5.
+
+---
+
 ## 2️⃣ Instalación y Arranque Rápido (1-Click)
 
 La forma más sencilla y automatizada de ejecutar el bot, instalar sus dependencias, y preparar su "Cerebro de Inteligencia Artificial" es usar el script de arranque incluido.

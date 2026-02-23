@@ -90,6 +90,12 @@ class TelegramCommandHandler:
             self._handle_profit(chat_id)
         elif command == "/risk":
             self._handle_risk(chat_id)
+        elif command == "/pause":
+            self._handle_pause(chat_id)
+        elif command == "/resume":
+            self._handle_resume(chat_id)
+        elif command == "/flat":
+            self._handle_flat(chat_id)
         elif command in ["/help", "/start"]:
             self._handle_help(chat_id)
         else:
@@ -243,7 +249,28 @@ class TelegramCommandHandler:
             f"📈 /positions - Detalle de posiciones abiertas\n"
             f"💸 /profit - Resumen de ganancias\n"
             f"🛡️ /risk - Estado de Drawdown y riesgo\n"
+            f"⏸️ /pause - Pausa el bot temporalmente\n"
+            f"▶️ /resume - Reanuda la operativa\n"
+            f"🧹 /flat - Cierra todas las posiciones abiertas\n"
             f"ℹ️ /help - Muestra este menú\n"
             f"━━━━━━━━━━━━━━━━━━━━"
         )
         self._send_message(chat_id, msg)
+
+    def _handle_pause(self, chat_id):
+        """Comando /pause - Pausa operativas"""
+        self.bot.is_paused = True
+        self._send_message(chat_id, "⏸️ *BOT PAUSADO*\nEl sistema no abrirá nuevas posiciones hasta usar /resume.")
+
+    def _handle_resume(self, chat_id):
+        """Comando /resume - Reanuda operativas"""
+        self.bot.is_paused = False
+        self._send_message(chat_id, "▶️ *BOT REANUDADO*\nSistema activo escaneando oportunidades.")
+
+    def _handle_flat(self, chat_id):
+        """Comando /flat - Cierra emergencia todo"""
+        try:
+            self.bot.risk_manager.emergency_close_all()
+            self._send_message(chat_id, "🧹 *POSICIONES CERRADAS*\nTodas las operaciones activas han sido liquidadas manualmente.")
+        except Exception as e:
+            self._send_message(chat_id, f"❌ Error cerrando posiciones: `{str(e)}`")
