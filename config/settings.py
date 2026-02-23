@@ -59,10 +59,10 @@ class BotConfig:
     """Configuración de comportamiento del bot"""
 
     # ─── RISK MANAGEMENT ──────────────────────────────────────────────
-    MAX_RISK_PER_TRADE_PCT = 0.5                 # 0.5% = $250 por trade base (Ajustable por Kelly AI)
-    KELLY_FRACTION = 0.25                # Mitiga el crecimiento exponencial del kelly original
-    MAX_TRADES_PER_DAY = 5
-    MAX_OPEN_POSITIONS = 1               # Solo 1 posición a la vez (conservador)
+    MAX_RISK_PER_TRADE_PCT = 1.0                 # 1.0% = $500 base. Modo Agresivo de Pruebas.
+    KELLY_FRACTION = 0.5                 # Kelly agresivo: IA puede apalancar más si está muy segura.
+    MAX_TRADES_PER_DAY = 10              # Más disparos permitidos por día.
+    MAX_OPEN_POSITIONS = 3               # Permite hasta 3 posiciones simultáneas.
 
     # ─── EMERGENCY THRESHOLDS ─────────────────────────────────────────
     DAILY_DD_WARNING_PCT = 70            # Alerta al 70% ($1,750)
