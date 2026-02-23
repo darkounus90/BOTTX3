@@ -59,7 +59,7 @@ class BotConfig:
     """Configuración de comportamiento del bot"""
 
     # ─── RISK MANAGEMENT ──────────────────────────────────────────────
-    MAX_RISK_PER_TRADE_PCT = 0.25                # 0.25% = $125 por trade base (Ajustable por Kelly AI)
+    MAX_RISK_PER_TRADE_PCT = 0.5                 # 0.5% = $250 por trade base (Ajustable por Kelly AI)
     KELLY_FRACTION = 0.25                # Mitiga el crecimiento exponencial del kelly original
     MAX_TRADES_PER_DAY = 5
     MAX_OPEN_POSITIONS = 1               # Solo 1 posición a la vez (conservador)
