@@ -51,22 +51,45 @@ class GeminiOracle:
 
     def evaluate_trade(self, symbol: str, signal_type: str, reason: str, adx: float = None) -> dict:
         """
-        Envía toda la telemetría del trade propuesto al oráculo de Gemini.
-        Returns un dict con la decision.
+        Envía telemetría enriquecida (Multi-Timeframe) al Oráculo.
+        Descarga volatilidad en vivo para que Gemini decida con contexto real SMC.
         """
         if not self.system_ready or not self.enabled:
-            # Si el oráculo está apagado o roto, permitir pasar el trade a nivel Quant normal
             return {"decision": "APPROVED", "reason": "Oracle Disabled or Unreachable."}
             
         now = datetime.now()
+        
+        # ─── EXTRAER CONTEXTO MULTI-TIMEFRAME (MTF) RÁPIDO ───
+        context_data = "No data"
+        try:
+            import MetaTrader5 as mt5
+            import pandas as pd
+            # M15 Context
+            m15_rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M15, 0, 5)
+            if m15_rates is not None and len(m15_rates) > 0:
+                m15_df = pd.DataFrame(m15_rates)
+                m15_trend = "BULLISH" if m15_df.iloc[-1]['close'] > m15_df.iloc[0]['open'] else "BEARISH"
+                
+            # H1 Context
+            h1_rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_H1, 0, 3)
+            if h1_rates is not None and len(h1_rates) > 0:
+                h1_df = pd.DataFrame(h1_rates)
+                h1_trend = "BULLISH" if h1_df.iloc[-1]['close'] > h1_df.iloc[0]['open'] else "BEARISH"
+                
+            context_data = f"M15 Short Trend: {m15_trend} | H1 Macro Trend: {h1_trend}"
+        except Exception as e:
+            self.logger.warning(f"No se pudo inyectar MTF context a Gemini: {e}")
+        
         prompt = (
-            f"PROPUESTA DE TRADE ALGÓRITMICO:\n"
+            f"PROPUESTA DE TRADE ALGÓRITMICO (INSTITUCIONAL):\n"
             f"- Símbolo: {symbol}\n"
             f"- Sentido Operativo: {signal_type}\n"
-            f"- Gatillo Técnico: {reason}\n"
+            f"- Contexto Gráfico MTF en Vivo: {context_data}\n"
             f"- Fuerza de Tenencia ADX: {adx if adx else 'N/A'}\n"
-            f"- Hora del Servidor: {now.strftime('%H:%M EST')}\n"
-            f"¿Apruebas arriesgar el capital del Prop Firm en esta operación ahora mismo basándote en que un Bot básico lo detectó? (Responde en JSON)."
+            f"- Gatillo Técnico: {reason}\n"
+            f"- Hora del Servidor: {now.strftime('%H:%M EST')}\n\n"
+            f"ACTÚA COMO CIO: ¿Apruebas arriesgar capital institucional en este trade basándote en la alineación del contexto MTF y conceptos SMC actuales? Rechaza si M15 contradice macro H1 peligrosamente o estás sobre un posible Liquidity Grab.\n"
+            f"(Responde SOLAMENTE un objeto JSON puro con 'decision'='APPROVED|REJECTED' y 'reason'='Motivo en 10 palabras')."
         )
         
         self.logger.info(f"🧠 Consultando CIO Gemini para revisar el trade {signal_type} en {symbol}...")
