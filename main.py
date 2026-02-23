@@ -34,6 +34,7 @@ from core.phase_tracker import PhaseTracker
 from core.session_filter import SessionFilter
 from core.news_filter import NewsFilter
 from core.trailing_stop import TrailingStopManager
+from core.llm_oracle import GeminiOracle
 from strategy.ema_cross import EMACrossStrategy
 from utils.logger import BotLogger
 from utils.mt5_connector import MT5Connector
@@ -76,10 +77,7 @@ class TX3ProBot:
         # Pro Features
         self.news_filter = NewsFilter(logger=self.logger)
         self.trailing_stop = TrailingStopManager(logger=self.logger)
-        
-        # Pro Features
-        self.news_filter = NewsFilter(logger=self.logger)
-        self.trailing_stop = TrailingStopManager(logger=self.logger)
+        self.oracle = GeminiOracle(logger=self.logger)
         
         # Estrategias (Multi-Symbol Optimization)
         self.strategies = {}
@@ -425,6 +423,20 @@ class TX3ProBot:
                                 if not self.position_manager.check_correlation_shield(symbol):
                                     continue
                                     
+                                # e. Juez Supremo: ORÁCULO LLM (Gemini)
+                                if self.oracle.enabled:
+                                    oracle_resp = self.oracle.evaluate_trade(
+                                        symbol=signal['symbol'],
+                                        signal_type=signal['signal'],
+                                        reason=signal.get('reason', 'Análisis Quant Base')
+                                    )
+                                    if oracle_resp.get("decision") == "REJECTED":
+                                        self.logger.warning(f"🛑 Trade Cancelado por Oráculo (CIO): {oracle_resp.get('reason')}")
+                                        continue
+                                    else:
+                                        # Añadir la razón del oráculo al comentario del Trade
+                                        signal['reason'] += f" | 𓂀 {oracle_resp.get('reason')}"
+                                        
                                 if self.dry_run:
                                     self.logger.info(f"🔍 DRY RUN SIGNAL: {signal['signal']} {symbol}")
                                 else:

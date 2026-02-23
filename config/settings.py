@@ -71,6 +71,7 @@ class BotConfig:
     OVERALL_DD_EMERGENCY_PCT = 85        # Cierre al 85% ($4,250)
 
     # ─── STRATEGY ─────────────────────────────────────────────────────
+    ORACLE_ENABLED = True                # Habilita o deshabilita la conciencia del CIO Gemini
     MODE_FILTERS = "STRICT"              # "STRICT" o "RELAXED"
     DEFAULT_SYMBOL = "EURUSD"
     WATCHLIST = ["EURUSD", "GBPUSD", "USDJPY"] # Diversificación: Euro, Libra, Yen
