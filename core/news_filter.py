@@ -210,8 +210,8 @@ class NewsFilter:
 
                 try:
                     event_time = datetime.strptime(event_date, "%Y-%m-%dT%H:%M:%S%z")
-                    # Convertir a local
-                    event_time = event_time.replace(tzinfo=None)
+                    # Convertir a hora local real del servidor antes de quitarle el timezone
+                    event_time = event_time.astimezone().replace(tzinfo=None)
                 except (ValueError, TypeError):
                     continue
 
