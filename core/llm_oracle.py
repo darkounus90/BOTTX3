@@ -38,13 +38,10 @@ class GeminiOracle:
             else:
                 try:
                     genai.configure(api_key=self.api_key)
-                    # Usamos flash por velocidad de ejecución en Real Time
-                    self.model = genai.GenerativeModel(
-                        model_name="gemini-1.5-flash",
-                        system_instruction="Eres el Chief Investment Officer (CIO) de un Hedge Fund de alta frecuencia. Tu trabajo es revisar las propuestas algorítmicas de transacciones de Forex. Conoces los conceptos de Smart Money Concepts (SMC), ICT y Price Action dinámico. Analizas el contexto rápido y decides si APROBAR o RECHAZAR la operación. Eres conservador, proteges el capital. Responde SIEMPRE en formato JSON con dos llaves: 'decision' (solo puede ser APPROVED o REJECTED) y 'reason' (explicación breve de 1 línea)."
-                    )
+                    # Usamos gemini-pro por máxima compatibilidad con SDKs antiguos
+                    self.model = genai.GenerativeModel(model_name="gemini-pro")
                     self.system_ready = True
-                    self.logger.success("👁️‍🗨️ LLM ORACLE (Gemini 1.5) Despertó y está Vigilando las transacciones.")
+                    self.logger.success("👁️‍🗨️ LLM ORACLE (Gemini Pro) Despertó y está Vigilando.")
                 except Exception as e:
                     self.logger.error(f"Error inicializando Gemini Oracle: {e}")
                     self.enabled = False
@@ -81,6 +78,7 @@ class GeminiOracle:
             self.logger.warning(f"No se pudo inyectar MTF context a Gemini: {e}")
         
         prompt = (
+            f"ERES EL CHIEF INVESTMENT OFFICER (CIO) DE UN HEDGE FUND QUANT. Eres estricto, aplicas Smart Money Concepts (SMC) y proteges el capital al máximo.\n\n"
             f"PROPUESTA DE TRADE ALGÓRITMICO (INSTITUCIONAL):\n"
             f"- Símbolo: {symbol}\n"
             f"- Sentido Operativo: {signal_type}\n"
@@ -88,7 +86,7 @@ class GeminiOracle:
             f"- Fuerza de Tenencia ADX: {adx if adx else 'N/A'}\n"
             f"- Gatillo Técnico: {reason}\n"
             f"- Hora del Servidor: {now.strftime('%H:%M EST')}\n\n"
-            f"ACTÚA COMO CIO: ¿Apruebas arriesgar capital institucional en este trade basándote en la alineación del contexto MTF y conceptos SMC actuales? Rechaza si M15 contradice macro H1 peligrosamente o estás sobre un posible Liquidity Grab.\n"
+            f"¿Apruebas arriesgar capital institucional en este trade basándote en la alineación del contexto MTF y conceptos SMC actuales? Rechaza si M15 contradice macro H1 peligrosamente o estás sobre un posible Liquidity Grab.\n"
             f"(Responde SOLAMENTE un objeto JSON puro con 'decision'='APPROVED|REJECTED', 'reason'='Motivo en 10 palabras', y 'confidence'=número del 0 al 100 indicando probabilidad real de éxito)."
         )
         
@@ -136,10 +134,10 @@ class GeminiOracle:
             return "⚠️ Oráculo Desconectado o API Key faltante."
             
         prompt = (
-            f"ERES EL CIO AI DEL TX3 PRO BOT.\n"
+            f"ERES EL CHIEF INVESTMENT OFFICER (CIO) AI DEL TX3 PRO BOT.\n"
             f"El usuario (dueño de la cuenta) te pregunta lo siguiente:\n"
             f"\"{question}\"\n\n"
-            f"Responde de forma concisa, profesional, y directa. Usa formato Markdown para Telegram (negritas '*', sin HTML, usa emojis). Máximo 2 párrafos."
+            f"Responde de forma concisa, analítica, profesional y directa. Eres un experto en Smart Money Concepts (SMC). Usa formato Markdown para Telegram (negritas '*', sin HTML, usa emojis). Máximo 2 párrafos."
         )
         try:
             response = self.model.generate_content(prompt)
