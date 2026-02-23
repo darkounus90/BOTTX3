@@ -195,6 +195,10 @@ class TX3ProBot:
             "consistency_met": self.phase_tracker.check_consistency_rule(),
             "total_trades": self.position_manager.trades_today,
             "win_rate": 0.0, # Placeholder, actual logging occurs in journaling if implemented
+            "sys_mt5": self.connector.is_connected(),
+            "sys_oracle": self.oracle.system_ready if hasattr(self, 'oracle') else False,
+            "sys_news": self.news_filter.enabled if hasattr(self, 'news_filter') else False,
+            "simulate_50k": getattr(BotConfig, "SIMULATE_50K_CHALLENGE", False),
             "open_positions": pos_list,
             "last_update": datetime.now().strftime("%H:%M:%S")
         }
