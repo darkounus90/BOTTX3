@@ -120,6 +120,9 @@ Puedes enviar comandos desde Telegram directamente a tu bot para consultar su es
 -   `/positions` → Lista de operaciones abiertas
 -   `/profit` → Resumen interactivo de ganancias desde inicio
 -   `/risk` → Vista en gráfica visual del nivel de Drawdown Actual
+-   `/pause` ⏸️ → Pausa temporalmente el bot (deja de abrir posiciones)
+-   `/resume` ▶️ → Reanuda la operativa normal del bot
+-   `/flat` 🧹 → Cierra de emergencia todas las posiciones abiertas
 -   `/help` → Lista de todos los comandos
 
 *Para que funcione el control remoto, debes asegurarte de haber establecido las variables `TELEGRAM_BOT_TOKEN` y `TELEGRAM_CHAT_ID` como se indica en el paso 3 y enviarle mensaje desde la misma cuenta con ese `CHAT_ID`.*
