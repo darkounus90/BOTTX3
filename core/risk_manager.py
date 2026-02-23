@@ -48,11 +48,13 @@ class RiskManager:
 
     @property
     def max_daily_loss(self):
-        return self.balance_inicial * (ChallengeConfig.MAX_DAILY_DRAWDOWN_PCT / 100.0)
+        base_calc = ChallengeConfig.BALANCE_INICIAL if getattr(BotConfig, "SIMULATE_50K_CHALLENGE", False) else self.balance_inicial
+        return base_calc * (ChallengeConfig.MAX_DAILY_DRAWDOWN_PCT / 100.0)
 
     @property
     def max_overall_loss(self):
-        return self.balance_inicial * (ChallengeConfig.MAX_OVERALL_DRAWDOWN_PCT / 100.0)
+        base_calc = ChallengeConfig.BALANCE_INICIAL if getattr(BotConfig, "SIMULATE_50K_CHALLENGE", False) else self.balance_inicial
+        return base_calc * (ChallengeConfig.MAX_OVERALL_DRAWDOWN_PCT / 100.0)
 
     @property
     def daily_warning_threshold(self):

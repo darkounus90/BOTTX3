@@ -41,6 +41,8 @@ class PositionManager:
             return None
 
         balance = account_info.balance
+        if getattr(BotConfig, "SIMULATE_50K_CHALLENGE", False):
+            balance = ChallengeConfig.BALANCE_INICIAL
 
         # Kelly Criterion dinámico (Position Sizing Inteligente)
         risk_pct = BotConfig.MAX_RISK_PER_TRADE_PCT

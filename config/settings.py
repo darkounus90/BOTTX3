@@ -72,6 +72,7 @@ class BotConfig:
 
     # ─── STRATEGY ─────────────────────────────────────────────────────
     ORACLE_ENABLED = True                # Habilita o deshabilita la conciencia del CIO Gemini
+    SIMULATE_50K_CHALLENGE = True        # Fuerza límites de DD y loteajes asumiendo cuenta de 50k
     MODE_FILTERS = "STRICT"              # "STRICT" o "RELAXED"
     DEFAULT_SYMBOL = "EURUSD"
     WATCHLIST = ["EURUSD", "GBPUSD", "USDJPY"] # Diversificación: Euro, Libra, Yen
