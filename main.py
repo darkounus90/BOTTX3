@@ -456,7 +456,8 @@ class TX3ProBot:
                                     oracle_resp = self.oracle.evaluate_trade(
                                         symbol=signal['symbol'],
                                         signal_type=signal['signal'],
-                                        reason=signal.get('reason', 'Análisis Quant Base')
+                                        reason=signal.get('reason', 'Análisis Quant Base'),
+                                        adx=signal.get('adx', None)
                                     )
                                     if oracle_resp.get("decision") == "REJECTED":
                                         self.logger.warning(f"🛑 Trade Cancelado por Oráculo (CIO): {oracle_resp.get('reason')}")

@@ -200,6 +200,7 @@ class EMACrossStrategy(BaseStrategy):
             "symbol": self.symbol,
             "stop_loss_pips": sl_pips,
             "take_profit_pips": tp_pips,
+            "adx": round(prev['adx'], 2),
             "reason": f"{reason} | H1 Trend Align | ADX: {prev['adx']:.1f} | RSI: {prev['rsi']:.1f} | SL: {sl_pips}p"
         }
         
