@@ -127,3 +127,23 @@ class GeminiOracle:
         except Exception as e:
             self.logger.error(f"Falla de conexión al CIO Gemini: {e}")
             return {"decision": "APPROVED", "reason": "Oracle Network Failure - Quant Override"}
+
+    def ask_oracle(self, question: str) -> str:
+        """
+        Permite hacer consultas generales o análisis de situación al Oráculo vía Telegram.
+        """
+        if not self.system_ready or not self.enabled:
+            return "⚠️ Oráculo Desconectado o API Key faltante."
+            
+        prompt = (
+            f"ERES EL CIO AI DEL TX3 PRO BOT.\n"
+            f"El usuario (dueño de la cuenta) te pregunta lo siguiente:\n"
+            f"\"{question}\"\n\n"
+            f"Responde de forma concisa, profesional, y directa. Usa formato Markdown para Telegram (negritas '*', sin HTML, usa emojis). Máximo 2 párrafos."
+        )
+        try:
+            response = self.model.generate_content(prompt)
+            return response.text.strip()
+        except Exception as e:
+            self.logger.error(f"Error consultando al Oráculo en modo libre: {e}")
+            return f"❌ Oráculo en corto circuito: {e}"

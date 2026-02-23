@@ -96,6 +96,10 @@ class TelegramCommandHandler:
             self._handle_resume(chat_id)
         elif command == "/flat":
             self._handle_flat(chat_id)
+        elif command == "/ask":
+            self._handle_ask(chat_id, text)
+        elif command == "/report":
+            self._handle_report(chat_id)
         elif command in ["/help", "/start"]:
             self._handle_help(chat_id)
         else:
@@ -249,6 +253,8 @@ class TelegramCommandHandler:
             f"📈 /positions - Detalle de posiciones abiertas\n"
             f"💸 /profit - Resumen de ganancias\n"
             f"🛡️ /risk - Estado de Drawdown y riesgo\n"
+            f"🧠 /ask <pregunta> - Consulta directa al Oráculo AI\n"
+            f"📝 /report - Reporte de Inteligencia Artificial\n"
             f"⏸️ /pause - Pausa el bot temporalmente\n"
             f"▶️ /resume - Reanuda la operativa\n"
             f"🧹 /flat - Cierra todas las posiciones abiertas\n"
@@ -274,3 +280,42 @@ class TelegramCommandHandler:
             self._send_message(chat_id, "🧹 *POSICIONES CERRADAS*\nTodas las operaciones activas han sido liquidadas manualmente.")
         except Exception as e:
             self._send_message(chat_id, f"❌ Error cerrando posiciones: `{str(e)}`")
+
+    def _handle_ask(self, chat_id, text):
+        """Comando /ask - Consulta directa al Oráculo AI (Gemini)"""
+        parts = text.split(" ", 1)
+        if len(parts) < 2:
+            self._send_message(chat_id, "⚠️ ¡Debes formular una pregunta!\nEjemplo: `/ask Cómo ves el mercado hoy?`")
+            return
+            
+        question = parts[1]
+        self._send_message(chat_id, "💬 *Oráculo Pensando...*")
+        
+        def ask_ai():
+            answer = self.bot.oracle.ask_oracle(question)
+            self._send_message(chat_id, f"👁️‍🗨️ *ORÁCULO AI:*\n\n{answer}")
+            
+        threading.Thread(target=ask_ai, daemon=True).start()
+
+    def _handle_report(self, chat_id):
+        """Comando /report - Informe AI de situación"""
+        self._send_message(chat_id, "📝 *Generando Reporte de Inteligencia Artificial...*")
+        
+        def generate_report():
+            acc = self.bot.connector.get_account_info()
+            daily_dd = self.bot.risk_manager.check_daily_drawdown()["loss"]
+            daily_limit = ChallengeConfig.MAX_DAILY_DRAWDOWN
+            overall_dd = self.bot.risk_manager.check_overall_drawdown()["loss"]
+            positions = len(self.bot.position_manager.get_open_positions())
+            
+            context = (
+                f"Tengo {positions} posiciones abiertas. "
+                f"Mi Equidad es ${acc['equity'] if acc else 0}. "
+                f"Dibujo Diario (Pérdida de hoy) es ${daily_dd} (Límite ${daily_limit}). "
+                f"Pérdida Total es ${overall_dd}. "
+                f"Dame 2 párrafos: 1 resumiendo audazmente el estado, y 1 dándome un consejo directivo como mi CIO."
+            )
+            answer = self.bot.oracle.ask_oracle(context)
+            self._send_message(chat_id, f"📊 *REPORTE INSTITUCIONAL (AI):*\n\n{answer}")
+            
+        threading.Thread(target=generate_report, daemon=True).start()
