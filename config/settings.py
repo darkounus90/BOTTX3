@@ -75,7 +75,7 @@ class BotConfig:
     SIMULATE_50K_CHALLENGE = True        # Fuerza límites de DD y loteajes asumiendo cuenta de 50k
     
     # ─── NEXT-GEN INSTITUTIONAL ARMORY ─────────────────────────────────
-    SMC_ENABLED = False                  # APAGADO: Requiere toques perfectos institucionales (baja frecuencia)
+    SMC_ENABLED = True                   # Detector de Liquidez (Ahora actúa como 'Asesor Visual', no bloquea trades)
     NEWS_KILLZONES_ENABLED = True        # Radar Alta Frecuencia (Cierre agresivo antes de NFP/CPI)
     PORTFOLIO_REBALANCING = True         # Mapa de Calor Volumétrico (Asignación dinámica entre divisas)
     Q_LEARNING_ENABLED = False           # APAGADO: La IA en pañales frena los trades ("HOLD" por miedo a lo desconocido)

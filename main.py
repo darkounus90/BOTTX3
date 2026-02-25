@@ -437,10 +437,13 @@ class TX3ProBot:
                                 if not self.position_manager.check_correlation_shield(symbol):
                                     continue
                                     
-                                # SMC Detector (Order Blocks y Liquidez)
+                                # SMC Detector (Order Blocks y Liquidez como Asesor Visual, no como Bloqueo)
                                 if getattr(BotConfig, "SMC_ENABLED", False):
-                                    if not self.smc_scanner.scan_context(symbol, signal['signal']):
-                                        continue
+                                    is_smc_aligned = self.smc_scanner.scan_context(symbol, signal['signal'])
+                                    if is_smc_aligned:
+                                        signal['reason'] += " | 🏦 SMC Confirm"
+                                    else:
+                                        signal['reason'] += " | ⚠️ Sin alineación SMC"
                                         
                                 # Q-Learning Agent (Intervención de Reinforcement Learning)
                                 if getattr(BotConfig, "Q_LEARNING_ENABLED", False):
