@@ -46,7 +46,6 @@ from utils.telegram_commands import TelegramCommandHandler
 from core.smc_scanner import SMCScanner
 from core.portfolio_manager import PortfolioManager
 from strategy.q_learning_agent import QLearningAgent
-from utils.telegram_commands import TelegramCommandHandler
 
 
 class TX3ProBot:

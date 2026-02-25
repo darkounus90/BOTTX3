@@ -70,6 +70,8 @@ class GeminiOracle:
         
         # ─── EXTRAER CONTEXTO MULTI-TIMEFRAME (MTF) RÁPIDO ───
         context_data = "No data"
+        m15_trend = "UNKNOWN"
+        h1_trend = "UNKNOWN"
         try:
             import MetaTrader5 as mt5
             import pandas as pd
