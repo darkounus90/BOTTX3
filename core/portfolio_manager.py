@@ -27,14 +27,17 @@ class PortfolioManager:
         volatility_scores = {}
         total_score = 0
         
-        for symbol in BotConfig.WATCHLIST:
-            rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_D1, 0, 10)
-            if rates is not None and len(rates) > 0:
+        for symbol in BotConfig.WATCHLIST: # Assuming watchlist should be BotConfig.WATCHLIST based on original code
+            # Obtener 10 días para medir el ATR dinámico porcentual (Volatilidad)
+            rates = mt5.copy_rates_from(symbol, mt5.TIMEFRAME_D1, datetime.now(), 10)
+            if rates is not None and len(rates) >= 10: # Adjusted condition to ensure enough data for calculation
                 df = pd.DataFrame(rates)
                 df['range'] = (df['high'] - df['low']) / df['close'] * 10000 # Rango estandarizado
                 score = df['range'].mean()
                 volatility_scores[symbol] = score
                 total_score += score
+            else:
+                self.logger.warning(f"⚠️ No se pudieron obtener suficientes datos para {symbol} o los datos son nulos. Saltando.")
                 
         if total_score == 0:
             for s in BotConfig.WATCHLIST:

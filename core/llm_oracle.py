@@ -75,14 +75,13 @@ class GeminiOracle:
         try:
             import MetaTrader5 as mt5
             import pandas as pd
-            # M15 Context
-            m15_rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M15, 0, 5)
+            
+            # Extraer Price Action recientísimo para alimentar visiones de Scalping al LLM
+            m15_rates = mt5.copy_rates_from(symbol, mt5.TIMEFRAME_M15, datetime.now(), 5)
             if m15_rates is not None and len(m15_rates) > 0:
-                m15_df = pd.DataFrame(m15_rates)
-                m15_trend = "BULLISH" if m15_df.iloc[-1]['close'] > m15_df.iloc[0]['open'] else "BEARISH"
+                m15_trend = "ALCISTA" if m15_rates[-1]['close'] > m15_rates[0]['open'] else "BAJISTA"
                 
-            # H1 Context
-            h1_rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_H1, 0, 3)
+            h1_rates = mt5.copy_rates_from(symbol, mt5.TIMEFRAME_H1, datetime.now(), 3)
             if h1_rates is not None and len(h1_rates) > 0:
                 h1_df = pd.DataFrame(h1_rates)
                 h1_trend = "BULLISH" if h1_df.iloc[-1]['close'] > h1_df.iloc[0]['open'] else "BEARISH"

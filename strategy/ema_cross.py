@@ -18,6 +18,7 @@ Reglas de Salida:
 import MetaTrader5 as mt5
 import pandas as pd
 import numpy as np
+from datetime import datetime
 from strategy.base_strategy import BaseStrategy
 from config.settings import BotConfig
 from utils.logger import BotLogger
@@ -59,7 +60,7 @@ class EMACrossStrategy(BaseStrategy):
 
     def _get_data(self, timeframe):
         """Obtiene datos históricos probados"""
-        rates = mt5.copy_rates_from_pos(self.symbol, timeframe, 0, self.bars_needed)
+        rates = mt5.copy_rates_from(self.symbol, timeframe, datetime.now(), self.bars_needed)
         if rates is None or len(rates) < self.bars_needed:
             return None
         
@@ -111,7 +112,7 @@ class EMACrossStrategy(BaseStrategy):
         # Preguntar a MT5 por las últimas 2 velas es ultra-ligero (0.01 ms).
         # Si la vela cerrada más reciente es la misma que la última vez, 
         # abortamos y ahorramos el 99% del CPU evitando cálculos en Pandas.
-        recent_rates = mt5.copy_rates_from_pos(self.symbol, self.timeframe, 0, 2)
+        recent_rates = mt5.copy_rates_from(self.symbol, self.timeframe, datetime.now(), 2)
         if recent_rates is None or len(recent_rates) < 2:
             return None
             

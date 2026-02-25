@@ -1,6 +1,7 @@
 import MetaTrader5 as mt5
 import pandas as pd
 import numpy as np
+from datetime import datetime
 from utils.logger import BotLogger
 
 class SMCScanner:
@@ -15,8 +16,9 @@ class SMCScanner:
         self.logger = logger
         self.lookback = 40 # Últimas n velas para escanear liquidez cercana
 
-    def _get_candles(self, symbol: str, timeframe=mt5.TIMEFRAME_M15, n=40):
-        rates = mt5.copy_rates_from_pos(symbol, timeframe, 0, n)
+    def _get_candles(self, symbol: str, timeframe, n: int):
+        """Descarga N velas rápidamente para análisis SMC"""
+        rates = mt5.copy_rates_from(symbol, timeframe, datetime.now(), n)
         if rates is None or len(rates) == 0:
             return None
         df = pd.DataFrame(rates)
