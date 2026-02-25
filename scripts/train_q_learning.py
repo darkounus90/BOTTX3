@@ -3,6 +3,7 @@ import os
 import MetaTrader5 as mt5
 import pandas as pd
 import json
+from datetime import datetime
 
 # Paths
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -39,7 +40,8 @@ class MLTrainerQLearning:
             
             actual_symbol = target_symbol
             mt5.symbol_select(actual_symbol, True)
-            rates = mt5.copy_rates_from_pos(actual_symbol, self.timeframe, 0, self.bars)
+            now = datetime.now()
+            rates = mt5.copy_rates_from(actual_symbol, self.timeframe, now, self.bars)
             
             # Si la descarga inicial falla, buscar un alias válido (ej: EURUSD.pro)
             if rates is None or len(rates) == 0:
@@ -50,7 +52,7 @@ class MLTrainerQLearning:
                         if target_symbol.upper() in s.name.upper() and s.name.upper() != target_symbol.upper():
                             # Probar si el broker permite descargar datos en este alias
                             mt5.symbol_select(s.name, True)
-                            test_rates = mt5.copy_rates_from_pos(s.name, self.timeframe, 0, 10)
+                            test_rates = mt5.copy_rates_from(s.name, self.timeframe, now, 10)
                             if test_rates is not None and len(test_rates) > 0:
                                 actual_symbol = s.name
                                 self.logger.success(f"🔍 Alias corporativo funcional hallado: {actual_symbol}")
@@ -58,14 +60,14 @@ class MLTrainerQLearning:
                                 
                 # Reintentar la descarga larga con el nuevo alias
                 mt5.symbol_select(actual_symbol, True)
-                rates = mt5.copy_rates_from_pos(actual_symbol, int(self.timeframe), 0, int(self.bars))
+                rates = mt5.copy_rates_from(actual_symbol, self.timeframe, now, self.bars)
             
             # Fallback a menos velas si el broker no tiene tanta historia guardada
             if rates is None or len(rates) == 0:
                 error_code = mt5.last_error()
                 self.logger.warning(f"⚠️ El broker bloqueó excesivos datos [Código: {error_code}]. Intentando con 5000 velas...")
                 mt5.symbol_select(actual_symbol, True)
-                rates = mt5.copy_rates_from_pos(actual_symbol, int(self.timeframe), 0, 5000)
+                rates = mt5.copy_rates_from(actual_symbol, self.timeframe, now, 5000)
                 
             if rates is None or len(rates) == 0:
                 error_code = mt5.last_error()
