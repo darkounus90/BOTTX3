@@ -45,18 +45,41 @@ class PositionManager:
         if getattr(BotConfig, "SIMULATE_50K_CHALLENGE", False):
             balance = ChallengeConfig.BALANCE_INICIAL
 
-        # Kelly Criterion dinámico (Position Sizing Inteligente)
-        risk_pct = BotConfig.MAX_RISK_PER_TRADE_PCT
-        kelly_fraction = BotConfig.KELLY_FRACTION
+        # Determinar Drawdown Actual (Kelly Scaling)
+        overall_dd_pct = 0.0
+        start_bal = ChallengeConfig.BALANCE_INICIAL
+        if getattr(BotConfig, "SIMULATE_50K_CHALLENGE", False):
+            start_bal = ChallengeConfig.BALANCE_INICIAL
+        elif self.phase == 1:
+            start_bal = ChallengeConfig.BALANCE_INICIAL
         
+        if account_info.equity < start_bal:
+            overall_dd_pct = ((start_bal - account_info.equity) / start_bal) * 100.0
+
+        risk_pct = BotConfig.MAX_RISK_PER_TRADE_PCT
+        
+        # 1. Ajuste Institucional por Supervivencia (Distancia a la Ruina)
+        max_dd_limit = ChallengeConfig.MAX_OVERALL_DRAWDOWN_PCT
+        if overall_dd_pct > (max_dd_limit * 0.8):
+            risk_pct *= 0.1 # MODO TORTUGA: Reducir riesgo al 10% de lo normal
+            self.logger.warning(f"🐢 MODO TORTUGA: Drawdown {overall_dd_pct:.1f}%. Riesgo asfixiado a {risk_pct:.3f}%")
+        elif overall_dd_pct > (max_dd_limit * 0.5):
+            risk_pct *= 0.5 # MODO DEFENSA
+            self.logger.warning(f"🛡️ DEFENSA: Drawdown {overall_dd_pct:.1f}%. Riesgo reducido a {risk_pct:.3f}%")
+        elif account_info.equity > (start_bal * 1.02): # 2% en positivo real
+            risk_pct *= 1.5 # MODO ACELERADOR
+            self.logger.info(f"🚀 ACELERADOR: Racha positiva confirmada. Riesgo expandido a {risk_pct:.3f}%")
+
+        # 2. Ajuste por Probabilidad (Kelly Criterion IA)
+        kelly_fraction = BotConfig.KELLY_FRACTION
         if probability is not None and probability > 0:
             if probability >= 75:
-                risk_pct = 1.2 * kelly_fraction  # Alta convicción -> Aumentar riesgo
+                risk_pct *= (1.2 * kelly_fraction)  # Alta convicción -> Aumentar
             elif probability >= 60:
-                risk_pct = 0.8 * kelly_fraction  # Buena convicción
+                risk_pct *= (0.8 * kelly_fraction)  # Buena convicción
             elif probability < 55:
-                risk_pct = 0.2 * kelly_fraction  # Dudoso -> Reducir riesgo para proteger capital
-            self.logger.info(f"⚖️ Kelly Criterion Activo (F={kelly_fraction}): Probabilidad {probability:.1f}% -> Ajustando riesgo final a {risk_pct:.2f}%")
+                risk_pct *= (0.2 * kelly_fraction)  # Dudoso -> Reducir riesgo
+            self.logger.info(f"⚖️ Kelly Criterion IA (F={kelly_fraction}): {probability:.1f}% -> Riesgo final {risk_pct:.3f}%")
 
         # Si existe rebalanceo de portafolio, ajustamos peso
         if getattr(BotConfig, "PORTFOLIO_REBALANCING", False) and 'portfolio_weight' in locals() and portfolio_weight:

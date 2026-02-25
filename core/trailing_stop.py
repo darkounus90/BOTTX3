@@ -25,6 +25,7 @@ class TrailingStopManager:
         self.enabled = BotConfig.TRAILING_STOP_ENABLED
         self.activation_pips = BotConfig.TRAILING_ACTIVATION_PIPS
         self.step_pips = BotConfig.TRAILING_STEP_PIPS
+        self.partial_closes_done = set()
 
         if self.enabled:
             self.logger.info(
@@ -65,6 +66,26 @@ class TrailingStopManager:
         if tick is None:
             return
 
+        # SMC Partial Close Logic (RR 1:1)
+        if position.ticket not in self.partial_closes_done and position.sl != 0.0:
+            risk_pips = abs(position.price_open - position.sl) / pip_in_points
+            profit_pips_temp = 0.0
+            if position.type == mt5.ORDER_TYPE_BUY:
+                profit_pips_temp = (tick.bid - position.price_open) / pip_in_points
+            else:
+                profit_pips_temp = (position.price_open - tick.ask) / pip_in_points
+                
+            if profit_pips_temp >= risk_pips and risk_pips > 5.0: # Mínimo 5 pips de riesgo para evitar ruido
+                self._execute_partial_close(position, tick)
+                # No retornamos aún, permitimos evaluar el trailing stop regular con el volumen restante
+
+        point = symbol_info.point
+        pip_in_points = 10 * point  # 1 pip = 10 points (5 dígitos)
+
+        tick = mt5.symbol_info_tick(position.symbol)
+        if tick is None:
+            return
+
         # ─── Calcular ganancia actual en pips ────────────────────────
         if position.type == mt5.ORDER_TYPE_BUY:
             current_price = tick.bid
@@ -87,6 +108,44 @@ class TrailingStopManager:
             # Solo mover si ganancia suficiente y SL es menor (mejor)
             if profit_pips >= self.activation_pips and new_sl < position.sl:
                 self._modify_sl(position, new_sl, profit_pips)
+
+    def _execute_partial_close(self, position, tick):
+        """Cierra el 50% de la posición e intenta poner Breakeven"""
+        if position.ticket in self.partial_closes_done:
+            return
+            
+        close_volume = position.volume / 2.0
+        symbol_info = mt5.symbol_info(position.symbol)
+        lot_step = symbol_info.volume_step
+        close_volume = round(close_volume / lot_step) * lot_step
+        
+        if close_volume < symbol_info.volume_min:
+            self.partial_closes_done.add(position.ticket) # Es muy pequeño para dividir
+            return  
+            
+        request = {
+            "action": mt5.TRADE_ACTION_DEAL,
+            "symbol": position.symbol,
+            "volume": close_volume,
+            "type": mt5.ORDER_TYPE_SELL if position.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY,
+            "position": position.ticket,
+            "price": tick.bid if position.type == mt5.ORDER_TYPE_BUY else tick.ask,
+            "deviation": BotConfig.DEVIATION,
+            "magic": BotConfig.MAGIC_NUMBER,
+            "comment": "SMC Scale-Out",
+            "type_time": mt5.ORDER_TIME_GTC,
+            "type_filling": mt5.ORDER_FILLING_IOC,
+        }
+        
+        result = mt5.order_send(request)
+        if result and result.retcode == mt5.TRADE_RETCODE_DONE:
+            self.partial_closes_done.add(position.ticket)
+            self.logger.success(f"🎯 SMC Scale-Out: 50% cobrado en Ticket #{position.ticket} ({close_volume} lotes). Moviendo a Breakeven.")
+            # Intentar mover a breakeven
+            self._modify_sl(position, position.price_open, 0)
+        else:
+            err = result.comment if result else "Unknown"
+            self.logger.error(f"Fallo en Scale-Out tick #{position.ticket}: {err}")
 
     def _modify_sl(self, position, new_sl: float, current_profit_pips: float):
         """Modifica el stop loss de una posición"""

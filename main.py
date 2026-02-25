@@ -443,6 +443,9 @@ class TX3ProBot:
                     self.q_agent.shadow_update_closed_trades()
 
                 # ─── C. Verificar Riesgo (Emergencia) ──────────────
+                if hasattr(self.risk_manager, 'check_and_hedge_crashing_positions'):
+                    self.risk_manager.check_and_hedge_crashing_positions()
+                    
                 if self.risk_manager.should_emergency_close():
                     daily_dd = self.risk_manager.check_daily_drawdown()
                     overall_dd = self.risk_manager.check_overall_drawdown()

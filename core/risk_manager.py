@@ -231,6 +231,68 @@ class RiskManager:
             "VIOLATED",
         )
 
+    def check_and_hedge_crashing_positions(self):
+        """
+        Escanea todas las posiciones abiertas. Si alguna posición individual
+        tiene una pérdida no realizada severa (ej. > 3% de la cuenta), ejecuta un
+        Hedge Automático abriendo la posición contraria, congelando la pérdida.
+        """
+        positions = mt5.positions_get()
+        if not positions:
+            return
+
+        if not hasattr(self, "hedged_tickets"):
+            self.hedged_tickets = set()
+
+        account_info = mt5.account_info()
+        if not account_info: return
+        balance = account_info.balance
+        
+        # Límite fijo para disparar Hedge: 3% del balance inicial del challenge
+        hedge_threshold_amount = ChallengeConfig.BALANCE_INICIAL * 0.03
+
+        for pos in positions:
+            if pos.magic != BotConfig.MAGIC_NUMBER: continue
+            if pos.ticket in self.hedged_tickets: continue
+            
+            profit = pos.profit
+            if profit < -hedge_threshold_amount:
+                self.logger.critical(f"🦢💥 CISNE NEGRO DETECTADO 💥🦢: Posición #{pos.ticket} perdiendo ${-profit:.2f}. "
+                                     f"Stop loss fallido o deslizamiento severo. Ejecutando HEDGE DE EMERGENCIA.")
+                self._emergency_hedge_position(pos)
+
+    def _emergency_hedge_position(self, position):
+        """Abre una orden contraria idéntica para congelar el PnL"""
+        symbol_info = mt5.symbol_info(position.symbol)
+        if not symbol_info: return
+        tick = mt5.symbol_info_tick(position.symbol)
+        if not tick: return
+        
+        hedge_type = mt5.ORDER_TYPE_SELL if position.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
+        price = tick.bid if hedge_type == mt5.ORDER_TYPE_SELL else tick.ask
+        
+        request = {
+            "action": mt5.TRADE_ACTION_DEAL,
+            "symbol": position.symbol,
+            "volume": position.volume,
+            "type": hedge_type,
+            "price": price,
+            "deviation": BotConfig.DEVIATION,
+            "magic": BotConfig.MAGIC_NUMBER,
+            "comment": f"Auto-Hedge #{position.ticket}",
+            "type_time": mt5.ORDER_TIME_GTC,
+            "type_filling": mt5.ORDER_FILLING_IOC,
+        }
+        
+        result = mt5.order_send(request)
+        if result and result.retcode == mt5.TRADE_RETCODE_DONE:
+            self.hedged_tickets.add(position.ticket) # El ticket original ahora está protegido
+            self.hedged_tickets.add(result.order) # Registrar la pata del hedge para evitar bucles
+            self.logger.success(f"🛡️ HEDGE EJECUTADO: Posición contraria #{result.order} abierta con {position.volume} lotes en {position.symbol}.")
+        else:
+            err = result.comment if result else "Unknown"
+            self.logger.error(f"Fallo crítico ejecutando Hedge para #{position.ticket}: {err}")
+
     def emergency_close_all(self) -> int:
         """
         Cierra TODAS las posiciones abiertas de emergencia.
