@@ -361,9 +361,11 @@ class TX3ProBot:
                         threading.Thread(target=self._run_ml_trainer, daemon=True).start()
                         self.last_training_day = now.day
 
-                # ─── B. Trailing Stop & Hedging ──────────────────────────────
+                # ─── B. Trailing Stop, Hedging y Shadow Learning ─────────
                 self.trailing_stop.update_trailing_stops()
                 self.position_manager.manage_hedging()
+                if hasattr(self, 'q_agent'):
+                    self.q_agent.shadow_update_closed_trades()
 
                 # ─── C. Verificar Riesgo (Emergencia) ──────────────
                 if self.risk_manager.should_emergency_close():
@@ -445,10 +447,11 @@ class TX3ProBot:
                                     else:
                                         signal['reason'] += " | ⚠️ Sin alineación SMC"
                                         
-                                # Q-Learning Agent (Intervención de Reinforcement Learning)
+                                # Q-Learning Agent (Intervención de Reinforcement Learning o Modo Sombra)
+                                q_state = (symbol, signal.get('adx', 20) > 18, signal['signal'])
+                                
                                 if getattr(BotConfig, "Q_LEARNING_ENABLED", False):
-                                    state = (signal.get('adx', 20) > 18, signal['signal'])
-                                    rl_action = self.q_agent.decide(state, signal['signal'])
+                                    rl_action = self.q_agent.decide(q_state, signal['signal'])
                                     if rl_action == "HOLD":
                                         continue
                                     signal['signal'] = rl_action
@@ -491,6 +494,10 @@ class TX3ProBot:
                                     )
                                     
                                     if result:
+                                        # Registrar en MODO SOMBRA
+                                        if hasattr(self, 'q_agent') and 'ticket' in result:
+                                            self.q_agent.shadow_register_trade(result['ticket'], q_state, signal['signal'])
+                                            
                                         # Registrar y Notificar
                                         acc = mt5.account_info()
                                         self.journal.record_open(

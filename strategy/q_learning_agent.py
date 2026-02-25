@@ -21,6 +21,7 @@ class QLearningAgent:
         self.epsilon = 0.05 # Muy bajo (solo interviene raramente en decisiones reales)
         self.lock = threading.Lock()
         self.load_table()
+        self.active_shadow_trades = {}
 
     def load_table(self):
         if os.path.exists(self.FILE_PATH):
@@ -111,3 +112,58 @@ class QLearningAgent:
             # Self-save no invasivo cada cierto aprendizaje
             if hash(s) % 10 == 0:
                 self.save_table()
+
+    # ─── SHADOW MODE: APRENDIZAJE EN VIVO ──────────────────────────────
+    def shadow_register_trade(self, ticket: int, state_tuple, action: str):
+        """Registra un trade recién abierto para espiarlo (Modo Sombra)."""
+        if ticket:
+            with self.lock:
+                self.active_shadow_trades[ticket] = {
+                    'state': state_tuple,
+                    'action': action,
+                    'status': 'OPEN'
+                }
+                self.logger.debug(f"🕵️ Shadow Mode: Rastreando Ticket #{ticket} para aprendizaje futuro.")
+
+    def shadow_update_closed_trades(self):
+        """Verifica si los trades espiados se cerraron y aprende del resultado."""
+        if not self.active_shadow_trades:
+            return
+            
+        import MetaTrader5 as mt5
+        import datetime
+        from copy import deepcopy
+        
+        # Hacemos copia segura de las llaves
+        with self.lock:
+            tickets_to_check = list(self.active_shadow_trades.keys())
+            
+        for ticket in tickets_to_check:
+            # Comprobar si sigue abierto
+            pos = mt5.positions_get(ticket=ticket)
+            if pos is None or len(pos) == 0:
+                # El trade ya no existe, SE CERRÓ
+                # Buscar en el historial su ganancia
+                hoy = datetime.datetime.now()
+                # Buscar 30 días atrás para asegurar
+                back = hoy - datetime.timedelta(days=30)
+                deals = mt5.history_deals_get(back, hoy, position=ticket)
+                
+                if deals:
+                    # Sumar profits de los deals (entrada y salida)
+                    total_profit = sum(d.profit for d in deals)
+                    reward = 1.0 if total_profit > 0 else -1.0
+                    
+                    with self.lock:
+                        trade_info = self.active_shadow_trades[ticket]
+                        state = trade_info['state']
+                        action = trade_info['action']
+                        
+                        # Aprender de la vida real
+                        self.logger.info(f"🧠 Shadow Mode Learn: Ticket #{ticket} cerrado. Profit: ${total_profit:.2f}. Castigo/Premio: {reward}")
+                        # Next state dummy porque no es secuncial
+                        self.learn(state, action, reward, state)
+                        
+                        # Limpiar
+                        del self.active_shadow_trades[ticket]
+                        self.save_table()
