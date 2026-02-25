@@ -36,12 +36,41 @@ class MLTrainerQLearning:
         total_losses = 0
 
         for target_symbol in self.watchlist:
-            self.logger.info(f"==> 📥 Intentando descargar histórico para {target_symbol}...")
+            self.logger.info(f"==> 📥 Intentando preparar histórico para {target_symbol}...")
             
-            actual_symbol = target_symbol
-            mt5.symbol_select(actual_symbol, True)
-            now = datetime.now()
-            rates = mt5.copy_rates_from(actual_symbol, self.timeframe, now, self.bars)
+            df = None
+            
+            # --- 1. FALLBACK A CSV LOCAL (Para saltar bloqueos del broker) ---
+            import os
+            csv_path = os.path.join("data", f"{target_symbol}_M5.csv")
+            if os.path.exists(csv_path):
+                self.logger.success(f"📂 ¡Encontrado archivo local '{csv_path}'! Saltando bloqueo del API MT5...")
+                try:
+                    df_raw = pd.read_csv(csv_path, sep=None, engine='python')
+                    
+                    # Limpiar nombres de columnas si vienen con espacios extra
+                    df_raw.rename(columns=lambda x: x.strip(), inplace=True)
+                    
+                    # Formato nativo de exportación MT5
+                    if '<DATE>' in df_raw.columns and '<TIME>' in df_raw.columns:
+                        df_raw['time'] = pd.to_datetime(df_raw['<DATE>'] + ' ' + df_raw['<TIME>'], format='%Y.%m.%d %H:%M:%S', errors='coerce')
+                        df_raw.rename(columns={'<OPEN>': 'open', '<HIGH>': 'high', '<LOW>': 'low', '<CLOSE>': 'close'}, inplace=True)
+                    elif 'time' not in df_raw.columns:
+                        self.logger.error("❌ El CSV no tiene el formato esperado de MT5.")
+                        df_raw = None
+                        
+                    if df_raw is not None:
+                        df = df_raw.dropna(subset=['time', 'close', 'open', 'high', 'low']).copy()
+                        self.logger.success(f"✅ {len(df)} velas cargadas desde archivo local.")
+                except Exception as e:
+                    self.logger.error(f"❌ Error leyendo {csv_path}: {e}")
+
+            # --- 2. DESCARGA VÍA API (Se bloquea de noche) ---
+            if df is None:
+                actual_symbol = target_symbol
+                mt5.symbol_select(actual_symbol, True)
+                now = datetime.now()
+                rates = mt5.copy_rates_from(actual_symbol, self.timeframe, now, self.bars)
             
             # Si la descarga inicial falla, buscar un alias válido (ej: EURUSD.pro)
             if rates is None or len(rates) == 0:
@@ -69,22 +98,22 @@ class MLTrainerQLearning:
                 mt5.symbol_select(actual_symbol, True)
                 rates = mt5.copy_rates_from(actual_symbol, self.timeframe, now, 5000)
                 
-            if rates is None or len(rates) == 0:
-                error_code = mt5.last_error()
-                self.logger.error(f"❌ Fallo definitivo en {actual_symbol}, Código MT5: {error_code}.")
-                symbols = mt5.symbols_get()
-                if symbols:
-                    posibles = [s.name for s in symbols if target_symbol[:3].upper() in s.name.upper()]
-                    self.logger.info(f"💡 El broker podría estar escondiendo el símbolo bajo estos nombres:")
-                    for idx, p in enumerate(posibles[:5]):
-                        self.logger.info(f"   -> {p}")
-                continue
-
-            self.logger.success(f"✅ {len(rates)} velas descargadas correctamente de {actual_symbol}.")
-            df = pd.DataFrame(rates)
-            df['time'] = pd.to_datetime(df['time'], unit='s')
+                if rates is None or len(rates) == 0:
+                    error_code = mt5.last_error()
+                    self.logger.error(f"❌ Fallo definitivo en {actual_symbol}, Código MT5: {error_code}.")
+                    symbols = mt5.symbols_get()
+                    if symbols:
+                        posibles = [s.name for s in symbols if target_symbol[:3].upper() in s.name.upper()]
+                        self.logger.info(f"💡 El broker podría estar escondiendo el símbolo bajo estos nombres:")
+                        for idx, p in enumerate(posibles[:5]):
+                            self.logger.info(f"   -> {p}")
+                    continue
+    
+                self.logger.success(f"✅ {len(rates)} velas descargadas correctamente vía API de {actual_symbol}.")
+                df = pd.DataFrame(rates)
+                df['time'] = pd.to_datetime(df['time'], unit='s')
             
-            # Calcular Indicadores Técnicos Clave para el Agente
+            # Formateado de Datos y Cálculo de Indicadores Técnicos Clave
             df['ema9'] = df['close'].ewm(span=9, adjust=False).mean()
             df['ema21'] = df['close'].ewm(span=21, adjust=False).mean()
             
