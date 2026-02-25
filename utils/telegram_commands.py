@@ -34,6 +34,7 @@ class TelegramCommandHandler:
             return
             
         self.running = True
+        self._start_time = datetime.now()
         self.thread = threading.Thread(target=self._poll_updates, daemon=True)
         self.thread.start()
         self.logger.success("📡 Telegram Command Handler iniciado (Polling)")
