@@ -38,6 +38,7 @@ class MLTrainerQLearning:
             self.logger.info(f"==> 📥 Intentando descargar histórico para {target_symbol}...")
             
             actual_symbol = target_symbol
+            mt5.symbol_select(actual_symbol, True)
             rates = mt5.copy_rates_from_pos(actual_symbol, self.timeframe, 0, self.bars)
             
             # Si la descarga inicial falla, buscar un alias válido (ej: EURUSD.pro)
@@ -48,6 +49,7 @@ class MLTrainerQLearning:
                     for s in symbols:
                         if target_symbol in s.name and s.name != target_symbol:
                             # Probar si el broker permite descargar datos en este alias
+                            mt5.symbol_select(s.name, True)
                             test_rates = mt5.copy_rates_from_pos(s.name, self.timeframe, 0, 10)
                             if test_rates is not None and len(test_rates) > 0:
                                 actual_symbol = s.name
@@ -55,13 +57,15 @@ class MLTrainerQLearning:
                                 break
                                 
                 # Reintentar la descarga larga con el nuevo alias
-                rates = mt5.copy_rates_from_pos(actual_symbol, self.timeframe, 0, self.bars)
+                mt5.symbol_select(actual_symbol, True)
+                rates = mt5.copy_rates_from_pos(actual_symbol, int(self.timeframe), 0, int(self.bars))
             
             # Fallback a menos velas si el broker no tiene tanta historia guardada
             if rates is None or len(rates) == 0:
                 error_code = mt5.last_error()
                 self.logger.warning(f"⚠️ El broker bloqueó excesivos datos [Código: {error_code}]. Intentando con 5000 velas...")
-                rates = mt5.copy_rates_from_pos(actual_symbol, self.timeframe, 0, 5000)
+                mt5.symbol_select(actual_symbol, True)
+                rates = mt5.copy_rates_from_pos(actual_symbol, int(self.timeframe), 0, 5000)
                 
             if rates is None or len(rates) == 0:
                 error_code = mt5.last_error()
