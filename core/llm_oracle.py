@@ -158,3 +158,32 @@ class GeminiOracle:
         except Exception as e:
             self.logger.error(f"Error consultando al Oráculo en modo libre: {e}")
             return f"❌ Oráculo en corto circuito: {e}"
+
+    def evaluate_system_health(self, metrics: dict) -> str:
+        """
+        Actúa como el Médico Cuantitativo (Dr. Quant). Evalúa la salud
+        sistémica del bot basada en telemetría en vivo.
+        """
+        if not self.system_ready or not self.enabled:
+            return "⚠️ Modo Dr. Quant no disponible (Oráculo desconectado)."
+            
+        prompt = (
+            f"ERES 'DR. QUANT', EL INGENIERO DE RIESGOS Y SISTEMAS DEL TX3 PRO BOT.\n"
+            f"Tu deber es diagnosticar la salud del bot basándote EXCLUSIVAMENTE en esta telemetría en vivo:\n"
+            f"- Uptime: {metrics.get('uptime', 'Desconocido')}\n"
+            f"- Horas sin operar: {metrics.get('hours_since_last_trade', 'N/A')}\n"
+            f"- Drawdown Diario: {metrics.get('daily_dd', '0')}%\n"
+            f"- Drawdown Total: {metrics.get('overall_dd', '0')}%\n"
+            f"- Errores Recientes: {metrics.get('recent_errors', 'Ninguno')}\n"
+            f"- Estado MT5: {'Conectado' if metrics.get('mt5_connected') else 'DESCONECTADO'}\n\n"
+            f"INSTRUCCIONES CLAVES:\n"
+            f"1. Si notas demasiadas horas sin operar (ej. > 24h), advierte sobre problemas de API, bloqueos de broker ('Invalid Params'), o falta de volatilidad extrema.\n"
+            f"2. Evalúa si el Drawdown pone en riesgo inminente la cuenta.\n"
+            f"3. Responde como un Médico Cuántico severo. 1 párrafo de Diagnóstico y 1 lista de Recomendaciones o 'Tratamientos'. Usa Markdown de Telegram."
+        )
+        try:
+            response = self.model.generate_content(prompt)
+            return response.text.strip()
+        except Exception as e:
+            self.logger.error(f"Error en Diagnóstico Médico AI: {e}")
+            return "❌ Fallo crítico comunicando con la Clínica Quant."

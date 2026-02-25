@@ -269,6 +269,73 @@ class TX3ProBot:
         except Exception as e:
             self.logger.error(f"Error entrenando IA: {e}")
 
+    def _run_ai_health_monitor_loop(self):
+        """Ciclo de vida del Dr. Quant: Revisa la telemetría periódicamente y alerta preventivamente."""
+        import time
+        from datetime import datetime, timedelta
+        
+        # Esperar 5 minutos al iniciar antes de hacer el primer chequeo
+        time.sleep(300)
+        
+        while self.running:
+            try:
+                # Recopilar métricas
+                uptime_str = "Desconocido"
+                if hasattr(self.telegram_commands, "_start_time"):
+                    delta = datetime.now() - self.telegram_commands._start_time
+                    hours, remainder = divmod(int(delta.total_seconds()), 3600)
+                    minutes, _ = divmod(remainder, 60)
+                    uptime_str = f"{hours}h {minutes}m"
+                    
+                hours_since_last = "Desconocido"
+                hours_diff = 0
+                try:
+                    import MetaTrader5 as mt5
+                    now = datetime.now()
+                    back = now - timedelta(days=7)
+                    deals = mt5.history_deals_get(back, now)
+                    if deals and len(deals) > 0:
+                        last_deal_time = datetime.fromtimestamp(deals[-1].time)
+                        hours_diff = (now - last_deal_time).total_seconds() / 3600
+                        hours_since_last = f"{hours_diff:.1f}"
+                except Exception:
+                    pass
+                    
+                daily_dd = self.risk_manager.check_daily_drawdown()["loss"]
+                overall_dd = self.risk_manager.check_overall_drawdown()["loss"]
+                
+                # Criterios de Emergencia
+                is_emergency = False
+                trigger_reason = ""
+                
+                if hours_diff > 24:
+                    is_emergency = True
+                    trigger_reason = "⚠️ Inactividad Prolongada (>24h sin trades)"
+                elif overall_dd > (ChallengeConfig.MAX_OVERALL_DRAWDOWN * 0.5):
+                    is_emergency = True
+                    trigger_reason = "📉 Drawdown Crítico Acumulado"
+                    
+                if is_emergency:
+                    self.logger.warning(f"🩺 Dr. Quant detectó una anomalía ({trigger_reason}). Consultando Oráculo...")
+                    metrics = {
+                        "uptime": uptime_str,
+                        "hours_since_last_trade": hours_since_last,
+                        "daily_dd": daily_dd,
+                        "overall_dd": overall_dd,
+                        "mt5_connected": self.connector.is_connected(),
+                        "recent_errors": "Revisar logs urgentes."
+                    }
+                    diagnosis = self.oracle.evaluate_system_health(metrics)
+                    self.telegram_commands._send_message(self.telegram_commands.chat_id, f"🚨 *ALERTA PROACTIVA DR. QUANT* 🚨\n_Motivo: {trigger_reason}_\n\n{diagnosis}")
+            
+            except Exception as e:
+                self.logger.error(f"Error en Hilo del Monitor de Salud: {e}")
+                
+            # Dormir 6 horas (21600 segundos)
+            for _ in range(21600):
+                if not self.running: break
+                time.sleep(1)
+
     def run(self):
         """Loop principal"""
         # 1. Iniciar Dashboard en thread
@@ -281,6 +348,14 @@ class TX3ProBot:
             dash_thread.start()
 
         self.telegram_commands.start()
+
+        # 1.5 Iniciar Dr. Quant Health Monitor
+        if hasattr(self, "oracle") and self.oracle.enabled:
+            health_thread = threading.Thread(
+                target=self._run_ai_health_monitor_loop,
+                daemon=True
+            )
+            health_thread.start()
 
         # 2. Conexión y Setup
         if not self.connector.connect():

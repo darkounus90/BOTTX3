@@ -1,7 +1,7 @@
 import time
 import threading
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import MetaTrader5 as mt5
 
@@ -100,6 +100,8 @@ class TelegramCommandHandler:
             self._handle_ask(chat_id, text)
         elif command == "/report":
             self._handle_report(chat_id)
+        elif command == "/doctor":
+            self._handle_doctor(chat_id)
         elif command in ["/help", "/start"]:
             self._handle_help(chat_id)
         else:
@@ -319,3 +321,43 @@ class TelegramCommandHandler:
             self._send_message(chat_id, f"📊 *REPORTE INSTITUCIONAL (AI):*\n\n{answer}")
             
         threading.Thread(target=generate_report, daemon=True).start()
+
+    def _handle_doctor(self, chat_id):
+        """Comando /doctor - Diagnóstico Médico AI del sistema"""
+        self._send_message(chat_id, "🩺 *Dr. Quant revisando signos vitales del sistema...*")
+        
+        def run_diagnosis():
+            acc = self.bot.connector.get_account_info()
+            uptime_str = "Desconocido"
+            if hasattr(self, "_start_time"):
+                delta = datetime.now() - self._start_time
+                hours, remainder = divmod(int(delta.total_seconds()), 3600)
+                minutes, _ = divmod(remainder, 60)
+                uptime_str = f"{hours}h {minutes}m"
+                
+            # Calcular horas desde último trade
+            hours_since_last = "Desconocido (> 7 días o Error)"
+            try:
+                now = datetime.now()
+                back = now - timedelta(days=7)
+                deals = mt5.history_deals_get(back, now)
+                if deals and len(deals) > 0:
+                    last_deal_time = datetime.fromtimestamp(deals[-1].time)
+                    hours_diff = (now - last_deal_time).total_seconds() / 3600
+                    hours_since_last = f"{hours_diff:.1f}"
+            except Exception:
+                pass
+
+            metrics = {
+                "uptime": uptime_str,
+                "hours_since_last_trade": hours_since_last,
+                "daily_dd": self.bot.risk_manager.check_daily_drawdown()["loss"],
+                "overall_dd": self.bot.risk_manager.check_overall_drawdown()["loss"],
+                "mt5_connected": self.bot.connector.is_connected(),
+                "recent_errors": "Revisar logs en caso de silencio"
+            }
+            
+            diagnosis = self.bot.oracle.evaluate_system_health(metrics)
+            self._send_message(chat_id, f"👨‍⚕️ *DIAGNÓSTICO DR. QUANT:*\n\n{diagnosis}")
+            
+        threading.Thread(target=run_diagnosis, daemon=True).start()
