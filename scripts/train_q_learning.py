@@ -35,27 +35,37 @@ class MLTrainerQLearning:
         total_losses = 0
 
         for target_symbol in self.watchlist:
-            self.logger.info(f"==> 📥 Buscando símbolo compatible para {target_symbol}...")
+            self.logger.info(f"==> 📥 Intentando descargar histórico para {target_symbol}...")
             
-            # Auto-detect broker suffix (e.g., EURUSD.pro, EURUSD.a)
             actual_symbol = target_symbol
-            symbols = mt5.symbols_get()
-            if symbols:
-                for s in symbols:
-                    if target_symbol in s.name:
-                        actual_symbol = s.name
-                        break
-            
-            self.logger.info(f"📥 Descargando {self.bars} velas históricas para {actual_symbol}...")
             rates = mt5.copy_rates_from_pos(actual_symbol, self.timeframe, 0, self.bars)
+            
+            # Si la descarga inicial falla, buscar un alias válido (ej: EURUSD.pro)
+            if rates is None or len(rates) == 0:
+                self.logger.warning(f"⚠️ Descarga directa fallida para {target_symbol}. Escaneando diccionarios MT5...")
+                symbols = mt5.symbols_get()
+                if symbols:
+                    for s in symbols:
+                        if target_symbol in s.name and s.name != target_symbol:
+                            # Probar si el broker permite descargar datos en este alias
+                            test_rates = mt5.copy_rates_from_pos(s.name, self.timeframe, 0, 10)
+                            if test_rates is not None and len(test_rates) > 0:
+                                actual_symbol = s.name
+                                self.logger.success(f"🔍 Alias corporativo funcional hallado: {actual_symbol}")
+                                break
+                                
+                # Reintentar la descarga larga con el nuevo alias
+                rates = mt5.copy_rates_from_pos(actual_symbol, self.timeframe, 0, self.bars)
             
             # Fallback a menos velas si el broker no tiene tanta historia guardada
             if rates is None or len(rates) == 0:
-                self.logger.warning(f"⚠️ El broker bloqueó {self.bars} velas. Intentando con 5000...")
+                error_code = mt5.last_error()
+                self.logger.warning(f"⚠️ El broker bloqueó excesivos datos [Código: {error_code}]. Intentando con 5000 velas...")
                 rates = mt5.copy_rates_from_pos(actual_symbol, self.timeframe, 0, 5000)
                 
             if rates is None or len(rates) == 0:
-                self.logger.error(f"❌ No hay datos descargados para {actual_symbol}. Saltando a siguiente...")
+                error_code = mt5.last_error()
+                self.logger.error(f"❌ Fallo definitivo en {actual_symbol}, Código MT5: {error_code}. Descarga un gráfico M5 manualmente en MT5.")
                 continue
 
             self.logger.success(f"✅ {len(rates)} velas descargadas correctamente de {actual_symbol}.")
