@@ -15,9 +15,10 @@ class PositionManager:
     Todas las órdenes llevan STOP LOSS obligatorio.
     """
 
-    def __init__(self, logger: BotLogger, phase: int):
+    def __init__(self, logger: BotLogger, phase: int, risk_manager=None):
         self.logger = logger
         self.phase = phase
+        self.risk_manager = risk_manager
         self.trades_today = 0
         self.max_trades_per_day = BotConfig.MAX_TRADES_PER_DAY
 
@@ -48,12 +49,14 @@ class PositionManager:
         # Determinar Drawdown Actual (Kelly Scaling)
         overall_dd_pct = 0.0
         start_bal = ChallengeConfig.BALANCE_INICIAL
-        if getattr(BotConfig, "SIMULATE_50K_CHALLENGE", False):
-            start_bal = ChallengeConfig.BALANCE_INICIAL
-        elif self.phase == 1:
-            start_bal = ChallengeConfig.BALANCE_INICIAL
         
-        if account_info.equity < start_bal:
+        # Usar el balance inicial dinámico real si está disponible
+        if self.risk_manager and hasattr(self.risk_manager, "balance_inicial"):
+            start_bal = self.risk_manager.balance_inicial
+        elif getattr(BotConfig, "SIMULATE_50K_CHALLENGE", False):
+            start_bal = ChallengeConfig.BALANCE_INICIAL
+            
+        if account_info.equity < start_bal and start_bal > 0:
             overall_dd_pct = ((start_bal - account_info.equity) / start_bal) * 100.0
 
         risk_pct = BotConfig.MAX_RISK_PER_TRADE_PCT

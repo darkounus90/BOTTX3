@@ -246,15 +246,25 @@ class RiskManager:
 
         account_info = mt5.account_info()
         if not account_info: return
-        balance = account_info.balance
         
-        # Límite fijo para disparar Hedge: 3% del balance inicial del challenge
-        hedge_threshold_amount = ChallengeConfig.BALANCE_INICIAL * 0.03
+        # Límite dinámico del 3% del balance inicial verificado
+        hedge_threshold_amount = self.balance_inicial * 0.03
 
         for pos in positions:
             if pos.magic != BotConfig.MAGIC_NUMBER: continue
             if pos.ticket in self.hedged_tickets: continue
             
+            # Defensa Stateless: Verificar si el hedge ya está activo pero el bot se reinició (amnesia de memoria)
+            has_hedge = any(
+                p.symbol == pos.symbol and p.type != pos.type 
+                for p in positions 
+                if p.magic == BotConfig.MAGIC_NUMBER
+            )
+            
+            if has_hedge:
+                self.hedged_tickets.add(pos.ticket) # Registrar retrospectivamente
+                continue
+                
             profit = pos.profit
             if profit < -hedge_threshold_amount:
                 self.logger.critical(f"🦢💥 CISNE NEGRO DETECTADO 💥🦢: Posición #{pos.ticket} perdiendo ${-profit:.2f}. "

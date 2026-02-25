@@ -73,7 +73,11 @@ class TX3ProBot:
 
         # Core Logic
         self.risk_manager = RiskManager(logger=self.logger)
-        self.position_manager = PositionManager(logger=self.logger, phase=phase)
+        self.position_manager = PositionManager(
+            logger=self.logger, 
+            phase=self.phase, 
+            risk_manager=self.risk_manager
+        )
         self.phase_tracker = PhaseTracker(logger=self.logger, phase=phase)
         self.session_filter = SessionFilter(logger=self.logger)
         

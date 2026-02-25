@@ -77,7 +77,8 @@ class TrailingStopManager:
                 
             if profit_pips_temp >= risk_pips and risk_pips > 5.0: # Mínimo 5 pips de riesgo para evitar ruido
                 self._execute_partial_close(position, tick)
-                # No retornamos aún, permitimos evaluar el trailing stop regular con el volumen restante
+                # Retornamos para evitar modificar el SL simultáneamente con la lógica tradicional en este tick
+                return
 
         point = symbol_info.point
         pip_in_points = 10 * point  # 1 pip = 10 points (5 dígitos)
