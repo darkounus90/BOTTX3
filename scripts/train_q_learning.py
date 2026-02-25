@@ -47,7 +47,7 @@ class MLTrainerQLearning:
                 symbols = mt5.symbols_get()
                 if symbols:
                     for s in symbols:
-                        if target_symbol in s.name and s.name != target_symbol:
+                        if target_symbol.upper() in s.name.upper() and s.name.upper() != target_symbol.upper():
                             # Probar si el broker permite descargar datos en este alias
                             mt5.symbol_select(s.name, True)
                             test_rates = mt5.copy_rates_from_pos(s.name, self.timeframe, 0, 10)
@@ -69,7 +69,13 @@ class MLTrainerQLearning:
                 
             if rates is None or len(rates) == 0:
                 error_code = mt5.last_error()
-                self.logger.error(f"❌ Fallo definitivo en {actual_symbol}, Código MT5: {error_code}. Descarga un gráfico M5 manualmente en MT5.")
+                self.logger.error(f"❌ Fallo definitivo en {actual_symbol}, Código MT5: {error_code}.")
+                symbols = mt5.symbols_get()
+                if symbols:
+                    posibles = [s.name for s in symbols if target_symbol[:3].upper() in s.name.upper()]
+                    self.logger.info(f"💡 El broker podría estar escondiendo el símbolo bajo estos nombres:")
+                    for idx, p in enumerate(posibles[:5]):
+                        self.logger.info(f"   -> {p}")
                 continue
 
             self.logger.success(f"✅ {len(rates)} velas descargadas correctamente de {actual_symbol}.")
