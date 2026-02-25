@@ -8,10 +8,11 @@ import json
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from strategy.q_learning_agent import QLearningAgent
 from utils.logger import BotLogger
+from config.settings import BotConfig
 
 class MLTrainerQLearning:
-    def __init__(self, symbol="EURUSD", timeframe=mt5.TIMEFRAME_M5, bars=50000):
-        self.symbol = symbol
+    def __init__(self, timeframe=mt5.TIMEFRAME_M5, bars=50000):
+        self.watchlist = BotConfig.WATCHLIST
         self.timeframe = timeframe
         self.bars = bars
         self.logger = BotLogger("Q-Train")
@@ -23,54 +24,57 @@ class MLTrainerQLearning:
         self.pip_size = 0.0001
         
     def run(self):
-        self.logger.banner(f"🧠 SIMULADOR HISTÓRICO Q-LEARNING ({self.symbol})")
+        self.logger.banner(f"🧠 SIMULADOR HISTÓRICO Q-LEARNING MULTI-PAR")
         
         if not mt5.initialize():
             self.logger.error("❌ MT5 Error de conexión. Abre la terminal MetaTrader en este PC.")
             return
-            
-        self.logger.info(f"📥 Buscando símbolo compatible para {self.symbol}...")
-        
-        # Auto-detect broker suffix (e.g., EURUSD.pro, EURUSD.a)
-        actual_symbol = self.symbol
-        symbols = mt5.symbols_get()
-        if symbols:
-            for s in symbols:
-                if self.symbol in s.name:
-                    actual_symbol = s.name
-                    break
-        
-        self.logger.info(f"📥 Descargando {self.bars} velas históricas para {actual_symbol}...")
-        rates = mt5.copy_rates_from_pos(actual_symbol, self.timeframe, 0, self.bars)
-        
-        # Fallback a menos velas si el broker no tiene tanta historia guardada
-        if rates is None or len(rates) == 0:
-            self.logger.warning(f"⚠️ El broker bloqueó {self.bars} velas. Intentando con 5000...")
-            rates = mt5.copy_rates_from_pos(actual_symbol, self.timeframe, 0, 5000)
-            
-        if rates is None or len(rates) == 0:
-            self.logger.error(f"❌ No hay datos descargados para {actual_symbol}. Revisa si tu broker permite descargas históricas.")
-            mt5.shutdown()
-            return
 
-        self.logger.success(f"✅ {len(rates)} velas descargadas correctamente de {actual_symbol}.")
-        df = pd.DataFrame(rates)
-        df['time'] = pd.to_datetime(df['time'], unit='s')
-        
-        # Calcular Indicadores Técnicos Clave para el Agente
-        self.logger.info("⚙️ Calculando indicadores vectoriales...")
-        df['ema9'] = df['close'].ewm(span=9, adjust=False).mean()
-        df['ema21'] = df['close'].ewm(span=21, adjust=False).mean()
-        
-        # Bucle de Simulación de Trades (Time Machine)
-        self.logger.info("🚀 Iniciando Simulación Acelerada (Jugando 5 años de Trades en 10 segundos)...")
-        trades_executed = 0
-        wins = 0
-        losses = 0
-        
-        for i in range(50, len(df) - 50): # Dejar espacio futuro para ver resultados
-            current = df.iloc[i]
-            prev = df.iloc[i-1]
+        total_trades_executed = 0
+        total_wins = 0
+        total_losses = 0
+
+        for target_symbol in self.watchlist:
+            self.logger.info(f"==> 📥 Buscando símbolo compatible para {target_symbol}...")
+            
+            # Auto-detect broker suffix (e.g., EURUSD.pro, EURUSD.a)
+            actual_symbol = target_symbol
+            symbols = mt5.symbols_get()
+            if symbols:
+                for s in symbols:
+                    if target_symbol in s.name:
+                        actual_symbol = s.name
+                        break
+            
+            self.logger.info(f"📥 Descargando {self.bars} velas históricas para {actual_symbol}...")
+            rates = mt5.copy_rates_from_pos(actual_symbol, self.timeframe, 0, self.bars)
+            
+            # Fallback a menos velas si el broker no tiene tanta historia guardada
+            if rates is None or len(rates) == 0:
+                self.logger.warning(f"⚠️ El broker bloqueó {self.bars} velas. Intentando con 5000...")
+                rates = mt5.copy_rates_from_pos(actual_symbol, self.timeframe, 0, 5000)
+                
+            if rates is None or len(rates) == 0:
+                self.logger.error(f"❌ No hay datos descargados para {actual_symbol}. Saltando a siguiente...")
+                continue
+
+            self.logger.success(f"✅ {len(rates)} velas descargadas correctamente de {actual_symbol}.")
+            df = pd.DataFrame(rates)
+            df['time'] = pd.to_datetime(df['time'], unit='s')
+            
+            # Calcular Indicadores Técnicos Clave para el Agente
+            df['ema9'] = df['close'].ewm(span=9, adjust=False).mean()
+            df['ema21'] = df['close'].ewm(span=21, adjust=False).mean()
+            
+            # Bucle de Simulación de Trades (Time Machine)
+            self.logger.info(f"🚀 Iniciando Simulación Acelerada para {actual_symbol}...")
+            
+            # Determinar tamaño del pip para divisas con JPY
+            current_pip_size = 0.01 if "JPY" in actual_symbol else 0.0001
+            
+            for i in range(50, len(df) - 50): # Dejar espacio futuro para ver resultados
+                current = df.iloc[i]
+                prev = df.iloc[i-1]
             
             # 1. Estrategia Base: Cruce Simple (Simulamos lo que haría el bot quant)
             signal = "HOLD"
@@ -111,21 +115,22 @@ class MLTrainerQLearning:
                             
                 # Aprender del resultado (Castigo o Premio)
                 if reward != 0:
-                    trades_executed += 1
-                    if reward == 1: wins += 1
-                    if reward == -1: losses += 1
+                    total_trades_executed += 1
+                    if reward == 1: total_wins += 1
+                    if reward == -1: total_losses += 1
                     
                     # Llamar al algoritmo literal de Bellman
-                    # El próximo estado no importa tanto para trades episódicos aislados, usamos None o el mismo
-                    self.q_agent.learn(estado_fotografia, signal, reward, estado_fotografia)
+                    # Inyectar también el nombre del par en el estado puede ayudar a diferenciar comportamientos
+                    estado_fotografia_par = (actual_symbol, hour_of_day, candle_color)
+                    self.q_agent.learn(estado_fotografia_par, signal, reward, estado_fotografia_par)
 
         mt5.shutdown()
         self.q_agent.save_table()
         
-        self.logger.success(f"✅ ENTRENAMIENTO COMPLETADO.")
-        self.logger.info(f"📊 Trades Simulados Históricamente: {trades_executed}")
-        self.logger.info(f"🏆 Wins: {wins} | 💥 Losses: {losses} (Anotados en Q-Table)")
-        self.logger.success(f"💾 Memoria de Experiencia Q guardada. Bot listo para operar.")
+        self.logger.success(f"✅ ENTRENAMIENTO MULTI-PAR COMPLETADO.")
+        self.logger.info(f"📊 Trades Totales Simulados: {total_trades_executed}")
+        self.logger.info(f"🏆 Wins: {total_wins} | 💥 Losses: {total_losses} (Anotados en Q-Table)")
+        self.logger.success(f"💾 Memoria de Experiencia Q guardada. Bot Listo.")
 
 if __name__ == "__main__":
     trainer = MLTrainerQLearning()
