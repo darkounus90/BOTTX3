@@ -29,14 +29,31 @@ class MLTrainerQLearning:
             self.logger.error("❌ MT5 Error de conexión. Abre la terminal MetaTrader en este PC.")
             return
             
-        self.logger.info(f"📥 Descargando {self.bars} velas históricas para simular La Matrix...")
-        rates = mt5.copy_rates_from_pos(self.symbol, self.timeframe, 0, self.bars)
+        self.logger.info(f"📥 Buscando símbolo compatible para {self.symbol}...")
         
+        # Auto-detect broker suffix (e.g., EURUSD.pro, EURUSD.a)
+        actual_symbol = self.symbol
+        symbols = mt5.symbols_get()
+        if symbols:
+            for s in symbols:
+                if self.symbol in s.name:
+                    actual_symbol = s.name
+                    break
+        
+        self.logger.info(f"📥 Descargando {self.bars} velas históricas para {actual_symbol}...")
+        rates = mt5.copy_rates_from_pos(actual_symbol, self.timeframe, 0, self.bars)
+        
+        # Fallback a menos velas si el broker no tiene tanta historia guardada
         if rates is None or len(rates) == 0:
-            self.logger.error("❌ No hay datos descargados. Intenta en mercado abierto o revisa el nombre del símbolo.")
+            self.logger.warning(f"⚠️ El broker bloqueó {self.bars} velas. Intentando con 5000...")
+            rates = mt5.copy_rates_from_pos(actual_symbol, self.timeframe, 0, 5000)
+            
+        if rates is None or len(rates) == 0:
+            self.logger.error(f"❌ No hay datos descargados para {actual_symbol}. Revisa si tu broker permite descargas históricas.")
             mt5.shutdown()
             return
-            
+
+        self.logger.success(f"✅ {len(rates)} velas descargadas correctamente de {actual_symbol}.")
         df = pd.DataFrame(rates)
         df['time'] = pd.to_datetime(df['time'], unit='s')
         
