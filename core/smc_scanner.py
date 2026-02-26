@@ -18,7 +18,7 @@ class SMCScanner:
 
     def _get_candles(self, symbol: str, timeframe, n: int):
         """Descarga N velas rápidamente para análisis SMC"""
-        rates = mt5.copy_rates_from(symbol, timeframe, datetime.now(), n)
+        rates = mt5.copy_rates_from_pos(symbol, timeframe, 0, n)
         if rates is None or len(rates) == 0:
             return None
         df = pd.DataFrame(rates)

@@ -29,7 +29,7 @@ class PortfolioManager:
         
         for symbol in BotConfig.WATCHLIST: # Assuming watchlist should be BotConfig.WATCHLIST based on original code
             # Obtener 10 días para medir el ATR dinámico porcentual (Volatilidad)
-            rates = mt5.copy_rates_from(symbol, mt5.TIMEFRAME_D1, datetime.now(), 10)
+            rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_D1, 0, 10)
             if rates is not None and len(rates) >= 10: # Adjusted condition to ensure enough data for calculation
                 df = pd.DataFrame(rates)
                 df['range'] = (df['high'] - df['low']) / df['close'] * 10000 # Rango estandarizado
