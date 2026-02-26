@@ -152,8 +152,12 @@ class EMACrossStrategy(BaseStrategy):
         is_uptrend_h1 = trend_h1['close'] > trend_h1['ema_trend']
         is_downtrend_h1 = trend_h1['close'] < trend_h1['ema_trend']
         
+        # Pulso en vivo de que el bot SÍ está calculando (cada 5 minutos)
+        self.logger.info(f"⏳ {self.symbol} Evaluando Vela Reciente | ADX: {prev['adx']:.1f} | MACD Hist: {prev['macd_hist']:.4f} | Rastreando Setup...")
+
         # ADX Filter: Evitar mercados sin convicción
-        if prev['adx'] < self.adx_threshold:
+        adx_limit = self.adx_threshold if BotConfig.MODE_FILTERS == "STRICT" else 10.0
+        if prev['adx'] < adx_limit:
             return None
 
         # Condiciones Fundamentales de Estructura de Corto Plazo
@@ -176,8 +180,12 @@ class EMACrossStrategy(BaseStrategy):
         reason = ""
 
         # Lógica Combinada (H1 tiene que estar alineado con la operativa y MACD debe confirmar impulso)
-        macd_bullish = prev['macd_hist'] > 0 and prev['macd_line'] > prev['macd_signal']
-        macd_bearish = prev['macd_hist'] < 0 and prev['macd_line'] < prev['macd_signal']
+        if BotConfig.MODE_FILTERS == "STRICT":
+            macd_bullish = prev['macd_hist'] > 0 and prev['macd_line'] > prev['macd_signal']
+            macd_bearish = prev['macd_hist'] < 0 and prev['macd_line'] < prev['macd_signal']
+        else: # RELAXED
+            macd_bullish = prev['macd_line'] > prev['macd_signal'] # Solo dirección, sin exigir histograma verde
+            macd_bearish = prev['macd_line'] < prev['macd_signal']
 
         if (bullish_cross or bullish_pullback) and is_uptrend_h1 and macd_bullish:
             signal_type = "BUY"
