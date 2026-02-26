@@ -102,6 +102,13 @@ class EMACrossStrategy(BaseStrategy):
         rs = avg_gain / avg_loss
         df['rsi'] = 100 - (100 / (1 + rs))
         
+        # MACD calculation (12, 26, 9)
+        macd_fast = df['close'].ewm(span=12, adjust=False).mean()
+        macd_slow = df['close'].ewm(span=26, adjust=False).mean()
+        df['macd_line'] = macd_fast - macd_slow
+        df['macd_signal'] = df['macd_line'].ewm(span=9, adjust=False).mean()
+        df['macd_hist'] = df['macd_line'] - df['macd_signal']
+        
         return df
 
     def generate_signal(self) -> dict | None:
@@ -168,13 +175,16 @@ class EMACrossStrategy(BaseStrategy):
         signal_type = None
         reason = ""
 
-        # Lógica Combinada (H1 tiene que estar alineado con la operativa)
-        if (bullish_cross or bullish_pullback) and is_uptrend_h1:
+        # Lógica Combinada (H1 tiene que estar alineado con la operativa y MACD debe confirmar impulso)
+        macd_bullish = prev['macd_hist'] > 0 and prev['macd_line'] > prev['macd_signal']
+        macd_bearish = prev['macd_hist'] < 0 and prev['macd_line'] < prev['macd_signal']
+
+        if (bullish_cross or bullish_pullback) and is_uptrend_h1 and macd_bullish:
             signal_type = "BUY"
-            reason = "Cruce" if bullish_cross else "Pullback EMA"
-        elif (bearish_cross or bearish_pullback) and is_downtrend_h1:
+            reason = "Cruce MACD" if bullish_cross else "Pullback EMA + MACD"
+        elif (bearish_cross or bearish_pullback) and is_downtrend_h1 and macd_bearish:
             signal_type = "SELL"
-            reason = "Cruce" if bearish_cross else "Pullback EMA"
+            reason = "Cruce MACD" if bearish_cross else "Pullback EMA + MACD"
         else:
             return None
 
