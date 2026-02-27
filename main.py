@@ -35,7 +35,7 @@ from core.session_filter import SessionFilter
 from core.news_filter import NewsFilter
 from core.trailing_stop import TrailingStopManager
 from core.llm_oracle import GeminiOracle
-from strategy.ema_cross import EMACrossStrategy
+from strategy.bollinger_rsi import BollingerRSIStrategy
 from utils.logger import BotLogger
 from utils.mt5_connector import MT5Connector
 from utils.telegram_notifier import TelegramNotifier
@@ -94,8 +94,8 @@ class TX3ProBot:
         # Estrategias (Multi-Symbol Optimization)
         self.strategies = {}
         for symbol in BotConfig.WATCHLIST:
-            self.strategies[symbol] = EMACrossStrategy(logger=self.logger, symbol=symbol)
-            self.logger.info(f"✅ Estrategia cargada: {symbol}")
+            self.strategies[symbol] = BollingerRSIStrategy(logger=self.logger, symbol=symbol)
+            self.logger.info(f"✅ Estrategia RSI+Bollinger cargada: {symbol}")
 
         # Cargar estado previo si existe
         self._restore_state()
