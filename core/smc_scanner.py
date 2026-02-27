@@ -24,11 +24,11 @@ class SMCScanner:
         df = pd.DataFrame(rates)
         return df
 
-    def scan_context(self, symbol: str, signal_direction: str) -> bool:
+    def scan_context(self, symbol: str, signal_direction: str, timeframe=mt5.TIMEFRAME_M5) -> bool:
         """
         Devuelve True si la liquidez en la gráfica favorece la dirección del Signal.
         """
-        df = self._get_candles(symbol, n=self.lookback)
+        df = self._get_candles(symbol, timeframe, n=self.lookback)
         if df is None:
             return True # No bloqueamos si hay fallo de datos temporal
 

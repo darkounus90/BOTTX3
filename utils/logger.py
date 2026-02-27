@@ -61,6 +61,10 @@ class BotLogger:
 
     # ─── Métodos de logging ───────────────────────────────────────────
 
+    def debug(self, message: str):
+        colored = self._colorize(f"🐛 {message}", "WHITE")
+        self.logger.debug(colored)
+        
     def info(self, message: str):
         colored = self._colorize(f"ℹ️  {message}", "CYAN")
         self.logger.info(colored)
