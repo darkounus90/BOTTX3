@@ -101,6 +101,12 @@ class MLRandomForestStrategy(BaseStrategy):
             return None
             
         # 6. Salida Estándar
+        # --- EVITAR SPAM EN LA MISMA VELA (Deduplicación) ---
+        current_candle_time = last_bar['time']
+        if getattr(self, 'last_signal_time', None) == current_candle_time:
+            return None
+        self.last_signal_time = current_candle_time
+
         # TP y SL de 20 y 40 fijos, o dinámicos por ATR (por simplicidad, usar ATR o fijos fuertes)
         atr_value = df['high'].iloc[-14:] - df['low'].iloc[-14:]
         atr_mean = atr_value.mean()

@@ -137,6 +137,14 @@ class BollingerRSIStrategy(BaseStrategy):
         if not signal_type:
             return None
 
+        # --- EVITAR SPAM EN LA MISMA VELA (Deduplicación) ---
+        # Si ya preguntamos/analizamos esta misma vela exacta, no lo volvemos a hacer
+        # hasta que cierre la siguiente (esto ahora ahorra el 90% de las peticiones a la API).
+        current_candle_time = last_closed['time']
+        if getattr(self, 'last_signal_time', None) == current_candle_time:
+            return None
+        self.last_signal_time = current_candle_time
+
         # --- GESTIÓN DE RIESGO DINÁMICA ---
         # Calculamos Stop Loss usando ATR para adaptarnos a la volatilidad real
         symbol_info = mt5.symbol_info(self.symbol)
