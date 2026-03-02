@@ -22,7 +22,7 @@ class PositionManager:
         self.trades_today = 0
         self.max_trades_per_day = BotConfig.MAX_TRADES_PER_DAY
 
-    def calculate_position_size(self, symbol: str, stop_loss_pips: float, probability: float = None) -> float | None:
+    def calculate_position_size(self, symbol: str, stop_loss_pips: float, probability: float = None, portfolio_weight: float = 1.0) -> float | None:
         """
         Calcula el tamaño de posición basado en:
         - Riesgo máximo: 0.5% del balance por trade (O Kelly Criterion dinámico)
