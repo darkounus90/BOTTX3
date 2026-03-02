@@ -39,16 +39,17 @@ class GeminiOracle:
                 try:
                     genai.configure(api_key=self.api_key)
                     
-                    # Auto-detector de modelo compatible (Anti error 404 y Preview Mismatch)
+                    # Auto-detector de modelo compatible para la nueva arquitectura API v1beta (gemini-2.0)
                     valid_models = []
                     for m in genai.list_models():
                         if 'generateContent' in m.supported_generation_methods:
                             name = m.name.replace("models/", "")
-                            if '1.5-flash' in name and 'preview' not in name:
+                            # Pescar modelos de la rama 2.0 o 2.5 (La rama 1.5 fue purgada) que NO sean de preview.
+                            if ('2.0-flash' in name or '2.5-flash' in name) and 'preview' not in name and 'lite' not in name:
                                 valid_models.append(name)
                     
-                    # Seleccionar el primero válido encontrado o un default hardcodeado si falla todo
-                    target_model = valid_models[0] if valid_models else "gemini-1.5-flash"
+                    # Seleccionar el primero válido encontrado o un default hardcodeado a 2.0 si falla todo
+                    target_model = valid_models[0] if valid_models else "gemini-2.0-flash"
                     
                     self.model = genai.GenerativeModel(model_name=target_model)
                     self.system_ready = True
