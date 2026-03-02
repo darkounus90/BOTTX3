@@ -40,14 +40,15 @@ class GeminiOracle:
                     genai.configure(api_key=self.api_key)
                     
                     # Auto-detector de modelo compatible (Anti error 404 y Preview Mismatch)
-                    target_model = "gemini-1.5-flash-latest" # Fallback universal
+                    valid_models = []
                     for m in genai.list_models():
                         if 'generateContent' in m.supported_generation_methods:
                             name = m.name.replace("models/", "")
-                            # Pescar específicamente un flash de la rama 1.5 que NO sea de preview ni experimental
                             if '1.5-flash' in name and 'preview' not in name:
-                                target_model = name
-                                break
+                                valid_models.append(name)
+                    
+                    # Seleccionar el primero válido encontrado o un default hardcodeado si falla todo
+                    target_model = valid_models[0] if valid_models else "gemini-1.5-flash"
                     
                     self.model = genai.GenerativeModel(model_name=target_model)
                     self.system_ready = True
