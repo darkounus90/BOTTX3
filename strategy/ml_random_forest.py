@@ -43,7 +43,7 @@ class MLRandomForestStrategy(BaseStrategy):
             return None # Seguridad
             
         # 1. Obtener Datos
-        rates = mt5.copy_rates_from(self.symbol, self.timeframe, datetime.now(), self.bars_needed)
+        rates = mt5.copy_rates_from_pos(self.symbol, self.timeframe, 0, self.bars_needed)
         if rates is None or len(rates) < self.bars_needed:
             return None
             
