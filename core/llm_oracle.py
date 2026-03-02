@@ -136,8 +136,12 @@ class GeminiOracle:
                 return {"decision": "REJECTED", "reason": "Oracle NLP Parsing Error - Safety Abort"}
                 
         except Exception as e:
-            self.logger.error(f"Falla de conexión al CIO Gemini: {e}")
-            return {"decision": "APPROVED", "reason": "Oracle Network Failure - Quant Override"}
+            err_str = str(e).lower()
+            if "429" in err_str or "quota" in err_str:
+                self.logger.warning(f"⚠️ Oráculo sin cuota (Límite API Gemini superado). El Bot operará en Modo Quant Puro temporalmente.")
+            else:
+                self.logger.error(f"Falla de conexión al CIO Gemini: {e}")
+            return {"decision": "APPROVED", "reason": "Oracle Rate Limit/Failure - Quant Override"}
 
     def ask_oracle(self, question: str) -> str:
         """
@@ -156,6 +160,10 @@ class GeminiOracle:
             response = self.model.generate_content(prompt)
             return response.text.strip()
         except Exception as e:
+            err_str = str(e).lower()
+            if "429" in err_str or "quota" in err_str:
+                self.logger.warning("⚠️ Oráculo sin cuota (Límite API Gemini superado).")
+                return "⚠️ Oráculo temporalmente sin cuota (Rate Limit excedido). Intenta más tarde."
             self.logger.error(f"Error consultando al Oráculo en modo libre: {e}")
             return f"❌ Oráculo en corto circuito: {e}"
 
@@ -185,5 +193,9 @@ class GeminiOracle:
             response = self.model.generate_content(prompt)
             return response.text.strip()
         except Exception as e:
+            err_str = str(e).lower()
+            if "429" in err_str or "quota" in err_str:
+                self.logger.warning("⚠️ Dr. Quant sin cuota (Límite API Gemini superado).")
+                return "⚠️ Dr. Quant temporalmente indispuesto (Rate Limit de API IA excedido). Revisa logs locales."
             self.logger.error(f"Error en Diagnóstico Médico AI: {e}")
             return "❌ Fallo crítico comunicando con la Clínica Quant."
