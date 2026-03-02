@@ -74,6 +74,11 @@ class NYOpeningBreakoutStrategy(BaseStrategy):
             self.range_calculated = False
             self.has_traded_today = False  # Solo 1 breakout válido por día
 
+        # 1.5 CONTROL DE HORARIOS ESTRICTOS (Solo operar apertura)
+        local_hour = datetime.now().hour
+        if local_hour < 8 or local_hour > 11:
+            return None # Si no estamos en la ventana de apertura de Wall Street, ignorar
+
         # Definir horas del servidor aproximadas (Asumiremos que si tu Mac está en EST, 
         # y el broker suele estar en GMT+2/3, la ventana de 8:00 a 9:30 EST es aprox 15:00 a 16:30 Server)
         # IMPORTANTE: Para hacerlo universal sin importar el broker, buscaremos el rango de las últimas 6 horas 
