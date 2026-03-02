@@ -1,6 +1,7 @@
 import MetaTrader5 as mt5
 import pandas as pd
 from datetime import datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 from strategy.base_strategy import BaseStrategy
 from config.settings import BotConfig
@@ -65,7 +66,7 @@ class LondonOpeningBreakoutStrategy(BaseStrategy):
             self.has_traded_today = False  # Solo 1 breakout válido por día
 
         # 1.5 CONTROL DE HORARIOS ESTRICTOS (Solo operar apertura Londres)
-        local_hour = datetime.now().hour
+        local_hour = datetime.now(ZoneInfo("America/New_York")).hour
         if local_hour < 3 or local_hour >= 7:
             return None # Si no estamos en la apertura europea (3:00 AM - 7:00 AM EST), ignorar
 

@@ -6,6 +6,7 @@ sesiones de alta liquidez.
 """
 
 from datetime import datetime, time
+from zoneinfo import ZoneInfo
 from config.settings import SessionConfig
 from utils.logger import BotLogger
 
@@ -84,7 +85,7 @@ class SessionFilter:
             'ACTIVE'  - Sesión London o NY activa
             'CLOSED'  - Fuera de horario
         """
-        now = datetime.now()
+        now = datetime.now(ZoneInfo("America/New_York"))
         current_time = now.time()
         current_day = now.weekday()  # 0=Monday, 6=Sunday
 
@@ -131,7 +132,7 @@ class SessionFilter:
         """
         Retorna información detallada de la sesión actual.
         """
-        now = datetime.now()
+        now = datetime.now(ZoneInfo("America/New_York"))
         current_time = now.time()
         current_day = now.weekday()
 

@@ -1,6 +1,7 @@
 import MetaTrader5 as mt5
 import pandas as pd
 from datetime import datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 from strategy.base_strategy import BaseStrategy
 from config.settings import BotConfig
@@ -65,7 +66,7 @@ class SydneyOpeningBreakoutStrategy(BaseStrategy):
             self.has_traded_today = False  # Solo 1 breakout válido por día
 
         # 1.5 CONTROL DE HORARIOS ESTRICTOS (Solo operar apertura Sydney)
-        local_hour = datetime.now().hour
+        local_hour = datetime.now(ZoneInfo("America/New_York")).hour
         # Sydney abre a las 17:00 EST y la gran volatilidad suele durar un par de horas hasta que Tokio toma el relevo a las 19:00 EST.
         if local_hour < 17 or local_hour >= 19:
             return None # Si no estamos entre las 5:00 PM y las 7:00 PM EST, ignorar
