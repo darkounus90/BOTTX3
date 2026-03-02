@@ -39,18 +39,9 @@ class GeminiOracle:
                 try:
                     genai.configure(api_key=self.api_key)
                     
-                    # Auto-detector de modelo compatible (Anti error 404 API v1beta)
-                    target_model = "gemini-1.5-flash" # Fallback por defecto
-                    for m in genai.list_models():
-                        if 'generateContent' in m.supported_generation_methods:
-                            name = m.name.replace("models/", "")
-                            # Forzar 1.5-flash explícitamente porque tiene un límite muchísimo mayor (15 RPM / 1500 RPD) grátis
-                            if name == 'gemini-1.5-flash':
-                                target_model = name
-                                break
-                            elif 'flash' in name:
-                                target_model = name
-                                
+                    # Forzar 1.5-flash explícitamente porque tiene un límite muchísimo mayor (15 RPM / 1500 RPD) grátis
+                    target_model = "gemini-1.5-flash"
+                    
                     self.model = genai.GenerativeModel(model_name=target_model)
                     self.system_ready = True
                     self.logger.success(f"👁️‍🗨️ LLM ORACLE ({target_model}) Despertó y está Vigilando.")
