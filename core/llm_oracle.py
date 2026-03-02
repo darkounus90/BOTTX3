@@ -44,11 +44,11 @@ class GeminiOracle:
                     for m in genai.list_models():
                         if 'generateContent' in m.supported_generation_methods:
                             name = m.name.replace("models/", "")
-                            # Preferir flash o pro si está en los disponibles
-                            if 'flash' in name:
+                            # Preferir pro si está en los disponibles
+                            if 'pro' in name and 'vision' not in name:
                                 target_model = name
                                 break
-                            elif 'pro' in name:
+                            elif 'flash' in name:
                                 target_model = name
                                 
                     self.model = genai.GenerativeModel(model_name=target_model)
