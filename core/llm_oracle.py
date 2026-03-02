@@ -40,15 +40,15 @@ class GeminiOracle:
                     genai.configure(api_key=self.api_key)
                     
                     # Auto-detector de modelo compatible (Anti error 404 API v1beta)
-                    target_model = "gemini-1.5-flash-latest" # Fallback por defecto
+                    target_model = "gemini-1.5-flash" # Fallback por defecto
                     for m in genai.list_models():
                         if 'generateContent' in m.supported_generation_methods:
                             name = m.name.replace("models/", "")
-                            # Preferir pro si está en los disponibles
-                            if 'pro' in name and 'vision' not in name:
+                            # Forzar 1.5-pro explícitamente porque 2.5 puede no tener Free Tier habilitado
+                            if name == 'gemini-1.5-pro':
                                 target_model = name
                                 break
-                            elif 'flash' in name:
+                            elif name == 'gemini-2.5-pro':
                                 target_model = name
                                 
                     self.model = genai.GenerativeModel(model_name=target_model)
