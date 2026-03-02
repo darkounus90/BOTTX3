@@ -24,6 +24,7 @@ import sys
 import threading
 import time as sleep_module
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import MetaTrader5 as mt5
 
@@ -222,7 +223,7 @@ class TX3ProBot:
             "sys_news": self.news_filter.enabled if hasattr(self, 'news_filter') else False,
             "simulate_50k": getattr(BotConfig, "SIMULATE_50K_CHALLENGE", False),
             "open_positions": pos_list,
-            "last_update": datetime.now().strftime("%H:%M:%S")
+            "last_update": datetime.now(ZoneInfo("America/New_York")).strftime("%H:%M:%S")
         }
         update_dashboard_data(data)
 
