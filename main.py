@@ -625,7 +625,8 @@ class TX3ProBot:
                                         # salimos del loop de estrategias interno para no saturar 2 trades en el mismo lugar al mismo instante.
                                         break
                     except Exception as e:
-                        self.logger.error(f"Error procesando {symbol}: {e}")
+                        import traceback
+                        self.logger.error(f"Error procesando {symbol}: {e}\n{traceback.format_exc()}")
                         continue
 
                 # ─── F. Verificar Fase Completada ──────────────────
