@@ -36,6 +36,7 @@ from core.news_filter import NewsFilter
 from core.trailing_stop import TrailingStopManager
 from core.llm_oracle import GeminiOracle
 from strategy.bollinger_rsi import BollingerRSIStrategy
+from strategy.ny_opening_breakout import NYOpeningBreakoutStrategy
 from utils.logger import BotLogger
 from utils.mt5_connector import MT5Connector
 from utils.telegram_notifier import TelegramNotifier
@@ -91,11 +92,14 @@ class TX3ProBot:
         self.portfolio_manager = PortfolioManager(logger=self.logger)
         self.q_agent = QLearningAgent(logger=self.logger)
         
-        # Estrategias (Multi-Symbol Optimization)
+        # Estrategias (Multi-Symbol Optimization + Multi-Strategy)
         self.strategies = {}
         for symbol in BotConfig.WATCHLIST:
-            self.strategies[symbol] = BollingerRSIStrategy(logger=self.logger, symbol=symbol)
-            self.logger.info(f"✅ Estrategia RSI+Bollinger cargada: {symbol}")
+            self.strategies[symbol] = [
+                BollingerRSIStrategy(logger=self.logger, symbol=symbol),
+                NYOpeningBreakoutStrategy(logger=self.logger, symbol=symbol)
+            ]
+            self.logger.info(f"✅ Estrategias [Bollinger+RSI, NY_Breakout] cargadas en: {symbol}")
 
         # Cargar estado previo si existe
         self._restore_state()
@@ -504,22 +508,27 @@ class TX3ProBot:
                         if not self.connector.ensure_symbol_available(symbol):
                             continue
 
-                        # c. Estrategia
-                        strategy = self.strategies[symbol]
+                        # c. Estrategias (Multi-Strategy Loop por símbolo)
+                        strategy_list = self.strategies[symbol]
 
                         # Solo si no hemos llenado el cupo de posiciones
                         if self.position_manager.get_open_positions_count() < BotConfig.MAX_OPEN_POSITIONS:
-                            signal = strategy.generate_signal()
-                            
-                            if signal:
-                                # a. Verificar Noticias por Símbolo con IA (Alineación Técnico vs Fundamental)
-                                if getattr(BotConfig, "NEWS_KILLZONES_ENABLED", True):
-                                    if not self.news_filter.is_safe_to_trade(symbol, signal['signal']):
-                                        continue
+                            # Iterar todas las estrategias del par actual
+                            for strategy in strategy_list:
+                                signal = strategy.generate_signal()
                                 
-                                # d. Verificar Escudo Anti-Correlación (Evitar pares múltiples muy atados)
-                                if not self.position_manager.check_correlation_shield(symbol):
-                                    continue
+                                if signal:
+                                    # c.1 Guardar el nombre de la estrategia que detonó el signal para logging visual
+                                    signal['reason'] = f"[{strategy.get_name()}] " + signal.get('reason', '')
+                                    
+                                    # a. Verificar Noticias por Símbolo con IA (Alineación Técnico vs Fundamental)
+                                    if getattr(BotConfig, "NEWS_KILLZONES_ENABLED", True):
+                                        if not self.news_filter.is_safe_to_trade(symbol, signal['signal']):
+                                            continue
+                                    
+                                    # d. Verificar Escudo Anti-Correlación (Evitar pares múltiples muy atados)
+                                    if not self.position_manager.check_correlation_shield(symbol):
+                                        continue
                                     
                                 # SMC Detector (Order Blocks y Liquidez como Asesor Visual, no como Bloqueo)
                                 if getattr(BotConfig, "SMC_ENABLED", False):
@@ -611,6 +620,10 @@ class TX3ProBot:
                                             tp_pips=signal['take_profit_pips'],
                                             rr_ratio=signal['take_profit_pips']/signal['stop_loss_pips']
                                         )
+                                        
+                                        # Si ya abrimos exitosamente un trade gracias a una estrategia con este par,
+                                        # salimos del loop de estrategias interno para no saturar 2 trades en el mismo lugar al mismo instante.
+                                        break
                     except Exception as e:
                         self.logger.error(f"Error procesando {symbol}: {e}")
                         continue
