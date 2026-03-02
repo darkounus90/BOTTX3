@@ -143,11 +143,8 @@ class QLearningAgent:
             pos = mt5.positions_get(ticket=ticket)
             if pos is None or len(pos) == 0:
                 # El trade ya no existe, SE CERRÓ
-                # Buscar en el historial su ganancia
-                hoy = datetime.datetime.now()
-                # Buscar 30 días atrás para asegurar
-                back = hoy - datetime.timedelta(days=30)
-                deals = mt5.history_deals_get(back, hoy, position=ticket)
+                # Buscar en el historial su ganancia aislando por posición (ticket principal)
+                deals = mt5.history_deals_get(position=ticket)
                 
                 if deals:
                     # Sumar profits de los deals (entrada y salida)
