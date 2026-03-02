@@ -13,6 +13,7 @@ Envía notificaciones a Telegram cuando:
 
 import requests
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from config.settings import TelegramConfig
 from utils.logger import BotLogger
 
@@ -30,7 +31,7 @@ class TelegramNotifier:
         self.enabled = TelegramConfig.ENABLED
         self.token = TelegramConfig.BOT_TOKEN
         self.chat_id = TelegramConfig.CHAT_ID
-        self._start_time = datetime.now()
+        self._start_time = datetime.now(ZoneInfo("America/New_York"))
 
         if self.enabled and (not self.token or not self.chat_id):
             self.enabled = False
@@ -90,14 +91,14 @@ class TelegramNotifier:
             f"📊 Pares: `{symbols}`\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"✅ Todos los sistemas operativos\n"
-            f"⏱ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            f"⏱ {datetime.now(ZoneInfo('America/New_York')).strftime('%Y-%m-%d %H:%M:%S')}"
         )
         self._send(msg)
 
     def notify_bot_stopped(self, reason: str, balance: float, profit: float):
         """Notifica que el bot se detuvo"""
         # Calcular tiempo de ejecución
-        uptime = datetime.now() - self._start_time
+        uptime = datetime.now(ZoneInfo("America/New_York")) - self._start_time
         hours, remainder = divmod(int(uptime.total_seconds()), 3600)
         minutes, _ = divmod(remainder, 60)
         uptime_str = f"{hours}h {minutes}m"
@@ -112,7 +113,7 @@ class TelegramNotifier:
             f"💰 Balance final: `${balance:,.2f}`\n"
             f"{profit_emoji} P&L sesión: `{profit_sign}${profit:,.2f}`\n"
             f"⏱ Tiempo activo: `{uptime_str}`\n"
-            f"🕐 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            f"🕐 {datetime.now(ZoneInfo('America/New_York')).strftime('%Y-%m-%d %H:%M:%S')}"
         )
         self._send(msg)
 
@@ -123,7 +124,7 @@ class TelegramNotifier:
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"✅ Conexión restablecida\n"
             f"🔁 Intento: `#{attempt}`\n"
-            f"⏱ {datetime.now().strftime('%H:%M:%S')}"
+            f"⏱ {datetime.now(ZoneInfo('America/New_York')).strftime('%H:%M:%S')}"
         )
         self._send(msg)
 
@@ -157,7 +158,7 @@ class TelegramNotifier:
             f"🛑 SL: `{sl:.5f}` (`-{sl_pips:.0f}` pips)\n"
             f"🎯 TP: `{tp:.5f}` (`+{tp_pips:.0f}` pips)\n"
             f"⚖️ Riesgo/Beneficio: `1:{rr_ratio:.1f}`\n"
-            f"⏱ {datetime.now().strftime('%H:%M:%S')}"
+            f"⏱ {datetime.now(ZoneInfo('America/New_York')).strftime('%H:%M:%S')}"
         )
         self._send(msg)
 
@@ -190,7 +191,7 @@ class TelegramNotifier:
             f"💰 Resultado: `{profit_sign}${profit:.2f}`\n"
             f"📏 Pips: `{profit_sign}{pips:.1f}`\n"
             f"⏱ Duración: `{duration}`\n"
-            f"🕐 {datetime.now().strftime('%H:%M:%S')}"
+            f"🕐 {datetime.now(ZoneInfo('America/New_York')).strftime('%H:%M:%S')}"
         )
         self._send(msg)
 
@@ -211,7 +212,7 @@ class TelegramNotifier:
             f"🚧 Límite máximo: `${limit:,.2f}`\n"
             f"📊 Nivel: `{pct:.1f}%` del límite\n"
             f"🛡️ Margen restante: `${remaining:,.2f}`\n"
-            f"⏱ {datetime.now().strftime('%H:%M:%S')}"
+            f"⏱ {datetime.now(ZoneInfo('America/New_York')).strftime('%H:%M:%S')}"
         )
         self._send(msg)
 
@@ -230,7 +231,7 @@ class TelegramNotifier:
             f"🛑 Bot detenido por seguridad\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"⚠️ _Revisa tu cuenta antes de reiniciar_\n"
-            f"⏱ {datetime.now().strftime('%H:%M:%S')}"
+            f"⏱ {datetime.now(ZoneInfo('America/New_York')).strftime('%H:%M:%S')}"
         )
         self._send(msg)
 
@@ -253,7 +254,7 @@ class TelegramNotifier:
             f"📅 Días rentables: `{days}`\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"{next_step}\n"
-            f"⏱ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            f"⏱ {datetime.now(ZoneInfo('America/New_York')).strftime('%Y-%m-%d %H:%M:%S')}"
         )
         self._send(msg)
 
@@ -295,7 +296,7 @@ class TelegramNotifier:
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"📉 DD diario: `${daily_dd:,.2f}` / `$2,500`\n"
             f"📉 DD total: `${overall_dd:,.2f}` / `$5,000`\n"
-            f"⏱ {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            f"⏱ {datetime.now(ZoneInfo('America/New_York')).strftime('%Y-%m-%d %H:%M')}"
         )
         self._send(msg)
 
@@ -312,6 +313,6 @@ class TelegramNotifier:
             f"`{error_message[:500]}`\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"⚠️ _El bot continúa operando_\n"
-            f"⏱ {datetime.now().strftime('%H:%M:%S')}"
+            f"⏱ {datetime.now(ZoneInfo('America/New_York')).strftime('%H:%M:%S')}"
         )
         self._send(msg)
