@@ -44,11 +44,11 @@ class GeminiOracle:
                     for m in genai.list_models():
                         if 'generateContent' in m.supported_generation_methods:
                             name = m.name.replace("models/", "")
-                            # Forzar 1.5-pro explícitamente porque 2.5 puede no tener Free Tier habilitado
-                            if name == 'gemini-1.5-pro':
+                            # Forzar 1.5-flash explícitamente porque tiene un límite muchísimo mayor (15 RPM / 1500 RPD) grátis
+                            if name == 'gemini-1.5-flash':
                                 target_model = name
                                 break
-                            elif name == 'gemini-2.5-pro':
+                            elif 'flash' in name:
                                 target_model = name
                                 
                     self.model = genai.GenerativeModel(model_name=target_model)
