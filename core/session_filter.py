@@ -56,6 +56,14 @@ class SessionFilter:
             SessionConfig.TOKYO_END_HOUR,
             SessionConfig.TOKYO_END_MINUTE,
         )
+        self.sydney_start = time(
+            SessionConfig.SYDNEY_START_HOUR,
+            SessionConfig.SYDNEY_START_MINUTE,
+        )
+        self.sydney_end = time(
+            SessionConfig.SYDNEY_END_HOUR,
+            SessionConfig.SYDNEY_END_MINUTE,
+        )
         self.overlap_start = time(
             SessionConfig.OVERLAP_START_HOUR,
             SessionConfig.OVERLAP_START_MINUTE,
@@ -92,8 +100,9 @@ class SessionFilter:
         in_london = self.london_start <= current_time <= self.london_end
         in_ny = self.ny_start <= current_time <= self.ny_end
         in_tokyo = current_time >= self.tokyo_start or current_time <= self.tokyo_end
+        in_sydney = current_time >= self.sydney_start or current_time <= self.sydney_end
 
-        if in_london or in_ny or in_tokyo:
+        if in_london or in_ny or in_tokyo or in_sydney:
             return self.ACTIVE
 
         return self.CLOSED
@@ -130,6 +139,7 @@ class SessionFilter:
         in_london = self.london_start <= current_time <= self.london_end
         in_ny = self.ny_start <= current_time <= self.ny_end
         in_tokyo = current_time >= self.tokyo_start or current_time <= self.tokyo_end
+        in_sydney = current_time >= self.sydney_start or current_time <= self.sydney_end
         in_overlap = self.overlap_start <= current_time <= self.overlap_end
 
         session = self.get_current_session()
@@ -142,6 +152,7 @@ class SessionFilter:
             "in_london": in_london,
             "in_ny": in_ny,
             "in_tokyo": in_tokyo,
+            "in_sydney": in_sydney,
             "in_overlap": in_overlap,
             "trading_allowed": session != self.CLOSED,
         }

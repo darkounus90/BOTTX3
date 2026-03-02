@@ -38,6 +38,8 @@ from core.llm_oracle import GeminiOracle
 from strategy.bollinger_rsi import BollingerRSIStrategy
 from strategy.ny_opening_breakout import NYOpeningBreakoutStrategy
 from strategy.tokyo_opening_breakout import TokyoOpeningBreakoutStrategy
+from strategy.london_opening_breakout import LondonOpeningBreakoutStrategy
+from strategy.sydney_opening_breakout import SydneyOpeningBreakoutStrategy
 from utils.logger import BotLogger
 from utils.mt5_connector import MT5Connector
 from utils.telegram_notifier import TelegramNotifier
@@ -99,9 +101,11 @@ class TX3ProBot:
             self.strategies[symbol] = [
                 BollingerRSIStrategy(logger=self.logger, symbol=symbol),
                 NYOpeningBreakoutStrategy(logger=self.logger, symbol=symbol),
-                TokyoOpeningBreakoutStrategy(logger=self.logger, symbol=symbol)
+                LondonOpeningBreakoutStrategy(logger=self.logger, symbol=symbol),
+                TokyoOpeningBreakoutStrategy(logger=self.logger, symbol=symbol),
+                SydneyOpeningBreakoutStrategy(logger=self.logger, symbol=symbol)
             ]
-            self.logger.info(f"✅ Estrategias [Bollinger+RSI, NY_Breakout, Tokyo_Breakout] cargadas en: {symbol}")
+            self.logger.info(f"✅ Todas las estrategias [Bull/Bear+RSI, NY, LND, TKY, SYN Breakouts] cargadas en: {symbol}")
 
         # Cargar estado previo si existe
         self._restore_state()
