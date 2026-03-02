@@ -44,8 +44,8 @@ class GeminiOracle:
                     for m in genai.list_models():
                         if 'generateContent' in m.supported_generation_methods:
                             name = m.name.replace("models/", "")
-                            # Pescar modelos de la rama 2.0 o 2.5 (La rama 1.5 fue purgada) que NO sean de preview.
-                            if ('2.0-flash' in name or '2.5-flash' in name) and 'preview' not in name and 'lite' not in name:
+                            # Pescar modelos EXCLUSIVAMENTE de la rama 2.0. Rechazamos 2.5 y preview/lite.
+                            if '2.0-flash' in name and 'preview' not in name and 'lite' not in name:
                                 valid_models.append(name)
                     
                     # Seleccionar el primero válido encontrado o un default hardcodeado a 2.0 si falla todo
