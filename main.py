@@ -683,13 +683,33 @@ class TX3ProBot:
 
 
 def main():
+    import traceback
     parser = argparse.ArgumentParser(description="TX3 Pro Bot Professional")
     parser.add_argument("--phase", type=int, choices=[1, 2], required=True, help="1 or 2")
     parser.add_argument("--dry-run", action="store_true", help="Simulation mode")
     args = parser.parse_args()
 
     bot = TX3ProBot(phase=args.phase, dry_run=args.dry_run)
-    bot.run()
+    try:
+        bot.run()
+    except KeyboardInterrupt:
+        bot.logger.info("Cierre por Teclado (Ctrl+C).")
+    except SystemExit:
+        bot.logger.info("Cierre del Sistema/Terminal detectado.")
+        bot.telegram.notify_error("🛑 FATAL: La terminal del bot fue cerrada por el sistema operativo (Crash o VPS reiniciado).")
+    except Exception as e:
+        crash_log = traceback.format_exc()
+        bot.logger.error(f"CRASH FATAL:\n{crash_log}")
+        bot.telegram.notify_error(f"💀 CRASH FATAL DEL BOT: El programa en Python colapsó.\nError: {e}")
+    except BaseException as e:
+        bot.telegram.notify_error(f"🛑 ATENCIÓN ROJA: La ventana (terminal negra) ha sido CERRADA o matada a la fuerza en el VPS.")
+    finally:
+        # Intentar último respiro de notificación al forzar el cierre
+        try:
+            if bot.running: # Si sigue encendido mágicamente pero está muriendo, avisa.
+                bot.telegram.notify_bot_stopped("Cierre Inesperado/Forzado de la terminal", 0, 0)
+        except:
+            pass
 
 
 if __name__ == "__main__":
