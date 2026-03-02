@@ -17,6 +17,7 @@ class SessionFilter:
     Solo opera durante:
     - London Session:  3:00 AM - 12:00 PM EST
     - New York Session: 8:00 AM - 5:00 PM EST
+    - Tokyo Session:    7:00 PM - 2:00 AM EST (Asian Open)
     - Overlap (mejor):  8:00 AM - 12:00 PM EST
 
     No opera los fines de semana (sábado y domingo).
@@ -46,6 +47,14 @@ class SessionFilter:
         self.ny_end = time(
             SessionConfig.NY_END_HOUR,
             SessionConfig.NY_END_MINUTE,
+        )
+        self.tokyo_start = time(
+            SessionConfig.TOKYO_START_HOUR,
+            SessionConfig.TOKYO_START_MINUTE,
+        )
+        self.tokyo_end = time(
+            SessionConfig.TOKYO_END_HOUR,
+            SessionConfig.TOKYO_END_MINUTE,
         )
         self.overlap_start = time(
             SessionConfig.OVERLAP_START_HOUR,
@@ -82,8 +91,9 @@ class SessionFilter:
         # Verificar sesiones individuales
         in_london = self.london_start <= current_time <= self.london_end
         in_ny = self.ny_start <= current_time <= self.ny_end
+        in_tokyo = current_time >= self.tokyo_start or current_time <= self.tokyo_end
 
-        if in_london or in_ny:
+        if in_london or in_ny or in_tokyo:
             return self.ACTIVE
 
         return self.CLOSED
@@ -119,6 +129,7 @@ class SessionFilter:
         is_weekday = current_day in self.trading_days
         in_london = self.london_start <= current_time <= self.london_end
         in_ny = self.ny_start <= current_time <= self.ny_end
+        in_tokyo = current_time >= self.tokyo_start or current_time <= self.tokyo_end
         in_overlap = self.overlap_start <= current_time <= self.overlap_end
 
         session = self.get_current_session()
@@ -130,6 +141,7 @@ class SessionFilter:
             "is_weekday": is_weekday,
             "in_london": in_london,
             "in_ny": in_ny,
+            "in_tokyo": in_tokyo,
             "in_overlap": in_overlap,
             "trading_allowed": session != self.CLOSED,
         }

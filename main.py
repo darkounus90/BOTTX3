@@ -37,6 +37,7 @@ from core.trailing_stop import TrailingStopManager
 from core.llm_oracle import GeminiOracle
 from strategy.bollinger_rsi import BollingerRSIStrategy
 from strategy.ny_opening_breakout import NYOpeningBreakoutStrategy
+from strategy.tokyo_opening_breakout import TokyoOpeningBreakoutStrategy
 from utils.logger import BotLogger
 from utils.mt5_connector import MT5Connector
 from utils.telegram_notifier import TelegramNotifier
@@ -97,9 +98,10 @@ class TX3ProBot:
         for symbol in BotConfig.WATCHLIST:
             self.strategies[symbol] = [
                 BollingerRSIStrategy(logger=self.logger, symbol=symbol),
-                NYOpeningBreakoutStrategy(logger=self.logger, symbol=symbol)
+                NYOpeningBreakoutStrategy(logger=self.logger, symbol=symbol),
+                TokyoOpeningBreakoutStrategy(logger=self.logger, symbol=symbol)
             ]
-            self.logger.info(f"✅ Estrategias [Bollinger+RSI, NY_Breakout] cargadas en: {symbol}")
+            self.logger.info(f"✅ Estrategias [Bollinger+RSI, NY_Breakout, Tokyo_Breakout] cargadas en: {symbol}")
 
         # Cargar estado previo si existe
         self._restore_state()
