@@ -416,15 +416,27 @@ class TX3ProBot:
         )
 
         self.running = True
+        self._notified_disconnect = False
+        reconnect_attempts = 0
         
         while self.running:
             try:
                 # ─── A. Monitoreo y Mantenimiento ──────────────────
                 if not self.connector.is_connected():
+                    if not self._notified_disconnect:
+                        self.telegram.notify_error("🔌 ALERTA: Conexión con MetaTrader 5 perdida. Intentando reconectar automáticamente...")
+                        self._notified_disconnect = True
+                        
                     self.logger.warning("Intentando reconexión a MT5...")
+                    reconnect_attempts += 1
+                    
                     if not self.connector.connect():
-                        sleep_module.sleep(30)
+                        sleep_module.sleep(10)
                         continue
+                    else:
+                        self.telegram.notify_reconnection(reconnect_attempts)
+                        self._notified_disconnect = False
+                        reconnect_attempts = 0
                 
                 self.phase_tracker.update_daily_profit()
                 self._check_daily_reset()
