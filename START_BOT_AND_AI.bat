@@ -22,7 +22,7 @@ set TELEGRAM_BOT_TOKEN=8407569871:AAFwcNzt8Mk0U0Bp3MGwT6OAaxHzRhy-2zg
 set TELEGRAM_CHAT_ID=1176201993
 set DASHBOARD_SECRET=tx3-pro-bot-secret
 set HUGGINGFACE_TOKEN=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
-set GEMINI_API_KEY=AIzaSyDsY5b_JnGlIyTqdW4Bttuih-kaoNt2Pwk
+set GEMINI_API_KEY=AIzaSyAgAV3K-t5rv_P7ru_NpyI8rcgGWObWkS8
 
 echo [3/3] 🚀 Arrancando Bot Principal en Fase 1...
 echo ==========================================================
