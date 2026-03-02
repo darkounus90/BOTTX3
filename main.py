@@ -530,100 +530,100 @@ class TX3ProBot:
                                     if not self.position_manager.check_correlation_shield(symbol):
                                         continue
                                     
-                                # SMC Detector (Order Blocks y Liquidez como Asesor Visual, no como Bloqueo)
-                                if getattr(BotConfig, "SMC_ENABLED", False):
-                                    is_smc_aligned = self.smc_scanner.scan_context(symbol, signal['signal'])
-                                    if is_smc_aligned:
-                                        signal['reason'] += " | 🏦 SMC Confirm"
-                                    else:
-                                        signal['reason'] += " | ⚠️ Sin alineación SMC"
+                                    # SMC Detector (Order Blocks y Liquidez como Asesor Visual, no como Bloqueo)
+                                    if getattr(BotConfig, "SMC_ENABLED", False):
+                                        is_smc_aligned = self.smc_scanner.scan_context(symbol, signal['signal'])
+                                        if is_smc_aligned:
+                                            signal['reason'] += " | 🏦 SMC Confirm"
+                                        else:
+                                            signal['reason'] += " | ⚠️ Sin alineación SMC"
                                         
-                                # Q-Learning Agent (Intervención de Reinforcement Learning o Modo Sombra)
-                                q_state = (symbol, signal.get('adx', 20) > 18, signal['signal'])
+                                    # Q-Learning Agent (Intervención de Reinforcement Learning o Modo Sombra)
+                                    q_state = (symbol, signal.get('adx', 20) > 18, signal['signal'])
                                 
-                                if getattr(BotConfig, "Q_LEARNING_ENABLED", False):
-                                    rl_action = self.q_agent.decide(q_state, signal['signal'])
-                                    if rl_action == "HOLD":
-                                        continue
-                                    signal['signal'] = rl_action
+                                    if getattr(BotConfig, "Q_LEARNING_ENABLED", False):
+                                        rl_action = self.q_agent.decide(q_state, signal['signal'])
+                                        if rl_action == "HOLD":
+                                            continue
+                                        signal['signal'] = rl_action
                                     
-                                # e. Juez Supremo: ORÁCULO LLM (Gemini)
-                                if self.oracle.enabled:
-                                    oracle_resp = self.oracle.evaluate_trade(
-                                        symbol=signal['symbol'],
-                                        signal_type=signal['signal'],
-                                        reason=signal.get('reason', 'Análisis Quant Base'),
-                                        adx=signal.get('adx', None)
-                                    )
-                                    if oracle_resp.get("decision") == "REJECTED":
-                                        self.logger.warning(f"🛑 Trade Cancelado por Oráculo (CIO): {oracle_resp.get('reason')}")
-                                        continue
+                                    # e. Juez Supremo: ORÁCULO LLM (Gemini)
+                                    if self.oracle.enabled:
+                                        oracle_resp = self.oracle.evaluate_trade(
+                                            symbol=signal['symbol'],
+                                            signal_type=signal['signal'],
+                                            reason=signal.get('reason', 'Análisis Quant Base'),
+                                            adx=signal.get('adx', None)
+                                        )
+                                        if oracle_resp.get("decision") == "REJECTED":
+                                            self.logger.warning(f"🛑 Trade Cancelado por Oráculo (CIO): {oracle_resp.get('reason')}")
+                                            continue
+                                        else:
+                                            # Añadir la razón del oráculo al comentario del Trade
+                                            signal['reason'] += f" | 𓂀 {oracle_resp.get('reason')}"
+                                            signal['probability'] = oracle_resp.get('confidence', 50.0)
+                                        
+                                    if self.dry_run:
+                                        self.logger.info(f"🔍 DRY RUN SIGNAL: {signal['signal']} {symbol}")
                                     else:
-                                        # Añadir la razón del oráculo al comentario del Trade
-                                        signal['reason'] += f" | 𓂀 {oracle_resp.get('reason')}"
-                                        signal['probability'] = oracle_resp.get('confidence', 50.0)
-                                        
-                                if self.dry_run:
-                                    self.logger.info(f"🔍 DRY RUN SIGNAL: {signal['signal']} {symbol}")
-                                else:
-                                    # Ejecutar orden con IA Sizing (Kelly Criterion si trae probabilidad)
-                                    order_type = mt5.ORDER_TYPE_BUY if signal['signal'] == 'BUY' else mt5.ORDER_TYPE_SELL
-                                    probability = signal.get("probability", None)
+                                        # Ejecutar orden con IA Sizing (Kelly Criterion si trae probabilidad)
+                                        order_type = mt5.ORDER_TYPE_BUY if signal['signal'] == 'BUY' else mt5.ORDER_TYPE_SELL
+                                        probability = signal.get("probability", None)
                                     
-                                    # Multiplicador Volumétrico de Portafolio
-                                    port_weight = 1.0
-                                    if getattr(BotConfig, "PORTFOLIO_REBALANCING", False):
-                                        port_weight = self.portfolio_manager.get_weight(symbol)
+                                        # Multiplicador Volumétrico de Portafolio
+                                        port_weight = 1.0
+                                        if getattr(BotConfig, "PORTFOLIO_REBALANCING", False):
+                                            port_weight = self.portfolio_manager.get_weight(symbol)
                                     
-                                    result = self.position_manager.place_order(
-                                        symbol=signal['symbol'],
-                                        order_type=order_type,
-                                        stop_loss_pips=signal['stop_loss_pips'],
-                                        take_profit_pips=signal['take_profit_pips'],
-                                        probability=probability,
-                                        portfolio_weight=port_weight
-                                    )
+                                        result = self.position_manager.place_order(
+                                            symbol=signal['symbol'],
+                                            order_type=order_type,
+                                            stop_loss_pips=signal['stop_loss_pips'],
+                                            take_profit_pips=signal['take_profit_pips'],
+                                            probability=probability,
+                                            portfolio_weight=port_weight
+                                        )
                                     
-                                    if result:
-                                        # Registrar en MODO SOMBRA
-                                        if hasattr(self, 'q_agent') and 'ticket' in result:
-                                            self.q_agent.shadow_register_trade(result['ticket'], q_state, signal['signal'])
+                                        if result:
+                                            # Registrar en MODO SOMBRA
+                                            if hasattr(self, 'q_agent') and 'ticket' in result:
+                                                self.q_agent.shadow_register_trade(result['ticket'], q_state, signal['signal'])
                                             
-                                        # Registrar y Notificar
-                                        acc = mt5.account_info()
-                                        self.journal.record_open(
-                                            order_type=signal['signal'],
-                                            symbol=signal['symbol'],
-                                            volume=result['volume'],
-                                            price=result['price'],
-                                            sl=result['sl'],
-                                            tp=result['tp'],
-                                            sl_pips=signal['stop_loss_pips'],
-                                            tp_pips=signal['take_profit_pips'],
-                                            rr_ratio=signal['take_profit_pips']/signal['stop_loss_pips'],
-                                            balance=acc.balance,
-                                            equity=acc.equity,
-                                            daily_dd=self.risk_manager.check_daily_drawdown()["loss"],
-                                            overall_dd=self.risk_manager.check_overall_drawdown()["loss"],
-                                            session=self.session_filter.get_current_session(),
-                                            strategy=strategy.get_name(),
-                                            reason=signal.get('reason', '')
-                                        )
-                                        self.telegram.notify_trade_opened(
-                                            order_type=signal['signal'],
-                                            symbol=signal['symbol'],
-                                            volume=result['volume'],
-                                            price=result['price'],
-                                            sl=result['sl'],
-                                            tp=result['tp'],
-                                            sl_pips=signal['stop_loss_pips'],
-                                            tp_pips=signal['take_profit_pips'],
-                                            rr_ratio=signal['take_profit_pips']/signal['stop_loss_pips']
-                                        )
+                                            # Registrar y Notificar
+                                            acc = mt5.account_info()
+                                            self.journal.record_open(
+                                                order_type=signal['signal'],
+                                                symbol=signal['symbol'],
+                                                volume=result['volume'],
+                                                price=result['price'],
+                                                sl=result['sl'],
+                                                tp=result['tp'],
+                                                sl_pips=signal['stop_loss_pips'],
+                                                tp_pips=signal['take_profit_pips'],
+                                                rr_ratio=signal['take_profit_pips']/signal['stop_loss_pips'],
+                                                balance=acc.balance,
+                                                equity=acc.equity,
+                                                daily_dd=self.risk_manager.check_daily_drawdown()["loss"],
+                                                overall_dd=self.risk_manager.check_overall_drawdown()["loss"],
+                                                session=self.session_filter.get_current_session(),
+                                                strategy=strategy.get_name(),
+                                                reason=signal.get('reason', '')
+                                            )
+                                            self.telegram.notify_trade_opened(
+                                                order_type=signal['signal'],
+                                                symbol=signal['symbol'],
+                                                volume=result['volume'],
+                                                price=result['price'],
+                                                sl=result['sl'],
+                                                tp=result['tp'],
+                                                sl_pips=signal['stop_loss_pips'],
+                                                tp_pips=signal['take_profit_pips'],
+                                                rr_ratio=signal['take_profit_pips']/signal['stop_loss_pips']
+                                            )
                                         
-                                        # Si ya abrimos exitosamente un trade gracias a una estrategia con este par,
-                                        # salimos del loop de estrategias interno para no saturar 2 trades en el mismo lugar al mismo instante.
-                                        break
+                                            # Si ya abrimos exitosamente un trade gracias a una estrategia con este par,
+                                            # salimos del loop de estrategias interno para no saturar 2 trades en el mismo lugar al mismo instante.
+                                            break
                     except Exception as e:
                         import traceback
                         self.logger.error(f"Error procesando {symbol}: {e}\n{traceback.format_exc()}")
