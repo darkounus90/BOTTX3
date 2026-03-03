@@ -56,20 +56,38 @@ class GeminiOracle:
                     genai.configure(api_key=self.api_key)
                     
                     # --- DESCUBRIMIENTO DINÁMICO DE MODELOS ---
-                    available_models = [m.name.replace("models/", "") for m in genai.list_models() 
-                                       if "generateContent" in m.supported_generation_methods]
+                    raw_models = list(genai.list_models())
+                    available_models = [m.name for m in raw_models if "generateContent" in m.supported_generation_methods]
                     
+                    if not available_models:
+                        self.logger.error("❌ Oráculo: No se encontraron modelos compatibles con 'generateContent' en tu cuenta.")
+                        self.enabled = False
+                        return
+
+                    self.logger.info(f"🔍 Modelos detectados: {len(available_models)}")
+                    # self.logger.debug(f"Lista: {available_models}") # Opcional: demasiado ruido si son muchos
+
                     # 1. Seleccionar Tier 2 (Critical - Prioridad 2.0-flash)
                     tier2_candidates = [m for m in available_models if "2.0-flash" in m and "lite" not in m and "experimental" not in m]
-                    self.target_critical = tier2_candidates[0] if tier2_candidates else "gemini-2.0-flash"
+                    if tier2_candidates:
+                        self.target_critical = tier2_candidates[0]
+                    else:
+                        # Fallback inteligente: buscar cualquier flash o el primero disponible
+                        flash_alts = [m for m in available_models if "flash" in m]
+                        self.target_critical = flash_alts[0] if flash_alts else available_models[0]
                     
                     # 2. Seleccionar Tier 1 (Light - Prioridad 1.5-flash)
-                    tier1_candidates = [m for m in available_models if "1.5-flash" in m and "8b" in m] # Intentamos 8b primero
+                    tier1_candidates = [m for m in available_models if "1.5-flash" in m and "8b" in m]
                     if not tier1_candidates:
                         tier1_candidates = [m for m in available_models if "1.5-flash" in m]
-                    self.target_light = tier1_candidates[0] if tier1_candidates else "gemini-1.5-flash"
                     
-                    # Inicializar modelos con los nombres validados
+                    if tier1_candidates:
+                        self.target_light = tier1_candidates[0]
+                    else:
+                        # Usar el mismo que el crítico si no hay opciones ligeras claras
+                        self.target_light = self.target_critical
+                    
+                    # Inicializar modelos con los nombres COMPLETOS (incluida la ruta 'models/')
                     self.model_light = genai.GenerativeModel(model_name=self.target_light)
                     self.model_critical = genai.GenerativeModel(model_name=self.target_critical)
                     
