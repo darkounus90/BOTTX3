@@ -66,7 +66,20 @@ El bot proactivamente examina el calendario económico de *ForexFactory* para cu
 - Apaga transitoriamente los pares asociados **30 minutos antes y 15 minutos después**.
 
 **Análisis de Sentimiento (FinBERT):**
-Si le provees un *HUGGINGFACE_TOKEN*, el bot conectará su núcleo fundamental a un modelo FinBERT (procesamiento NLP financiero). FinBERT escaneará los artículos e indexará si la noticia es "Bullish" (A favor del USD) o "Bearish" (En Contra), permitiéndole discernir ruidos del mercado o sumarle puntos extra a la probabilidad en el análisis técnico.
+Si le provees un *HUGGINGFACE_TOKEN*, el bot conectará su núcleo fundamental a un modelo FinBERT (procesamiento NLP financiero). FinBERT escaneará los artículos e indexará si la noticia es "Bullish" o "Bearish".
+
+---
+
+## 👁️‍🗨️ 4.1. CIO Oracle & Inteligencia Artificial de Veto (`core/llm_oracle.py`)
+
+El núcleo más avanzado del bot. Antes de que cualquier operación llegue al mercado, es sometida a un juicio cualitativo por un modelo de lenguaje extenso (LLM) que actúa como *Chief Investment Officer*.
+
+**Funcionamiento del Oráculo (Gemini 2.5 Flash):**
+1. **Inspección Narrativa:** La IA recibe el contexto técnico (Estructura de Velas, ADX, Señal de Compra/Venta) y verifica si la entrada no es una trampa de liquidez (*Retail Inducement*).
+2. **Tier System (Rutas Inteligentes):** Usa arquitecturas separadas para no saturarse.
+   - *Tier 2 (Critical):* Operaciones financieras en crudo evaluadas por `gemini-2.5-flash` (Límite testeado y optimizado de 1500 RPD y 5 RPM libres de costo en Google AI Studio).
+   - *Tier 1 (Light):* Evaluaciones de estado general delegadas a `gemma-3`.
+3. **Escudo Quant Bypass (Fallback):** Si los servidores de Google colapsan, cambian políticas de cuota (Rate Limit 0/0) o cortan el SSL, el bot jamás se trabará. Si la IA no responde o devuelve un código de error, el bot inyecta silenciosamente un `Quant Bypass (ERROR_API_CÓDIGO)` y aprueba transitoriamente el trade netamente por las matemáticas subyacentes sin comprometer la velocidad de ejecución.
 
 ---
 
