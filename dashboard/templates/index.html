@@ -737,70 +737,84 @@
                 equityChart.update('none'); // silent update without huge animations
             }
 
-            // Positions Table
+            // Positions Table - Fast Rendering Hash Check
             const tbody = document.getElementById('positions-table');
             const pCount = document.getElementById('positions-count');
+            
+            const posHash = JSON.stringify(data.open_positions || []);
+            if (window._lastPosHash !== posHash) {
+                window._lastPosHash = posHash;
+                if (data.open_positions && data.open_positions.length > 0) {
+                    tbody.innerHTML = '';
+                    pCount.textContent = `Active: ${data.open_positions.length}`;
 
-            if (data.open_positions && data.open_positions.length > 0) {
-                tbody.innerHTML = '';
-                pCount.textContent = `Active: ${data.open_positions.length}`;
+                    // Usar un fragmento para no causar reflows en cada iteración
+                    const fragment = document.createDocumentFragment();
+                    data.open_positions.forEach(pos => {
+                        const row = document.createElement('tr');
+                        const isBuy = pos.type === 'BUY';
+                        const isProfitable = pos.profit >= 0;
 
-                data.open_positions.forEach(pos => {
-                    const row = document.createElement('tr');
-                    const isBuy = pos.type === 'BUY';
-                    const isProfitable = pos.profit >= 0;
-
-                    row.className = 'border-b border-gray-800/40 hover:bg-gray-800/40 transition-colors group';
-                    row.innerHTML = `
-                        <td class="px-4 py-3 text-gray-400">#${pos.ticket}</td>
-                        <td class="px-4 py-3 font-bold text-white group-hover:text-blue-400 transition-colors">${pos.symbol}</td>
-                        <td class="px-4 py-3">
-                            <span class="px-2 py-1 rounded text-[0.7rem] font-bold ${isBuy ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-orange-500/10 text-orange-400 border border-orange-500/20'}">
-                                ${pos.type}
-                            </span>
-                        </td>
-                        <td class="px-4 py-3 text-gray-300">${pos.volume.toFixed(2)}</td>
-                        <td class="px-4 py-3 text-gray-400">${pos.price_open}</td>
-                        <td class="px-4 py-3 text-right font-bold ${isProfitable ? 'text-emerald-400' : 'text-rose-400'}">
-                            ${isProfitable ? '+' : ''}${formatCurrency(pos.profit)}
-                        </td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            } else {
-                pCount.textContent = 'Active: 0';
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-gray-600">No active positions currently</td></tr>';
+                        row.className = 'border-b border-gray-800/40 hover:bg-gray-800/40 transition-colors group';
+                        row.innerHTML = `
+                            <td class="px-4 py-3 text-gray-400">#${pos.ticket}</td>
+                            <td class="px-4 py-3 font-bold text-white group-hover:text-blue-400 transition-colors">${pos.symbol}</td>
+                            <td class="px-4 py-3">
+                                <span class="px-2 py-1 rounded text-[0.7rem] font-bold ${isBuy ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-orange-500/10 text-orange-400 border border-orange-500/20'}">
+                                    ${pos.type}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-gray-300">${pos.volume.toFixed(2)}</td>
+                            <td class="px-4 py-3 text-gray-400">${pos.price_open}</td>
+                            <td class="px-4 py-3 text-right font-bold ${isProfitable ? 'text-emerald-400' : 'text-rose-400'}">
+                                ${isProfitable ? '+' : ''}${formatCurrency(pos.profit)}
+                            </td>
+                        `;
+                        fragment.appendChild(row);
+                    });
+                    tbody.appendChild(fragment);
+                } else {
+                    pCount.textContent = 'Active: 0';
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-gray-600">No active positions currently</td></tr>';
+                }
             }
 
-            // Trade History Table (Added)
+            // Trade History Table - Fast Rendering Hash Check
             const hbody = document.getElementById('history-table');
-            if (hbody && data.recent_trades && data.recent_trades.length > 0) {
-                hbody.innerHTML = '';
-                data.recent_trades.forEach(trade => {
-                    const row = document.createElement('tr');
-                    const isProfitable = trade.profit >= 0;
-                    const timeOnly = trade.timestamp.includes(' ') ? trade.timestamp.split(' ')[1] : trade.timestamp;
+            const histHash = JSON.stringify(data.recent_trades || []);
+            
+            if (hbody && window._lastHistHash !== histHash) {
+                window._lastHistHash = histHash;
+                if (data.recent_trades && data.recent_trades.length > 0) {
+                    hbody.innerHTML = '';
+                    const hfragment = document.createDocumentFragment();
+                    data.recent_trades.forEach(trade => {
+                        const row = document.createElement('tr');
+                        const isProfitable = trade.profit >= 0;
+                        const timeOnly = trade.timestamp.includes(' ') ? trade.timestamp.split(' ')[1] : trade.timestamp;
 
-                    row.className = 'border-b border-gray-800/20 hover:bg-gray-800/20 transition-colors';
-                    row.innerHTML = `
-                        <td class="px-4 py-2 text-gray-500 text-[0.65rem]">${timeOnly}</td>
-                        <td class="px-4 py-2 font-bold text-gray-300">${trade.symbol}</td>
-                        <td class="px-4 py-2">
-                             <span class="text-[0.6rem] font-bold ${trade.type === 'BUY' ? 'text-blue-400' : 'text-orange-400'}">${trade.type}</span>
-                        </td>
-                        <td class="px-4 py-2 text-gray-400">${parseFloat(trade.volume).toFixed(2)}</td>
-                        <td class="px-4 py-2">
-                            <div class="flex flex-col">
-                                <span class="text-gray-300 text-[0.65rem] font-bold uppercase">${trade.strategy || 'N/A'}</span>
-                                <span class="text-gray-600 text-[0.6rem] truncate max-w-[120px]">${trade.reason || ''}</span>
-                            </div>
-                        </td>
-                        <td class="px-4 py-2 text-right font-bold ${isProfitable ? 'text-emerald-500' : 'text-rose-500'}">
-                            ${isProfitable ? '+' : ''}${trade.profit.toFixed(2)}
-                        </td>
-                    `;
-                    hbody.appendChild(row);
-                });
+                        row.className = 'border-b border-gray-800/20 hover:bg-gray-800/20 transition-colors';
+                        row.innerHTML = `
+                            <td class="px-4 py-2 text-gray-500 text-[0.65rem]">${timeOnly}</td>
+                            <td class="px-4 py-2 font-bold text-gray-300">${trade.symbol}</td>
+                            <td class="px-4 py-2">
+                                 <span class="text-[0.6rem] font-bold ${trade.type === 'BUY' ? 'text-blue-400' : 'text-orange-400'}">${trade.type}</span>
+                            </td>
+                            <td class="px-4 py-2 text-gray-400">${parseFloat(trade.volume).toFixed(2)}</td>
+                            <td class="px-4 py-2">
+                                <div class="flex flex-col">
+                                    <span class="text-gray-300 text-[0.65rem] font-bold uppercase">${trade.strategy || 'N/A'}</span>
+                                    <span class="text-gray-600 text-[0.6rem] truncate max-w-[120px]">${trade.reason || ''}</span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-2 text-right font-bold ${isProfitable ? 'text-emerald-500' : 'text-rose-500'}">
+                                ${isProfitable ? '+' : ''}${trade.profit.toFixed(2)}
+                            </td>
+                        `;
+                        hfragment.appendChild(row);
+                    });
+                    hbody.appendChild(hfragment);
+                }
             }
         }
 
