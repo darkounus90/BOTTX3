@@ -39,26 +39,24 @@ class GeminiOracle:
         self.system_ready = False
         self._last_warning_time = datetime.min
         
-        # Mapeo de Límites conocidos (Free Tier AI Studio)
+        # Mapeo de Límites conocidos (Google AI Studio actualizados)
         self.MODEL_CONFIGS = {
+            "gemma-3": {"rpm": 25, "rpd": 14000}, # El caballo de batalla con cuota masiva
             "gemini-2.0-flash": {"rpm": 14, "rpd": 1500},
             "gemini-1.5-flash": {"rpm": 14, "rpd": 1500},
-            "gemini-1.5-flash-8b": {"rpm": 14, "rpd": 1500},
-            "gemini-2.0-flash-lite": {"rpm": 10, "rpd": 1500},
-            "gemini-2.5-flash": {"rpm": 14, "rpd": 1500},
-            "gemini-3-flash": {"rpm": 5, "rpd": 1500}, # Asumimos conservador para v3
+            "gemini-2.0-flash-lite": {"rpm": 10, "rpd": 20},
+            "gemini-2.5-flash": {"rpm": 14, "rpd": 20},
+            "gemini-3-flash": {"rpm": 5, "rpd": 20},
             "default": {"rpm": 10, "rpd": 1500}
         }
         
         # Estado de los Buckets por Tier
         self.buckets = {
-            "light": {"tokens": 10, "last_refill": time.time(), "rpm": 10, "rpd_count": 0},
-            "critical": {"tokens": 14, "last_refill": time.time(), "rpm": 14, "rpd_count": 0}
+            "light": {"tokens": 25, "last_refill": time.time(), "rpm": 25, "rpd_count": 0, "rpd_limit": 14000},
+            "critical": {"tokens": 5, "last_refill": time.time(), "rpm": 5, "rpd_count": 0, "rpd_limit": 20}
         }
 
         if self.enabled:
-            # (El bloque anterior de configure y descubrimiento dinámico se mantiene igual, 
-            # pero actualizaremos los buckets con los modelos detectados)
             self._setup_system()
 
     def _setup_system(self):
@@ -77,11 +75,14 @@ class GeminiOracle:
                 self.enabled = False
                 return
 
-            # Selección de modelos (Logica similar a la anterior)
+            # 1. Seleccionar Tier 2 (Critical - Gemini Flash para precisión)
             t2_cands = [m for m in available_models if any(v in m for v in ["3.0", "2.5", "2.0"]) and "flash" in m]
             self.target_critical = t2_cands[0] if t2_cands else available_models[0]
             
-            t1_cands = [m for m in available_models if "lite" in m or "8b" in m or "1.5-flash" in m]
+            # 2. Seleccionar Tier 1 (Light - Prioridad Gemma-3 para CUOTA MASIVA)
+            t1_cands = [m for m in available_models if "gemma-3" in m]
+            if not t1_cands:
+                t1_cands = [m for m in available_models if "lite" in m or "8b" in m]
             self.target_light = t1_cands[0] if t1_cands else self.target_critical
             
             # Configurar Buckets basados en el nombre del modelo
@@ -95,21 +96,24 @@ class GeminiOracle:
             self.model_critical = genai.GenerativeModel(model_name=self.target_critical)
             
             self.system_ready = True
-            self.logger.success(f"👁️‍🗨️ IA ORACLE: Tier 1 ({self.target_light}) RPM:{self.buckets['light']['rpm']}")
-            self.logger.success(f"👁️‍🗨️ IA ORACLE: Tier 2 ({self.target_critical}) RPM:{self.buckets['critical']['rpm']}")
+            self.logger.success(f"👁️‍🗨️ IA ORACLE: T1(Gemma-Cuota:{self.buckets['light']['rpd_limit']}) | T2({self.target_critical})")
         except Exception as e:
             self.logger.error(f"Error configuración Oráculo: {e}")
             self.enabled = False
 
     def _get_token(self, tier: str) -> bool:
-        """Token Bucket específico por Tier"""
+        """Token Bucket específico por Tier con control RPD"""
         bucket = self.buckets.get(tier)
         if not bucket: return False
         
+        # Verificar RPD (Límite diario)
+        if bucket["rpd_count"] >= bucket["rpd_limit"]:
+            return False
+
         now = time.time()
         elapsed = now - bucket["last_refill"]
         
-        # Rellenar
+        # Rellenar RPM
         bucket["tokens"] += elapsed * (bucket["rpm"] / 60.0)
         if bucket["tokens"] > bucket["rpm"]:
             bucket["tokens"] = bucket["rpm"]
@@ -129,11 +133,15 @@ class GeminiOracle:
         if not self._get_token(tier):
             if urgent:
                 time.sleep(5)
-                return self._call_model(model, prompt, tier, urgent) # Reintento directo para urgentes
+                # No reintentar infinitamente si es por RPD
+                if self.buckets[tier]["rpd_count"] < self.buckets[tier]["rpd_limit"]:
+                    return self._call_model(model, prompt, tier, urgent)
             return None
 
+        # Reintento exponencial simple
         for attempt in range(2):
             try:
+                # Gemma-3 requiere prompts más directos, limpiamos posibles instrucciones conflictivas
                 response = model.generate_content(prompt)
                 return response.text.strip()
             except Exception as e:
