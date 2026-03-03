@@ -57,7 +57,7 @@ class GeminiOracle:
                     
                     # Inicializar modelos por niveles
                     # Tier 1 (Light): Para diagnósticos rápidos y médicos
-                    self.model_light = genai.GenerativeModel(model_name="gemini-1.5-flash-8b")
+                    self.model_light = genai.GenerativeModel(model_name="gemini-1.5-flash")
                     # Tier 2 (Critical): Para el veto final de trades
                     self.model_critical = genai.GenerativeModel(model_name="gemini-2.0-flash")
                     
