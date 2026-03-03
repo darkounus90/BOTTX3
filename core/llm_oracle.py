@@ -42,9 +42,9 @@ class GeminiOracle:
         # Mapeo de Límites exactos según AI Studio del Usuario (Marzo 2025)
         self.MODEL_CONFIGS = {
             "gemma-3": {"rpm": 30, "rpd": 14400}, 
-            "gemini-2.0-flash": {"rpm": 10, "rpd": 1500}, # Este es el que tiene 1500 reales y funciona
-            "gemini-2.5-pro": {"rpm": 0, "rpd": 0}, # 0/0 es un bloqueo real por cuota free
-            "gemini-2.5-flash": {"rpm": 5, "rpd": 1500}, # Google capó a 5 solicitudes por minuto en este Tier, pero RPD aguanta
+            "gemini-2.0-flash": {"rpm": 10, "rpd": 1500}, 
+            "gemini-2.5-pro": {"rpm": 0, "rpd": 0}, 
+            "gemini-2.5-flash": {"rpm": 5, "rpd": 20}, # <== EL PANEL DE GOOGLE LIMITA A 20 AL DÍA ESTA KEY
             "gemini-3-flash": {"rpm": 5, "rpd": 20},
             "gemini-2.5-flash-lite": {"rpm": 10, "rpd": 20},
             "gemini-1.5-flash": {"rpm": 15, "rpd": 1500},
@@ -54,7 +54,7 @@ class GeminiOracle:
         # Estado de los Buckets por Tier
         self.buckets = {
             "light": {"tokens": 25, "last_refill": time.time(), "rpm": 25, "rpd_count": 0, "rpd_limit": 14000},
-            "critical": {"tokens": 5, "last_refill": time.time(), "rpm": 5, "rpd_count": 0, "rpd_limit": 1500}
+            "critical": {"tokens": 5, "last_refill": time.time(), "rpm": 5, "rpd_count": 0, "rpd_limit": 20} # Empatado a 20 tiros reales por día
         }
         
         # Caché de señales para evitar duplicar llamadas en la misma vela M5
