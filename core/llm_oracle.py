@@ -158,6 +158,7 @@ class GeminiOracle:
             return None
 
         # Reintento exponencial simple
+        last_error = "UNKNOWN_ERROR"
         for attempt in range(2):
             try:
                 # Gemma-3 requiere prompts más directos, limpiamos posibles instrucciones conflictivas
@@ -165,12 +166,13 @@ class GeminiOracle:
                 return response.text.strip()
             except Exception as e:
                 err_str = str(e).lower()
+                last_error = str(e)
                 self.logger.error(f"AI Error en {model.model_name}: {e}")
                 if "429" in err_str or "quota" in err_str:
                     time.sleep(3 * (attempt + 1))
                     continue
                 break
-        return None
+        return f"ERROR_{last_error}"
 
     def get_quota_report(self) -> dict:
         """Devuelve telemetría de consumo de IA"""
@@ -238,14 +240,17 @@ class GeminiOracle:
         if not resp_text:
             return {"decision": "APPROVED", "reason": "Quant Bypass (No Quota)"}
 
+        if isinstance(resp_text, str) and resp_text.startswith("ERROR_"):
+            return {"decision": "APPROVED", "reason": f"Quant Bypass ({resp_text})"}
+
         try:
             clean_text = resp_text.replace("```json", "").replace("```", "").strip()
             data = json.loads(clean_text)
             data["decision"] = data.get("decision", "APPROVED").upper()
             self._signal_cache[cache_id] = (candle_key, data)
             return data
-        except:
-            return {"decision": "APPROVED", "reason": "IA Parsing Error"}
+        except Exception as e:
+            return {"decision": "APPROVED", "reason": f"IA Parsing Error: {e}"}
 
     def evaluate_system_health(self, metrics: dict) -> str:
         """Diagnóstico Médico (Tier 1 - Light)"""
