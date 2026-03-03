@@ -78,26 +78,29 @@ class GeminiOracle:
                 self.enabled = False
                 return
 
-            # 1. Seleccionar Tier 2 (Critical - Preferimos 2.5-flash por estabilidad y velocidad)
+            # 1. Seleccionar Tier 2 (Critical)
+            # Acorde a AI Studio gratuíto, 2.5-flash tiene 20 RPD, pero queremos el mejor disponible
             t2_cands = [m for m in available_models if "2.5-flash" in m and "lite" not in m]
             if not t2_cands:
                 t2_cands = [m for m in available_models if "flash" in m]
             self.target_critical = t2_cands[0] if t2_cands else available_models[0]
             
-            # 2. Seleccionar Tier 1 (Light - Prioridad Gemma-3 para CUOTA MASIVA 14.4k, ideal 1b o 4b)
-            t1_cands = [m for m in available_models if "gemma-3" in m]
+            # 2. Seleccionar Tier 1 (Light - Prioridad Gemma 3)
+            # Aquí es donde están los 14,400 Requests per Day
+            t1_cands = [m for m in available_models if "gemma-3-1b" in m or "gemma-3-4b" in m]
             if not t1_cands:
                 t1_cands = [m for m in available_models if "8b" in m or "lite" in m]
             self.target_light = t1_cands[0] if t1_cands else self.target_critical
             
             # Configurar Buckets basados en el nombre del modelo
             for tier, model_name in [("light", self.target_light), ("critical", self.target_critical)]:
-                # Asegurarse de que coincida con las claves de self.MODEL_CONFIGS
+                # Por seguridad extra frente a los nombres cambiantes, buscamos la mejor coincidencia
                 match_key = "default"
-                for k in self.MODEL_CONFIGS.keys():
-                    if k in model_name:
-                        match_key = k
-                        break
+                if "gemma-3" in model_name: match_key = "gemma-3"
+                elif "2.5-flash" in model_name: match_key = "gemini-2.5-flash"
+                elif "1.5-flash" in model_name: match_key = "gemini-1.5-flash"
+                elif "2.0-flash" in model_name: match_key = "gemini-2.0-flash"
+                    
                 config = self.MODEL_CONFIGS[match_key]
                 
                 self.buckets[tier]["rpm"] = config["rpm"]
@@ -108,7 +111,7 @@ class GeminiOracle:
             self.model_critical = genai.GenerativeModel(model_name=self.target_critical)
             
             self.system_ready = True
-            self.logger.success(f"👁️‍🗨️ IA ORACLE: T1(Gemma-Cuota:{self.buckets['light']['rpd_limit']}) | T2({self.target_critical})")
+            self.logger.success(f"👁️‍🗨️ IA ORACLE: T1({self.target_light}:{self.buckets['light']['rpd_limit']} reqs) | T2({self.target_critical}:{self.buckets['critical']['rpd_limit']} reqs)")
         except Exception as e:
             self.logger.error(f"Error configuración Oráculo: {e}")
             self.enabled = False
