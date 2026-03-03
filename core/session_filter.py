@@ -103,6 +103,14 @@ class SessionFilter:
         in_tokyo = current_time >= self.tokyo_start or current_time <= self.tokyo_end
         in_sydney = current_time >= self.sydney_start or current_time <= self.sydney_end
 
+        if getattr(SessionConfig, "RESTRICT_TO_LONDON_NY", True):
+            in_tokyo = False
+            in_sydney = False
+
+        # Apagar si es viernes por la tarde (Evita spreads altos de fin de semana)
+        if current_day == 4 and now.hour >= getattr(SessionConfig, "FRIDAY_FLAT_HOUR", 12):
+            return self.CLOSED
+
         if in_london or in_ny or in_tokyo or in_sydney:
             return self.ACTIVE
 
@@ -198,12 +206,11 @@ class SessionFilter:
         """
         Verifica si es viernes por la tarde para cerrar todas las posiciones
         y evitar operar durante el fin de semana (Regla de Prop Firms).
-        Se ejecuta a las 3:45 PM EST (15:45).
+        Se ejecuta a la hora parametrizada en FRIDAY_FLAT_HOUR (Por defecto 12:00 PM EST).
         """
-        now = datetime.now()
+        now = datetime.now(ZoneInfo("America/New_York"))
         # 4 = Viernes en Python datetime.weekday()
         if now.weekday() == 4:
-            # 15:45 PM EST = 3:45 PM
-            if now.hour == 15 and now.minute >= 45:
+            if now.hour >= getattr(SessionConfig, "FRIDAY_FLAT_HOUR", 12):
                 return True
         return False
