@@ -39,14 +39,13 @@ class GeminiOracle:
         self.system_ready = False
         self._last_warning_time = datetime.min
         
-        # Mapeo de Límites conocidos (Google AI Studio actualizados)
+        # Mapeo de Límites conocidos (Google AI Studio actualizados 2024/2025)
         self.MODEL_CONFIGS = {
-            "gemma-3": {"rpm": 25, "rpd": 14000}, # El caballo de batalla con cuota masiva
-            "gemini-2.0-flash": {"rpm": 14, "rpd": 1500},
-            "gemini-1.5-flash": {"rpm": 14, "rpd": 1500},
-            "gemini-2.0-flash-lite": {"rpm": 10, "rpd": 20},
-            "gemini-2.5-flash": {"rpm": 14, "rpd": 20},
-            "gemini-3-flash": {"rpm": 5, "rpd": 20},
+            "gemma-2": {"rpm": 15, "rpd": 1500},
+            "gemma-3": {"rpm": 25, "rpd": 14000}, # Cuota masiva
+            "gemini-2.0-flash": {"rpm": 10, "rpd": 1500},
+            "gemini-1.5-flash": {"rpm": 15, "rpd": 1500},
+            "gemini-1.5-pro": {"rpm": 2, "rpd": 50},
             "default": {"rpm": 10, "rpd": 1500}
         }
         
@@ -254,6 +253,11 @@ class GeminiOracle:
             f"Responde corto, con emojis de trading y tono profesional de Wall Street."
         )
         resp = self._call_model(self.model_light, prompt, tier="light", urgent=True)
+        
+        # Fallback a Tier 2 si Tier 1 falla o no hay cuota
+        if not resp and self.buckets["critical"]["rpd_count"] < self.buckets["critical"]["rpd_limit"]:
+            resp = self._call_model(self.model_critical, prompt, tier="critical", urgent=True)
+            
         return resp if resp else "⚠️ Oráculo pensando demasiado (Rate Limit). Intenta luego."
 
     def re_init(self, new_key: str) -> bool:
@@ -297,8 +301,10 @@ class GeminiOracle:
             self.enabled = True
             
             # Resetear Rate Limiter y Cache al cambiar de llave
-            self.buckets["light"]["tokens"] = self.buckets["light"]["rpm"]
-            self.buckets["critical"]["tokens"] = self.buckets["critical"]["rpm"]
+            for tier in ["light", "critical"]:
+                self.buckets[tier]["tokens"] = self.buckets[tier]["rpm"]
+                self.buckets[tier]["rpd_count"] = 0
+                
             self._signal_cache = {}
             
             self.logger.success(f"🔑 Oráculo reconectado con nueva llave.")
