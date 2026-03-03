@@ -72,12 +72,26 @@ class PositionManager:
             stop_loss_pips = atr_v * 1.5 # SL = 1.5 veces el aliento del mercado
             self.logger.info(f"📏 Math Fortress: Usando ATR Adaptive SL de {stop_loss_pips:.1f} pips para {symbol}")
 
-        # ─── 3. KELLY IA Y REBALANCEO ───
+        # ─── 3. KELLY IA Y REBALANCEO (MODULACIÓN POR CONFIANZA IA) ───
         if probability is not None:
-            kelly = (probability - 50) / 100 + 0.5 # Ajuste suave de Kelly
-            risk_pct *= kelly 
-        
+            # Re-escalamos la agresión en base a qué tan seguro está Gemini (0-100)
+            if probability >= 85.0:
+                self.logger.info(f"🔥 IA Ultra-Confident ({probability}%). Aumentando lotaje 50% (High Conviction).")
+                risk_pct *= 1.5   # Aumenta el riesgo 50% si está muy seguro
+            elif probability >= 70.0:
+                self.logger.info(f"👍 IA Normal Confident ({probability}%). Lotaje estándar.")
+                risk_pct *= 1.0   # Riesgo normal
+            elif probability < 60.0:
+                self.logger.warning(f"📉 IA Low Confidence ({probability}%). Reduciendo lotaje a la MITAD (Defensive).")
+                risk_pct *= 0.5   # Reduce a la mitad si duda
+            else:
+                risk_pct *= 0.8   # Ligera reducción si está en zona gris (60-69%)
+                
         risk_pct *= portfolio_weight
+        
+        # Límite duro absoluto para evitar locuras (cap al 3% de riesgo real de la cuenta)
+        risk_pct = min(risk_pct, BotConfig.MAX_RISK_PER_TRADE_PCT * 3.0) 
+        
         risk_amount = acc.balance * (risk_pct / 100)
 
         # ─── 4. CÁLCULO DE LOTAJE ───
