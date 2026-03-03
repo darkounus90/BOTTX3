@@ -41,17 +41,13 @@ class GeminiOracle:
                 try:
                     genai.configure(api_key=self.api_key)
                     
-                    # Auto-detector de modelo compatible para la nueva arquitectura API v1beta (gemini-2.0)
-                    valid_models = []
-                    for m in genai.list_models():
-                        if 'generateContent' in m.supported_generation_methods:
-                            name = m.name.replace("models/", "")
-                            # Pescar modelos EXCLUSIVAMENTE de la rama 2.0. Rechazamos 2.5 y preview/lite.
-                            if '2.0-flash' in name and 'preview' not in name and 'lite' not in name:
-                                valid_models.append(name)
+                    # Hardcodeamos el modelo más estable y gratuito para ahorrar una llamada a 'list_models'
+                    # que consume cuota innecesaria al arrancar.
+                    target_model = "gemini-2.0-flash"
                     
-                    # Seleccionar el primero válido encontrado o un default hardcodeado a 2.0 si falla todo
-                    target_model = valid_models[0] if valid_models else "gemini-2.0-flash"
+                    self.model = genai.GenerativeModel(model_name=target_model)
+                    self.system_ready = True
+                    self.logger.success(f"👁️‍🗨️ LLM ORACLE ({target_model}) Despertó y está Vigilando.")
                     
                     self.model = genai.GenerativeModel(model_name=target_model)
                     self.system_ready = True
@@ -141,8 +137,8 @@ class GeminiOracle:
             err_str = str(e).lower()
             if "429" in err_str or "quota" in err_str:
                 now = datetime.now()
-                if (now - self._last_warning_time).total_seconds() > 3600: # Solo avisar una vez por hora
-                    self.logger.warning(f"⚠️ Oráculo sin cuota (Rate Limit Gemini). El Bot operará en Modo Quant Puro.")
+                if (now - self._last_warning_time).total_seconds() > 3600:
+                    self.logger.warning(f"⚠️ Oráculo sin cuota (Gemini API Error: {e}). El Bot operará en Modo Quant Puro.")
                     self._last_warning_time = now
             else:
                 self.logger.error(f"Falla de conexión al CIO Gemini: {e}")

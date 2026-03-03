@@ -23,10 +23,10 @@ class BollingerRSIStrategy(BaseStrategy):
         self.bb_period = 20
         self.bb_dev = 2.0
         self.rsi_period = 14
-        self.rsi_overbought = 70.0
-        self.rsi_oversold = 30.0
+        self.rsi_overbought = 75.0 # Más estricto (antes 70)
+        self.rsi_oversold = 25.0   # Más estricto (antes 30)
         self.adx_period = 14
-        self.adx_threshold = 20.0 # Filtro de tendencia: si hay MUCHA tendencia, evitamos reversión
+        self.adx_threshold = 28.0  # Más conservador (antes 40 hardcoded)
         self.bars_needed = 100
 
     def get_name(self) -> str:
@@ -97,10 +97,19 @@ class BollingerRSIStrategy(BaseStrategy):
         last_closed = df.iloc[-2]
         prev_closed = df.iloc[-3]
         
-        # Evitamos operar si la tendencia es tan hiper-agresiva que romperá bandas sin piedad
-        # ADX > 40 significa tendencia súper fuerte = PELIGRO para reversión a la media
-        if last_closed['adx'] > 40:
-            self.logger.debug(f"{self.symbol} ADX alto ({last_closed['adx']:.1f}). Evitando operar contra tendencia.")
+        # Evitamos operar si la tendencia es tan agresiva que romperá bandas sin piedad
+        if last_closed['adx'] > self.adx_threshold:
+            self.logger.debug(f"{self.symbol} ADX alto ({last_closed['adx']:.1f} > {self.adx_threshold}). Evitando operar contra tendencia.")
+            return None
+
+        # --- FILTRO DE SPREAD ---
+        symbol_info = mt5.symbol_info(self.symbol)
+        if symbol_info is None:
+            return None
+        
+        spread_pips = symbol_info.spread * (10 if symbol_info.digits == 3 or symbol_info.digits == 5 else 1) / 10.0 # Ajuste pips
+        if spread_pips > getattr(BotConfig, "MAX_SPREAD_PIPS", 3.0):
+            self.logger.debug(f"{self.symbol} Spread alto ({spread_pips:.1f} pips). Ignorando señal.")
             return None
 
         signal_type = None
