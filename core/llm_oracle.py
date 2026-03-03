@@ -39,14 +39,15 @@ class GeminiOracle:
         self.system_ready = False
         self._last_warning_time = datetime.min
         
-        # Mapeo de Límites conocidos (Google AI Studio actualizados 2024/2025)
+        # Mapeo de Límites exactos según AI Studio del Usuario (Marzo 2025)
         self.MODEL_CONFIGS = {
-            "gemma-2": {"rpm": 15, "rpd": 1500},
-            "gemma-3": {"rpm": 25, "rpd": 14000}, # Cuota masiva
-            "gemini-2.0-flash": {"rpm": 10, "rpd": 1500},
+            "gemma-3": {"rpm": 30, "rpd": 14400}, 
+            "gemini-2.5-flash": {"rpm": 5, "rpd": 20},
+            "gemini-3-flash": {"rpm": 5, "rpd": 20},
+            "gemini-2.5-flash-lite": {"rpm": 10, "rpd": 20},
+            "gemini-2.0-flash": {"rpm": 10, "rpd": 1500}, # Asumimos 1500 si no se muestra el límite de 20
             "gemini-1.5-flash": {"rpm": 15, "rpd": 1500},
-            "gemini-1.5-pro": {"rpm": 2, "rpd": 50},
-            "default": {"rpm": 10, "rpd": 1500}
+            "default": {"rpm": 5, "rpd": 20}
         }
         
         # Estado de los Buckets por Tier
@@ -77,14 +78,16 @@ class GeminiOracle:
                 self.enabled = False
                 return
 
-            # 1. Seleccionar Tier 2 (Critical - Gemini Flash para precisión)
-            t2_cands = [m for m in available_models if any(v in m for v in ["3.0", "2.5", "2.0"]) and "flash" in m]
+            # 1. Seleccionar Tier 2 (Critical - Preferimos 1.5-flash por cuota de 1500 vs 20)
+            t2_cands = [m for m in available_models if "1.5-flash" in m]
+            if not t2_cands:
+                t2_cands = [m for m in available_models if any(v in m for v in ["2.0", "stable"]) and "flash" in m]
             self.target_critical = t2_cands[0] if t2_cands else available_models[0]
             
-            # 2. Seleccionar Tier 1 (Light - Prioridad Gemma-3 para CUOTA MASIVA)
+            # 2. Seleccionar Tier 1 (Light - Prioridad Gemma-3 para CUOTA MASIVA 14.4K)
             t1_cands = [m for m in available_models if "gemma-3" in m]
             if not t1_cands:
-                t1_cands = [m for m in available_models if "lite" in m or "8b" in m]
+                t1_cands = [m for m in available_models if "8b" in m or "lite" in m]
             self.target_light = t1_cands[0] if t1_cands else self.target_critical
             
             # Configurar Buckets basados en el nombre del modelo
@@ -281,16 +284,16 @@ class GeminiOracle:
                 self.logger.error("❌ Oráculo (Re-init): No se encontraron modelos compatibles.")
                 return False
 
-            # 1. Seleccionar Tier 2 (Critical)
-            tier2_candidates = [m for m in available_models if any(v in m for v in ["3.0", "2.5", "2.0"]) and "flash" in m]
+            # 1. Seleccionar Tier 2 (Critical - Preferimos 1.5 por cuota)
+            tier2_candidates = [m for m in available_models if "1.5-flash" in m]
             if not tier2_candidates:
                 tier2_candidates = [m for m in available_models if "flash" in m]
             self.target_critical = tier2_candidates[0] if tier2_candidates else available_models[0]
             
-            # 2. Seleccionar Tier 1 (Light)
-            tier1_candidates = [m for m in available_models if "lite" in m or "8b" in m or "1.5-flash" in m]
+            # 2. Seleccionar Tier 1 (Light - Prioridad Gemma-3 14.4K RPD)
+            tier1_candidates = [m for m in available_models if "gemma-3" in m]
             if not tier1_candidates:
-                tier1_candidates = [m for m in available_models if "flash" in m and m != self.target_critical]
+                tier1_candidates = [m for m in available_models if "lite" in m or "8b" in m]
             self.target_light = tier1_candidates[0] if tier1_candidates else self.target_critical
             
             # Inicializar modelos
@@ -300,6 +303,12 @@ class GeminiOracle:
             self.system_ready = True
             self.enabled = True
             
+            # Re-configurar Buckets para los nuevos modelos detectados
+            for tier, model_name in [("light", self.target_light), ("critical", self.target_critical)]:
+                config = next((v for k, v in self.MODEL_CONFIGS.items() if k in model_name), self.MODEL_CONFIGS["default"])
+                self.buckets[tier]["rpm"] = config["rpm"]
+                self.buckets[tier]["rpd_limit"] = config["rpd"]
+
             # Resetear Rate Limiter y Cache al cambiar de llave
             for tier in ["light", "critical"]:
                 self.buckets[tier]["tokens"] = self.buckets[tier]["rpm"]
