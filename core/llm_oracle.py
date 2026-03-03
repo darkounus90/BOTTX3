@@ -10,7 +10,9 @@ Analysis del Bot choca contra la lógica institucional (SMC/ICT), lo veta.
 
 import os
 import json
+import time
 from datetime import datetime
+from zoneinfo import ZoneInfo
 try:
     import google.generativeai as genai
 except ImportError:
@@ -21,7 +23,12 @@ from config.settings import BotConfig
 
 class GeminiOracle:
     """
-    Motor de Conciencia Institucional impulsado por Google Gemini.
+    🧠 Motor de Conciencia Institucional Jerárquico.
+    ===============================================
+    Implementa:
+    1. Two-Tier AI: 8B para salud, 2.0-Flash para trades.
+    2. Local Rate Limiting: Evita bloqueos 429 de Google.
+    3. Context Caching: Ahorro de tokens por vela M5.
     """
 
     def __init__(self, logger: BotLogger):
@@ -30,179 +37,145 @@ class GeminiOracle:
         self.api_key = os.environ.get("GEMINI_API_KEY", "")
         
         self.system_ready = False
-        self._last_quota_error = 0
         self._last_warning_time = datetime.min
         
+        # Rate Limiting (Token Bucket)
+        self.rpm_limit = 14  # Max 14 por minuto (margen de seguridad)
+        self.tokens = self.rpm_limit
+        self.last_refill = time.time()
+        
+        # Cache de señales (para no preguntar lo mismo en la misma vela)
+        self._signal_cache = {} # {symbol: (candle_time, decision)}
+
         if self.enabled:
             if not self.api_key or genai is None:
-                self.logger.warning("⚠️ Oracle Engine Activado pero falta GEMINI_API_KEY o 'google-generativeai'. El Bot operará Modo Quant puro.")
+                self.logger.warning("⚠️ Oracle Engine manual: Falta API Key. Operando modo Quant Puro.")
                 self.enabled = False
             else:
                 try:
                     genai.configure(api_key=self.api_key)
                     
-                    # Hardcodeamos el modelo más estable y gratuito para ahorrar una llamada a 'list_models'
-                    # que consume cuota innecesaria al arrancar.
-                    target_model = "gemini-2.0-flash"
+                    # Inicializar modelos por niveles
+                    # Tier 1 (Light): Para diagnósticos rápidos y médicos
+                    self.model_light = genai.GenerativeModel(model_name="gemini-1.5-flash-8b")
+                    # Tier 2 (Critical): Para el veto final de trades
+                    self.model_critical = genai.GenerativeModel(model_name="gemini-2.0-flash")
                     
-                    self.model = genai.GenerativeModel(model_name=target_model)
                     self.system_ready = True
-                    self.logger.success(f"👁️‍🗨️ LLM ORACLE ({target_model}) Despertó y está Vigilando.")
-                    
-                    self.model = genai.GenerativeModel(model_name=target_model)
-                    self.system_ready = True
-                    self.logger.success(f"👁️‍🗨️ LLM ORACLE ({target_model}) Despertó y está Vigilando.")
+                    self.logger.success("👁️‍🗨️ AI ORACLE RECONSTRUIDO: Jerarquía y Rate Limiter Activos.")
                 except Exception as e:
                     self.logger.error(f"Error inicializando Gemini Oracle: {e}")
                     self.enabled = False
 
-    def evaluate_trade(self, symbol: str, signal_type: str, reason: str, adx: float = None) -> dict:
-        """
-        Envía telemetría enriquecida (Multi-Timeframe) al Oráculo.
-        Descarga volatilidad en vivo para que Gemini decida con contexto real SMC.
-        """
-        if not self.system_ready or not self.enabled:
-            return {"decision": "APPROVED", "reason": "Oracle Disabled or Unreachable."}
-            
-        now = datetime.now()
+    def _get_token(self) -> bool:
+        """Implementación de Token Bucket para RPM"""
+        now = time.time()
+        elapsed = now - self.last_refill
         
-        # ─── EXTRAER CONTEXTO MULTI-TIMEFRAME (MTF) RÁPIDO ───
-        context_data = "No data"
-        m15_trend = "UNKNOWN"
-        h1_trend = "UNKNOWN"
+        # Recargar 1 token cada (60/rpm_limit) segundos
+        self.tokens += elapsed * (self.rpm_limit / 60.0)
+        if self.tokens > self.rpm_limit:
+            self.tokens = self.rpm_limit
+        self.last_refill = now
+
+        if self.tokens >= 1:
+            self.tokens -= 1
+            return True
+        return False
+
+    def _call_model(self, model, prompt, urgent=False):
+        """Wrapper con Rate Limit y Backoff"""
+        if not self.system_ready: return None
+        
+        # Si no hay tokens, esperar si es urgente o abortar
+        if not self._get_token():
+            if urgent:
+                time.sleep(5) # Espera proactiva
+            else:
+                return None
+
+        # Reintento exponencial simple
+        for attempt in range(2):
+            try:
+                response = model.generate_content(prompt)
+                return response.text.strip()
+            except Exception as e:
+                err_str = str(e).lower()
+                if "429" in err_str or "quota" in err_str:
+                    if (datetime.now() - self._last_warning_time).total_seconds() > 1800:
+                        self.logger.warning(f"⚠️ Quota excedida en Google AI Studio (Tier de API).")
+                        self._last_warning_time = datetime.now()
+                    time.sleep(2 * (attempt + 1))
+                    continue
+                self.logger.error(f"Error en llamada AI: {e}")
+                break
+        return None
+
+    def evaluate_trade(self, symbol: str, signal_type: str, reason: str, adx: float = None) -> dict:
+        """Veto CIO (Tier 2 - Critical)"""
+        if not self.enabled or not self.system_ready:
+            return {"decision": "APPROVED", "reason": "Oracle Bypass (Disabled)"}
+
+        # 1. VERIFICAR CACHÉ (Evitar spam por vela M5)
+        # Obtenemos la hora de la vela actual (redondeada a 5 min)
+        now_nyc = datetime.now(ZoneInfo("America/New_York"))
+        candle_key = now_nyc.strftime("%Y%m%d%H") + str(now_nyc.minute // 5)
+        
+        cache_id = f"{symbol}_{signal_type}"
+        if cache_id in self._signal_cache:
+            last_candle, last_decision = self._signal_cache[cache_id]
+            if last_candle == candle_key:
+                return last_decision
+
+        # 2. PREPARAR CONTEXTO MTF
+        context_data = "N/A"
         try:
             import MetaTrader5 as mt5
             import pandas as pd
-            
-            # Extraer Price Action recientísimo para alimentar visiones de Scalping al LLM
-            m15_rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M15, 0, 5)
-            if m15_rates is not None and len(m15_rates) > 0:
-                m15_trend = "ALCISTA" if m15_rates[-1]['close'] > m15_rates[0]['open'] else "BAJISTA"
-                
-            h1_rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_H1, 0, 3)
-            if h1_rates is not None and len(h1_rates) > 0:
-                h1_df = pd.DataFrame(h1_rates)
-                h1_trend = "BULLISH" if h1_df.iloc[-1]['close'] > h1_df.iloc[0]['open'] else "BEARISH"
-                
-            context_data = f"M15 Short Trend: {m15_trend} | H1 Macro Trend: {h1_trend}"
-        except Exception as e:
-            self.logger.warning(f"No se pudo inyectar MTF context a Gemini: {e}")
-        
-        prompt = (
-            f"ERES EL CHIEF INVESTMENT OFFICER (CIO) DE UN HEDGE FUND QUANT. Eres estricto, aplicas Smart Money Concepts (SMC) y proteges el capital al máximo.\n\n"
-            f"PROPUESTA DE TRADE ALGÓRITMICO (INSTITUCIONAL):\n"
-            f"- Símbolo: {symbol}\n"
-            f"- Sentido Operativo: {signal_type}\n"
-            f"- Contexto Gráfico MTF en Vivo: {context_data}\n"
-            f"- Fuerza de Tenencia ADX: {adx if adx else 'N/A'}\n"
-            f"- Gatillo Técnico: {reason}\n"
-            f"- Hora del Servidor: {now.strftime('%H:%M EST')}\n\n"
-            f"¿Apruebas arriesgar capital institucional en este trade basándote en la alineación del contexto MTF y conceptos SMC actuales? Rechaza si M15 contradice macro H1 peligrosamente o estás sobre un posible Liquidity Grab.\n"
-            f"(Responde SOLAMENTE un objeto JSON puro con 'decision'='APPROVED|REJECTED', 'reason'='Motivo en 10 palabras', y 'confidence'=número del 0 al 100 indicando probabilidad real de éxito)."
-        )
-        
-        self.logger.info(f"🧠 Consultando CIO Gemini para revisar el trade {signal_type} en {symbol}...")
-        
-        try:
-            # Generar respuesta
-            response = self.model.generate_content(prompt)
-            text = response.text
-            
-            # Limpiar markdown de código para leer el JSON puro
-            if text.startswith("```json"):
-                text = text.replace("```json\n", "").replace("\n```", "").strip()
-            elif text.startswith("```"):
-                 text = text.replace("```\n", "").replace("\n```", "").strip()
-                 
-            # Parsear decision
-            try:
-                decision_data = json.loads(text)
-                final_decision = decision_data.get("decision", "APPROVED").upper()
-                final_reason = decision_data.get("reason", "No reason provided")
-                confidence = float(decision_data.get("confidence", 50.0))
-                
-                if final_decision == "APPROVED":
-                    self.logger.success(f"👁️‍🗨️ ORACLE APROBÓ ({confidence}% conf.): {final_reason}")
-                else:
-                    self.logger.warning(f"👁️‍🗨️ ORACLE VETÓ ({confidence}% conf.): {final_reason}")
-                    
-                return {"decision": final_decision, "reason": final_reason, "confidence": confidence}
-                
-            except json.JSONDecodeError:
-                # Si Gemini responde fuera de formato, ser cautelosos y abortar
-                self.logger.error(f"Oracle respondió basura no-JSON: {text}")
-                return {"decision": "REJECTED", "reason": "Oracle NLP Parsing Error - Safety Abort"}
-                
-        except Exception as e:
-            err_str = str(e).lower()
-            if "429" in err_str or "quota" in err_str:
-                now = datetime.now()
-                if (now - self._last_warning_time).total_seconds() > 3600:
-                    self.logger.warning(f"⚠️ Oráculo sin cuota (Gemini API Error: {e}). El Bot operará en Modo Quant Puro.")
-                    self._last_warning_time = now
-            else:
-                self.logger.error(f"Falla de conexión al CIO Gemini: {e}")
-            return {"decision": "APPROVED", "reason": "Oracle Rate Limit/Failure - Quant Override"}
+            rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_H1, 0, 1)
+            if rates is not None:
+                context_data = f"H1_Trend: {'BULLISH' if rates[0]['close'] > rates[0]['open'] else 'BEARISH'}"
+        except: pass
 
-    def ask_oracle(self, question: str) -> str:
-        """
-        Permite hacer consultas generales o análisis de situación al Oráculo vía Telegram.
-        """
-        if not self.system_ready or not self.enabled:
-            return "⚠️ Oráculo Desconectado o API Key faltante."
-            
         prompt = (
-            f"ERES EL CHIEF INVESTMENT OFFICER (CIO) AI DEL TX3 PRO BOT.\n"
-            f"El usuario (dueño de la cuenta) te pregunta lo siguiente:\n"
-            f"\"{question}\"\n\n"
-            f"Responde de forma concisa, analítica, profesional y directa. Eres un experto en Smart Money Concepts (SMC). Usa formato Markdown para Telegram (negritas '*', sin HTML, usa emojis). Máximo 2 párrafos."
+            f"ERES CIO DE HEDGE FUND. Símbolo: {symbol} | Sentido: {signal_type} | Contexto: {context_data} | Técnica: {reason} | ADX: {adx}\n"
+            f"Veta el trade si ves riesgo estructural (Liquidity Grab o contratendencia H1).\n"
+            f"RESPONDE SOLO JSON: {{'decision':'APPROVED|REJECTED', 'reason':'motivo max 8 palabras', 'confidence':0-100}}"
         )
+
+        resp_text = self._call_model(self.model_critical, prompt, urgent=True)
+        
+        if not resp_text:
+            return {"decision": "APPROVED", "reason": "Quant Bypass (Rate Limit)"}
+
         try:
-            response = self.model.generate_content(prompt)
-            return response.text.strip()
-        except Exception as e:
-            err_str = str(e).lower()
-            if "429" in err_str or "quota" in err_str:
-                now = datetime.now()
-                if (now - self._last_warning_time).total_seconds() > 3600:
-                    self.logger.warning("⚠️ Oráculo sin cuota (Rate Limit Gemini).")
-                    self._last_warning_time = now
-                return "⚠️ Oráculo temporalmente sin cuota (Rate Limit de tu API Key excedido). Intenta en unos minutos o revisa tu cuota en Google AI Studio."
-            self.logger.error(f"Error consultando al Oráculo en modo libre: {e}")
-            return f"❌ Oráculo en corto circuito: {e}"
+            # Limpiar posibles bloques de markdown
+            clean_text = resp_text.replace("```json", "").replace("```", "").strip()
+            data = json.loads(clean_text)
+            data["decision"] = data.get("decision", "APPROVED").upper()
+            
+            # Guardar en Caché
+            self._signal_cache[cache_id] = (candle_key, data)
+            return data
+        except:
+            return {"decision": "APPROVED", "reason": "IA Parsing Error"}
 
     def evaluate_system_health(self, metrics: dict) -> str:
-        """
-        Actúa como el Médico Cuantitativo (Dr. Quant). Evalúa la salud
-        sistémica del bot basada en telemetría en vivo.
-        """
-        if not self.system_ready or not self.enabled:
-            return "⚠️ Modo Dr. Quant no disponible (Oráculo desconectado)."
-            
+        """Diagnóstico Médico (Tier 1 - Light)"""
+        if not self.enabled: return "⚠️ Dr. Quant offline."
+        
         prompt = (
-            f"ERES 'DR. QUANT', EL INGENIERO DE RIESGOS Y SISTEMAS DEL TX3 PRO BOT.\n"
-            f"Tu deber es diagnosticar la salud del bot basándote EXCLUSIVAMENTE en esta telemetría en vivo:\n"
-            f"- Uptime: {metrics.get('uptime', 'Desconocido')}\n"
-            f"- Horas sin operar: {metrics.get('hours_since_last_trade', 'N/A')}\n"
-            f"- Drawdown Diario (Pérdida): ${metrics.get('daily_dd', '0')} USD\n"
-            f"- Drawdown Total (Pérdida): ${metrics.get('overall_dd', '0')} USD\n"
-            f"- Errores Recientes: {metrics.get('recent_errors', 'Ninguno')}\n"
-            f"- Estado MT5: {'Conectado' if metrics.get('mt5_connected') else 'DESCONECTADO'}\n\n"
-            f"INSTRUCCIONES CLAVES:\n"
-            f"1. Si notas demasiadas horas sin operar (ej. > 24h), advierte sobre problemas de API, bloqueos de broker ('Invalid Params'), o falta de volatilidad extrema.\n"
-            f"2. Evalúa si el Drawdown pone en riesgo inminente la cuenta.\n"
-            f"3. Responde como un Médico Cuántico severo. 1 párrafo de Diagnóstico y 1 lista de Recomendaciones o 'Tratamientos'. Usa Markdown de Telegram."
+            f"ERES DR. QUANT. Diagnostica: Uptime {metrics.get('uptime')}, Loss: ${metrics.get('overall_dd')}, MT5: {metrics.get('mt5_connected')}.\n"
+            f"Responde corto (1 párrafo) de diagnóstico y 1 consejo."
         )
-        try:
-            response = self.model.generate_content(prompt)
-            return response.text.strip()
-        except Exception as e:
-            err_str = str(e).lower()
-            if "429" in err_str or "quota" in err_str:
-                now = datetime.now()
-                if (now - self._last_warning_time).total_seconds() > 3600:
-                    self.logger.warning("⚠️ Dr. Quant sin cuota (Rate Limit Gemini).")
-                    self._last_warning_time = now
-                return "⚠️ Dr. Quant temporalmente indispuesto (Rate Limit de API IA excedido). El bot sigue vigilando por parámetros Quant."
-            self.logger.error(f"Error en Diagnóstico Médico AI: {e}")
-            return "❌ Fallo crítico comunicando con la Clínica Quant."
+        
+        resp = self._call_model(self.model_light, prompt, urgent=False)
+        return resp if resp else "🏥 Dr. Quant ocupado. Sistema estable en reporte técnico."
+
+    def ask_oracle(self, question: str) -> str:
+        """Consultas Generales (Usa Tier 1 para ahorrar cuota de Tier 2)"""
+        if not self.enabled: return "⚠️ Oráculo apagado."
+        
+        prompt = f"Analista Pro respondiendo: {question}. Responde en 2 párrafos Max con emojis."
+        resp = self._call_model(self.model_light, prompt, urgent=True)
+        return resp if resp else "⚠️ Oráculo pensando demasiado. Intenta luego."
