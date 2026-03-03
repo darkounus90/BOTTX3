@@ -111,6 +111,8 @@ class TelegramCommandHandler:
             self._handle_fortaleza(chat_id)
         elif command == "/test_trade":
             self._handle_test_trade(chat_id)
+        elif command == "/test_veto":
+            self._handle_test_veto(chat_id)
         elif command == "/sync":
             self._handle_sync(chat_id)
         elif command in ["/help", "/start"]:
@@ -277,6 +279,7 @@ class TelegramCommandHandler:
             f"🛡️ /risk - Drawdown y riesgo\n"
             f"🧠 /ask <pregunta> - Consulta al Oráculo\n"
             f"📊 /quota - Ver telemetría de cuota AI\n"
+            f"☠️ /test_veto - Prueba de rechazo IA\n"
             f"⏸️ /pause | ▶️ /resume | 🧹 /flat\n"
             f"🔑 /set_key <clave> - Cambiar API Key\n"
             f"ℹ️ /help - Menu\n"
@@ -516,6 +519,60 @@ class TelegramCommandHandler:
                 self._send_message(chat_id, f"❌ *ERROR CRÍTICO EN EL TEST:* `{str(e)}`")
 
         threading.Thread(target=run_test, daemon=True).start()
+
+    def _handle_test_veto(self, chat_id):
+        """Comando /test_veto - Fuerza un trade terrible para ver si la IA lo rechaza"""
+        if not self.bot.oracle.enabled:
+            self._send_message(chat_id, "❌ *ORÁCULO DESACTIVADO:* No se puede probar el veto.")
+            return
+            
+        self._send_message(chat_id, "☠️ *INICIANDO PRUEBA ÁCIDA DE VETO IA...*\nGenerando señal matemáticamente suicida para ver la reacción de Gemini 2.5 Pro.")
+        
+        def run_veto_test():
+            try:
+                symbol = "EURUSD"
+                
+                # Contexto terrible: ADX en 85 (tendencia brutal)
+                self.logger.info("☠️ VETO TEST: Consultando Juez Supremo (Gemini) con data suicida...")
+                
+                # Le decimos que queremos COMPRAR en el pico histórico con RR negativo
+                reasoning = "TEST_VETO: Comprar en máximo histórico indiscutible después de 5 velas verdes gigantes y RSI en 95. Estructura rompiendo a la baja masivamente."
+                
+                oracle_resp = self.bot.oracle.evaluate_trade(
+                    symbol=symbol, 
+                    signal_type="BUY", 
+                    reason=reasoning, 
+                    adx=85.0
+                )
+                
+                decision = oracle_resp.get("decision", "APPROVED")
+                reason = oracle_resp.get("reason", "Sin razón")
+                confidence = oracle_resp.get("confidence", 0)
+                
+                if decision == "REJECTED":
+                    msg = (
+                        f"🛡️ *PRUEBA PASADA CON ÉXITO: VETO CONFIRMADO*\n\n"
+                        f"La Inteligencia Artificial `{self.bot.oracle.model_critical.model_name.replace('models/', '')}` está viva y pensando de verdad.\n\n"
+                        f"🛑 *Respuesta del CIO:*\n"
+                        f"> _{reason}_\n\n"
+                        f"📉 Confianza de aprobación que habría dado: `{confidence}%`\n\n"
+                        f"_Conclusión: El cerebro de Google no aprueba locuras. Estás protegido contra trades falsos._"
+                    )
+                    self._send_message(chat_id, msg)
+                else:
+                    msg = (
+                        f"🚨 *ALERTA ROJA: VETO FALLADO*\n\n"
+                        f"La IA APROBÓ el trade suicida. Esto significa que está en modo FALLBACK (Bypass algorítmico porque perdió conexión o no quiso responder).\n"
+                        f"Razón inyectada: _{reason}_\n\n"
+                        f"Vuelve a correr el test o revisa la cuota en consola."
+                    )
+                    self._send_message(chat_id, msg)
+                    
+            except Exception as e:
+                self.logger.error(f"Error en Veto Test: {e}")
+                self._send_message(chat_id, f"❌ *ERROR EN EL TEST:* `{str(e)}`")
+                
+        threading.Thread(target=run_veto_test, daemon=True).start()
 
     def _handle_sync(self, chat_id):
         """Sincroniza el historial de hoy desde MT5 al diario local"""
