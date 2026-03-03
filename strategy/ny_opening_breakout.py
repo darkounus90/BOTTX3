@@ -110,19 +110,23 @@ class NYOpeningBreakoutStrategy(BaseStrategy):
         # 2. La última vela CERRÓ agresivamente por encima/debajo de esa caja.
         # 3. La vela en sí misma debe ser grande, mostrando poder institucional (no mechas débiles).
         
-        vela_size = abs(last_closed['close'] - last_closed['open']) * 10000
+        cuerpo_size = abs(last_closed['close'] - last_closed['open']) * 10000
+        total_size = abs(last_closed['high'] - last_closed['low']) * 10000
         
+        # Filtro de Calidad: El cuerpo debe representar al menos el 60% de la vela (sin mechas gigantes)
+        decisive_move = (cuerpo_size / total_size) >= 0.6 if total_size > 0 else False
+
         # BREAKOUT ALCISTA (BUY)
         if last_closed['close'] > current_range_high and last_closed['open'] < current_range_high:
-            if vela_size > 3.0: # La vela de ruptura debe tener cuerpo sustancial (>3 pips puros)
+            if cuerpo_size > 6.5 and decisive_move: # Aumento de 3.0 -> 6.5 pips
                 signal_type = "BUY"
-                reason = "NY Range Breakout Alcista (Momentum)"
+                reason = "NY Range Breakout Alcista (Momentum Decisivo)"
 
         # BREAKOUT BAJISTA (SELL)
         elif last_closed['close'] < current_range_low and last_closed['open'] > current_range_low:
-            if vela_size > 3.0:
+            if cuerpo_size > 6.5 and decisive_move:
                 signal_type = "SELL"
-                reason = "NY Range Breakout Bajista (Momentum)"
+                reason = "NY Range Breakout Bajista (Momentum Decisivo)"
 
         if not signal_type:
             return None
@@ -141,10 +145,10 @@ class NYOpeningBreakoutStrategy(BaseStrategy):
         symbol_info = mt5.symbol_info(self.symbol)
         point = symbol_info.point if symbol_info else 0.00001
         
-        # Stop Loss: 1.5 veces el ATR (Para que una mecha de manipulación pequeña no nos saque)
-        # Take Profit: 3.5 veces el ATR (A buscar la racha completa del día estilo "Foto Foro Quant")
-        sl_dist = atr * 1.5
-        tp_dist = atr * 3.5
+        # Stop Loss: 2.0 veces el ATR (Blindaje contra Stop Hunts)
+        # Take Profit: 3.0 veces el ATR (TP más realista para NY)
+        sl_dist = atr * 2.0
+        tp_dist = atr * 3.0
         
         sl_pips = round(sl_dist / (10 * point), 1)
         tp_pips = round(tp_dist / (10 * point), 1)

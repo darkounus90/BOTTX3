@@ -27,10 +27,24 @@ class SMCScanner:
     def scan_context(self, symbol: str, signal_direction: str, timeframe=mt5.TIMEFRAME_M5) -> bool:
         """
         Devuelve True si la liquidez en la gráfica favorece la dirección del Signal.
+        Añadido: Filtro de Tendencia H1 (EMA 200) para evitar contratendencia suicida.
         """
         df = self._get_candles(symbol, timeframe, n=self.lookback)
-        if df is None:
-            return True # No bloqueamos si hay fallo de datos temporal
+        if df is None: return True
+
+        # --- FILTRO 1: TENDENCIA INSTITUCIONAL H1 (EMA 200) ---
+        h1_rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_H1, 0, 200)
+        if h1_rates is not None and len(h1_rates) >= 200:
+            h1_df = pd.DataFrame(h1_rates)
+            ema_200 = h1_df['close'].ewm(span=200, adjust=False).mean().iloc[-1]
+            current_p = df.iloc[-1]['close']
+            
+            if signal_direction == 'BUY' and current_p < ema_200:
+                self.logger.warning(f"SMC VETO: {symbol} BUY bloqueado por tendencia bajista en H1 (Precio < EMA 200)")
+                return False
+            if signal_direction == 'SELL' and current_p > ema_200:
+                self.logger.warning(f"SMC VETO: {symbol} SELL bloqueado por tendencia alcista en H1 (Precio > EMA 200)")
+                return False
 
         # Último precio
         current_price = df.iloc[-1]['close']

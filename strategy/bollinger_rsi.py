@@ -134,37 +134,39 @@ class BollingerRSIStrategy(BaseStrategy):
         broke_upper_band = last_closed['close'] >= last_closed['bb_upper'] or last_closed['high'] >= last_closed['bb_upper']
 
         
-        # EJECUCIÓN DEL GATILLO
+        # ---------------- GATILLO CON RECHAZO (Wick Rejection) ---------------- 
+        # No basta con tocar la banda, queremos ver que el precio fue RECHAZADO (Mecha larga)
+        lower_wick = last_closed['open'] - last_closed['low'] if last_closed['open'] < last_closed['close'] else last_closed['close'] - last_closed['low']
+        upper_wick = last_closed['high'] - last_closed['close'] if last_closed['open'] < last_closed['close'] else last_closed['high'] - last_closed['open']
+        cuerpo = abs(last_closed['close'] - last_closed['open'])
+        
+        # BUY (Largo): Rechazo en zona de sobreventa
         if is_oversold and broke_lower_band:
-            signal_type = "BUY"
-            reason = f"BB Low Rejection | RSI:{last_closed['rsi']:.1f} (OS) | ADX:{last_closed['adx']:.1f}"
+            if lower_wick > (cuerpo * 0.8): # La mecha inferior debe ser casi tan grande como el cuerpo (Rechazo)
+                signal_type = "BUY"
+                reason = f"Institutional Rejection (Bottom) | RSI:{last_closed['rsi']:.1f}"
             
+        # SELL (Corto): Rechazo en zona de sobrecompra
         elif is_overbought and broke_upper_band:
-            signal_type = "SELL"
-            reason = f"BB High Rejection | RSI:{last_closed['rsi']:.1f} (OB) | ADX:{last_closed['adx']:.1f}"
+            if upper_wick > (cuerpo * 0.8):
+                signal_type = "SELL"
+                reason = f"Institutional Rejection (Top) | RSI:{last_closed['rsi']:.1f}"
             
         if not signal_type:
             return None
 
         # --- EVITAR SPAM EN LA MISMA VELA (Deduplicación) ---
-        # Si ya preguntamos/analizamos esta misma vela exacta, no lo volvemos a hacer
-        # hasta que cierre la siguiente (esto ahora ahorra el 90% de las peticiones a la API).
         current_candle_time = last_closed['time']
         if getattr(self, 'last_signal_time', None) == current_candle_time:
             return None
         self.last_signal_time = current_candle_time
 
         # --- GESTIÓN DE RIESGO DINÁMICA ---
-        # Calculamos Stop Loss usando ATR para adaptarnos a la volatilidad real
-        symbol_info = mt5.symbol_info(self.symbol)
-        if not symbol_info:
-            return None
-            
         point = symbol_info.point if symbol_info.point else 0.00001
         
-        # Multiplicador ATR (1.5x ATR para Stop Loss, 3.0x ATR para Take Profit -> Ratio 1:2)
-        sl_pip_dist = (last_closed['atr'] * 1.5) / (point * 10)
-        tp_pip_dist = (last_closed['atr'] * 3.0) / (point * 10)
+        # Multiplicador ATR (2.0x ATR para Stop Loss blindado, 2.5x ATR para Take Profit)
+        sl_pip_dist = (last_closed['atr'] * 2.0) / (point * 10)
+        tp_pip_dist = (last_closed['atr'] * 2.5) / (point * 10)
 
         # Forzamos mínimos definidos en la configuración por si el mercado está muy muerto
         sl_pips = max(round(sl_pip_dist, 1), BotConfig.DEFAULT_SL_PIPS)

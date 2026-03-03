@@ -55,6 +55,9 @@ class GeminiOracle:
             "light": {"tokens": 25, "last_refill": time.time(), "rpm": 25, "rpd_count": 0, "rpd_limit": 14000},
             "critical": {"tokens": 5, "last_refill": time.time(), "rpm": 5, "rpd_count": 0, "rpd_limit": 20}
         }
+        
+        # Caché de señales para evitar duplicar llamadas en la misma vela M5
+        self._signal_cache = {}
 
         if self.enabled:
             self._setup_system()
@@ -152,50 +155,76 @@ class GeminiOracle:
                 break
         return None
 
+    def get_quota_report(self) -> dict:
+        """Devuelve telemetría de consumo de IA"""
+        report = {}
+        target_l = getattr(self, "target_light", "None")
+        target_c = getattr(self, "target_critical", "None")
+        
+        for tier in ["light", "critical"]:
+            b = self.buckets[tier]
+            report[tier] = {
+                "model": target_l if tier == "light" else target_c,
+                "used_today": b["rpd_count"],
+                "limit_today": b["rpd_limit"],
+                "load_rpm": f"{int(b['rpm'] - b['tokens'])}/{b['rpm']}",
+                "status": "🟢 OK" if b["rpd_count"] < b["rpd_limit"] else "🔴 AGOTADO"
+            }
+        return report
+
     def evaluate_trade(self, symbol: str, signal_type: str, reason: str, adx: float = None) -> dict:
-        """Veto CIO (Tier 2 - Critical)"""
+        """Veto CIO (Tier 2 - Critical con Fallback a Tier 1)"""
         if not self.enabled or not self.system_ready:
             return {"decision": "APPROVED", "reason": "Oracle Bypass (Disabled)"}
 
-        # 1. VERIFICAR CACHÉ (Evitar spam por vela M5)
-        # Obtenemos la hora de la vela actual (redondeada a 5 min)
+        # 1. VERIFICAR CACHÉ
         now_nyc = datetime.now(ZoneInfo("America/New_York"))
         candle_key = now_nyc.strftime("%Y%m%d%H") + str(now_nyc.minute // 5)
-        
         cache_id = f"{symbol}_{signal_type}"
         if cache_id in self._signal_cache:
             last_candle, last_decision = self._signal_cache[cache_id]
             if last_candle == candle_key:
                 return last_decision
 
-        # 2. PREPARAR CONTEXTO MTF
-        context_data = "N/A"
+        # 2. SELECCIÓN DE TIER (Inteligente)
+        tier_to_use = "critical"
+        model_to_use = self.model_critical
+        
+        # Si Gemini (Critical) está sin cuota diaria, usar Gemma (Light) como respaldo
+        if self.buckets["critical"]["rpd_count"] >= self.buckets["critical"]["rpd_limit"]:
+            self.logger.warning(f"⚠️ Tier 2 (Gemini) sin balas. Activando respaldo Tier 1 (Gemma) para {symbol}.")
+            tier_to_use = "light"
+            model_to_use = self.model_light
+
+        # 3. PREPARAR CONTEXTO AVANZADO
+        context_data = "Estructura H1/M15 neutral"
         try:
             import MetaTrader5 as mt5
-            import pandas as pd
-            rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_H1, 0, 1)
+            rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M5, 0, 5)
             if rates is not None:
-                context_data = f"H1_Trend: {'BULLISH' if rates[0]['close'] > rates[0]['open'] else 'BEARISH'}"
+                closes = [r['close'] for r in rates]
+                trend = "Higher Highs" if closes[-1] > closes[0] else "Lower Lows"
+                context_data = f"Trend: {trend} | Last 5 Candles: {closes}"
         except: pass
 
         prompt = (
-            f"ERES CIO DE HEDGE FUND. Símbolo: {symbol} | Sentido: {signal_type} | Contexto: {context_data} | Técnica: {reason} | ADX: {adx}\n"
-            f"Veta el trade si ves riesgo estructural (Liquidity Grab o contratendencia H1).\n"
-            f"RESPONDE SOLO JSON: {{'decision':'APPROVED|REJECTED', 'reason':'motivo max 8 palabras', 'confidence':0-100}}"
+            f"ERES CIO DE HEDGE FUND (SMC/ICT Professional).\n"
+            f"Símbolo: {symbol} | Señal: {signal_type} | ADX: {adx}\n"
+            f"Contexto Estructural: {context_data}\n"
+            f"Técnica: {reason}\n\n"
+            f"Busca 'Inducement' o 'Liquidity Void'. Veta si es una trampa retail.\n"
+            f"RESPONDE SOLO JSON: {{'decision':'APPROVED|REJECTED', 'reason':'motivo corto', 'confidence':0-100}}"
         )
 
-        resp_text = self._call_model(self.model_critical, prompt, tier="critical", urgent=True)
+        resp_text = self._call_model(model_to_use, prompt, tier=tier_to_use, urgent=True)
         
         if not resp_text:
-            return {"decision": "APPROVED", "reason": "Quant Bypass (Rate Limit)"}
+            return {"decision": "APPROVED", "reason": "Quant Bypass (No Quota)"}
 
         try:
-            # Limpiar posibles bloques de markdown
             clean_text = resp_text.replace("```json", "").replace("```", "").strip()
             data = json.loads(clean_text)
             data["decision"] = data.get("decision", "APPROVED").upper()
-            
-            # Guardar en Caché
             self._signal_cache[cache_id] = (candle_key, data)
             return data
         except:

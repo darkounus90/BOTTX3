@@ -81,7 +81,7 @@ class BotConfig:
     Q_LEARNING_ENABLED = False           # APAGADO: La IA en pañales frena los trades ("HOLD" por miedo a lo desconocido)
     HEDGING_ENABLED = False              # Cobertura Silenciosa para trades perdedores al 80% del SL
     
-    MODE_FILTERS = "RELAXED"             # "STRICT" o "RELAXED" (Relajado para testear que dispare)
+    MODE_FILTERS = "STRICT"              # "STRICT" para máxima precisión institucional
     DEFAULT_SYMBOL = "EURUSD"
     WATCHLIST = ["EURUSD", "GBPUSD", "USDJPY"] # Diversificación: Euro, Libra, Yen
     DEFAULT_TIMEFRAME = "M5"             # M5 para entradas más rápidas
