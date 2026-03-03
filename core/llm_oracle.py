@@ -201,5 +201,53 @@ class GeminiOracle:
         if not self.enabled: return "⚠️ Oráculo apagado."
         
         prompt = f"Analista Pro respondiendo: {question}. Responde en 2 párrafos Max con emojis."
-        resp = self._call_model(self.model_light, prompt, urgent=True)
-        return resp if resp else "⚠️ Oráculo pensando demasiado. Intenta luego."
+    def re_init(self, new_key: str) -> bool:
+        """Permite actualizar la API Key en caliente desde Telegram"""
+        self.api_key = new_key
+        # Actualizar variable de entorno para persistencia en esta sesión
+        os.environ["GEMINI_API_KEY"] = new_key
+        
+        if not self.api_key or genai is None:
+            self.logger.warning("Falla en re-init: API Key vacía o librería ausente.")
+            return False
+            
+        try:
+            genai.configure(api_key=self.api_key)
+            
+            # --- DESCUBRIMIENTO DINÁMICO DE MODELOS ---
+            raw_models = list(genai.list_models())
+            available_models = [m.name for m in raw_models if "generateContent" in m.supported_generation_methods]
+            
+            if not available_models:
+                self.logger.error("❌ Oráculo (Re-init): No se encontraron modelos compatibles.")
+                return False
+
+            # 1. Seleccionar Tier 2 (Critical)
+            tier2_candidates = [m for m in available_models if any(v in m for v in ["3.0", "2.5", "2.0"]) and "flash" in m]
+            if not tier2_candidates:
+                tier2_candidates = [m for m in available_models if "flash" in m]
+            self.target_critical = tier2_candidates[0] if tier2_candidates else available_models[0]
+            
+            # 2. Seleccionar Tier 1 (Light)
+            tier1_candidates = [m for m in available_models if "lite" in m or "8b" in m or "1.5-flash" in m]
+            if not tier1_candidates:
+                tier1_candidates = [m for m in available_models if "flash" in m and m != self.target_critical]
+            self.target_light = tier1_candidates[0] if tier1_candidates else self.target_critical
+            
+            # Inicializar modelos
+            self.model_light = genai.GenerativeModel(model_name=self.target_light)
+            self.model_critical = genai.GenerativeModel(model_name=self.target_critical)
+            
+            self.system_ready = True
+            self.enabled = True
+            
+            # Resetear Rate Limiter y Cache al cambiar de llave
+            self.tokens = self.rpm_limit
+            self._signal_cache = {}
+            
+            self.logger.success(f"🔑 Oráculo reconectado con nueva llave.")
+            self.logger.info(f"T1: {self.target_light} | T2: {self.target_critical}")
+            return True
+        except Exception as e:
+            self.logger.error(f"Error en re-init del Oráculo: {e}")
+            return False

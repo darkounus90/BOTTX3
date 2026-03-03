@@ -103,6 +103,8 @@ class TelegramCommandHandler:
             self._handle_report(chat_id)
         elif command == "/doctor":
             self._handle_doctor(chat_id)
+        elif command == "/set_key":
+            self._handle_set_key(chat_id, text)
         elif command in ["/help", "/start"]:
             self._handle_help(chat_id)
         else:
@@ -261,6 +263,7 @@ class TelegramCommandHandler:
             f"⏸️ /pause - Pausa el bot temporalmente\n"
             f"▶️ /resume - Reanuda la operativa\n"
             f"🧹 /flat - Cierra todas las posiciones abiertas\n"
+            f"🔑 /set_key <clave> - Cambia la API Key de Gemini en caliente\n"
             f"ℹ️ /help - Muestra este menú\n"
             f"━━━━━━━━━━━━━━━━━━━━"
         )
@@ -362,3 +365,21 @@ class TelegramCommandHandler:
             self._send_message(chat_id, f"👨‍⚕️ *DIAGNÓSTICO DR. QUANT:*\n\n{diagnosis}")
             
         threading.Thread(target=run_diagnosis, daemon=True).start()
+
+    def _handle_set_key(self, chat_id, text):
+        """Comando /set_key - Cambia la API Key de Gemini en vivo"""
+        parts = text.split(" ", 1)
+        if len(parts) < 2:
+            self._send_message(chat_id, "⚠️ Uso: `/set_key TU_NUEVA_API_KEY`")
+            return
+            
+        new_key = parts[1].strip()
+        self._send_message(chat_id, "🔑 *Actualizando API Key y reconectando Oráculo...*")
+        
+        success = self.bot.oracle.re_init(new_key)
+        
+        if success:
+            self._send_message(chat_id, "✅ *API Key actualizada correctamente.*\nLa IA ha sido reiniciada con la nueva cuota.")
+        else:
+            self._send_message(chat_id, "❌ *Error al actualizar la API Key.*\nRevisa los logs del sistema.")
+
