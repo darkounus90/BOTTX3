@@ -80,8 +80,8 @@ class GeminiOracle:
                 return
 
             # 1. Seleccionar Tier 2 (Critical)
-            # Prioridad máxima al modelo gemini-2.0-flash por límite real validado de 1500 RPD
-            t2_cands = [m for m in available_models if "2.0-flash" in m]
+            # Prioridad máxima al modelo gemini-2.5-flash ya que Google limitó a 0 los pro en Free Tier
+            t2_cands = [m for m in available_models if "2.5-flash" in m and "lite" not in m]
             if not t2_cands:
                 t2_cands = [m for m in available_models if "1.5-flash" in m]
             if not t2_cands:
@@ -304,8 +304,8 @@ class GeminiOracle:
                 self.logger.error("❌ Oráculo (Re-init): No se encontraron modelos compatibles.")
                 return False
 
-            # 1. Seleccionar Tier 2 (Critical - Preferimos 2.0-flash)
-            tier2_candidates = [m for m in available_models if "2.0-flash" in m]
+            # 1. Seleccionar Tier 2 (Critical - Preferimos 2.5-flash)
+            tier2_candidates = [m for m in available_models if "2.5-flash" in m and "lite" not in m]
             if not tier2_candidates:
                 tier2_candidates = [m for m in available_models if "1.5-flash" in m]
             if not tier2_candidates:
