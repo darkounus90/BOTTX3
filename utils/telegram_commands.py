@@ -524,8 +524,9 @@ class TelegramCommandHandler:
         try:
             from datetime import datetime, timedelta
             now = datetime.now()
-            # Mirar 24 horas atrás para evitar problemas de zona horaria del broker
-            lookback_start = now - timedelta(hours=24)
+            # Buscamos 7 días atrás para no fallar por zona horaria de broker. 
+            # El motor ya evita duplicados.
+            lookback_start = now - timedelta(days=7)
             
             deals = mt5.history_deals_get(lookback_start, now + timedelta(hours=1))
             

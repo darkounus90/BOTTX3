@@ -196,12 +196,16 @@ class RiskManager:
         overall = self.check_overall_drawdown()
 
         # Log del estado
-        self.logger.log_drawdown_status(
-            daily_loss=daily["loss"],
-            daily_limit=daily["limit"],
-            overall_loss=overall["loss"],
-            overall_limit=overall["limit"],
-        )
+        import time
+        current_time = time.time()
+        if current_time - getattr(self, "_last_log_time", 0) > 3600:
+            self.logger.log_drawdown_status(
+                daily_loss=daily["loss"],
+                daily_limit=daily["limit"],
+                overall_loss=overall["loss"],
+                overall_limit=overall["limit"],
+            )
+            self._last_log_time = current_time
 
         # No permitir nuevos trades si hay WARNING (proactivo)
         if daily["level"] in ("WARNING", "EMERGENCY", "VIOLATED"):

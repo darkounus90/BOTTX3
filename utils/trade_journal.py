@@ -404,7 +404,7 @@ class TradeJournal:
                     "reason": "Sincronizado desde MT5",
                     "duration": "N/A",
                     "phase": self.phase,
-                    "comment": f"Deal #{deal.deal}",
+                    "comment": f"Deal #{deal.ticket}",
                 }
                 
                 self._write_csv_row(row)

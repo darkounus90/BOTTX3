@@ -163,18 +163,22 @@ class PhaseTracker:
         complete = profit_met and days_met and consistency_met
 
         # Log del progreso
-        self.logger.log_phase_progress(
-            phase=self.phase,
-            current_profit=current_profit,
-            target=self.profit_target,
-            profitable_days=self.profitable_days,
-            min_days=self.min_trading_days,
-        )
+        import time
+        current_time = time.time()
+        if current_time - getattr(self, "_last_log_time", 0) > 3600:
+            self.logger.log_phase_progress(
+                phase=self.phase,
+                current_profit=current_profit,
+                target=self.profit_target,
+                profitable_days=self.profitable_days,
+                min_days=self.min_trading_days,
+            )
 
-        if consistency_met:
-            self.logger.success("Regla de consistencia: ✅ OK")
-        else:
-            self.logger.warning("Regla de consistencia: ❌ VIOLADA")
+            if consistency_met:
+                self.logger.success("Regla de consistencia: ✅ OK")
+            else:
+                self.logger.warning("Regla de consistencia: ❌ VIOLADA")
+            self._last_log_time = current_time
 
         if complete:
             self.logger.banner(f"🎉 ¡FASE {self.phase} COMPLETADA! 🎉")
