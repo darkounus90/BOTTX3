@@ -42,11 +42,11 @@ class GeminiOracle:
         # Mapeo de Límites exactos según AI Studio del Usuario (Marzo 2025)
         self.MODEL_CONFIGS = {
             "gemma-3": {"rpm": 30, "rpd": 14400}, 
-            "gemini-2.5-pro": {"rpm": 15, "rpd": 15000}, # Unmetered API 0/0 (Sin límite reportado)
+            "gemini-2.0-flash": {"rpm": 10, "rpd": 1500}, # Este es el que tiene 1500 reales y funciona
+            "gemini-2.5-pro": {"rpm": 0, "rpd": 0}, # 0/0 es un bloqueo real por cuota free
             "gemini-2.5-flash": {"rpm": 5, "rpd": 20},
             "gemini-3-flash": {"rpm": 5, "rpd": 20},
             "gemini-2.5-flash-lite": {"rpm": 10, "rpd": 20},
-            "gemini-2.0-flash": {"rpm": 10, "rpd": 1500}, # Este es el que tiene 1500 reales
             "gemini-1.5-flash": {"rpm": 15, "rpd": 1500},
             "default": {"rpm": 5, "rpd": 20}
         }
@@ -80,12 +80,12 @@ class GeminiOracle:
                 return
 
             # 1. Seleccionar Tier 2 (Critical)
-            # Prioridad máxima al modelo más inteligente: gemini-2.5-pro
-            t2_cands = [m for m in available_models if "2.5-pro" in m]
+            # Prioridad máxima al modelo gemini-2.0-flash por límite real validado de 1500 RPD
+            t2_cands = [m for m in available_models if "2.0-flash" in m]
             if not t2_cands:
-                t2_cands = [m for m in available_models if "2.0-flash" in m or "1.5-flash" in m]
+                t2_cands = [m for m in available_models if "1.5-flash" in m]
             if not t2_cands:
-                t2_cands = [m for m in available_models if "flash" in m]
+                t2_cands = [m for m in available_models if "flash" in m and "lite" not in m]
             self.target_critical = t2_cands[0] if t2_cands else available_models[0]
             
             # 2. Seleccionar Tier 1 (Light - Prioridad Gemma 3)
@@ -165,6 +165,7 @@ class GeminiOracle:
                 return response.text.strip()
             except Exception as e:
                 err_str = str(e).lower()
+                self.logger.error(f"AI Error en {model.model_name}: {e}")
                 if "429" in err_str or "quota" in err_str:
                     time.sleep(3 * (attempt + 1))
                     continue
@@ -298,12 +299,12 @@ class GeminiOracle:
                 self.logger.error("❌ Oráculo (Re-init): No se encontraron modelos compatibles.")
                 return False
 
-            # 1. Seleccionar Tier 2 (Critical - Preferimos 2.5-pro)
-            tier2_candidates = [m for m in available_models if "2.5-pro" in m]
+            # 1. Seleccionar Tier 2 (Critical - Preferimos 2.0-flash)
+            tier2_candidates = [m for m in available_models if "2.0-flash" in m]
             if not tier2_candidates:
-                tier2_candidates = [m for m in available_models if "2.0-flash" in m or "1.5-flash" in m]
+                tier2_candidates = [m for m in available_models if "1.5-flash" in m]
             if not tier2_candidates:
-                tier2_candidates = [m for m in available_models if "flash" in m]
+                tier2_candidates = [m for m in available_models if "flash" in m and "lite" not in m]
             self.target_critical = tier2_candidates[0] if tier2_candidates else available_models[0]
             
             # 2. Seleccionar Tier 1 (Light - Prioridad Gemma-3 14.4K RPD)
