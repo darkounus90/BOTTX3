@@ -82,28 +82,30 @@ class GeminiOracle:
             # 1. Armar la cascada de modelos inteligentes
             cands = []
             for m in available_models:
-                # Omitir modelos incompatibles
-                if "vision" in m or "embedding" in m or "text-bison" in m or "pro" in m:
+                # Omitir incompatibles, versiones obsoletas y modelos de voz/pro
+                if any(x in m for x in ["vision", "embedding", "text-bison", "pro", "tts", "robotics"]):
                     continue
                 # Evitamos poner a Gemma o Lite en la cima principal de la cascada
                 if "lite" in m or "gemma" in m:
                     continue
                 cands.append(m)
             
-            # Ordenar (Ej: gemini-3, gemini-2.5, gemini-1.5...)
+            # Ordenar: Queremos que las versiones "3" vayan primero, luego "2.5", luego "flash-latest"
             cands.sort(reverse=True)
-            self.cascade_models = cands[:4] # Top 4 mejores de IA
+            self.cascade_models = cands[:4] # Top 4 mejores de IA pesada
 
-            # Anexamos Lite como fallback justo antes de Gemma
-            lite_cands = [m for m in available_models if "flash-lite" in m]
-            if lite_cands:
-                self.cascade_models.append(lite_cands[0])
+            # Anexamos todos los Lite disponibles como Fallback Intermedio (Ej: 3.1-lite, 2.5-lite)
+            lite_cands = [m for m in available_models if "lite" in m and "tts" not in m]
+            lite_cands.sort(reverse=True)
+            for lc in lite_cands[:3]: # Añadir hasta 3 lites a la cascada
+                if lc not in self.cascade_models:
+                    self.cascade_models.append(lc)
 
-            # 2. Seleccionar el Fallback Definitivo (Gemma-3)
-            # Aquí es donde están los 14,400 Requests per Day
-            t1_cands = [m for m in available_models if "gemma-3-1b" in m or "gemma-3-4b" in m]
+            # 2. Seleccionar el Fallback Definitivo (Gemma-3 - infinito)
+            # Priorizamos versiones balanceadas (4b o 12b) en lugar del 1b
+            t1_cands = [m for m in available_models if "gemma-3-4b" in m or "gemma-3-12b" in m]
             if not t1_cands:
-                t1_cands = [m for m in available_models if "8b" in m or "gemma" in m]
+                t1_cands = [m for m in available_models if "gemma-3" in m]
             self.target_light = t1_cands[0] if t1_cands else "default-light"
 
             # 3. Configurar Buckets para la lista final
