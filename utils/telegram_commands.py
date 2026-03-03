@@ -452,20 +452,23 @@ class TelegramCommandHandler:
                 # 4. Test Oráculo (IA)
                 self.logger.info("🧪 TEST: Consultando Juez Supremo (Gemini)...")
                 oracle_resp = self.bot.oracle.evaluate_trade(symbol, "BUY", "TEST_STRESS_DEBUG", 30.0)
+                
+                if oracle_resp.get("decision") == "REJECTED":
+                    self._send_message(chat_id, f"🛑 *TEST ABORTADO POR IA (VETO):* {oracle_resp.get('reason')}\nEl Oráculo no considera oportuno este movimiento ahora mismo.")
+                    return
+
                 oracle_status = f"✅ Decision: {oracle_resp.get('decision')}"
                 
-                # 5. Ejecución (Lotaje Mínimo 0.01 por seguridad)
-                self.logger.info(f"🧪 TEST: Ejecutando orden real (0.01 lots) en {symbol}...")
+                # 5. Ejecución SEGURA (Forzamos 0.01 lots en Test siempre)
+                self.logger.info(f"🧪 TEST: Ejecutando orden ultra-segura (0.01 lots) en {symbol}...")
                 
-                # Forzamos dry_run a False temporalmente si estuviera activado para probar la conexión real
-                # PERO usaremos un lotaje tiny.
                 result = self.bot.position_manager.place_order(
                     symbol=symbol,
                     order_type=mt5.ORDER_TYPE_BUY,
                     stop_loss_pips=25.0,
                     take_profit_pips=50.0,
                     probability=oracle_resp.get("confidence", 70.0),
-                    portfolio_weight=1.0
+                    volume=0.01 # <--- FORZADO EL MÍNIMO PARA EL TEST
                 )
 
                 if result:

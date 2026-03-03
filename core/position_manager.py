@@ -135,7 +135,13 @@ class PositionManager:
         # ─── Calcular tamaño de posición ─────────────────────────────
         # Obtenemos kwarg portfolio_weight si viene
         weight = kwargs.get('portfolio_weight', 1.0)
-        volume = self.calculate_position_size(symbol, stop_loss_pips, probability, portfolio_weight=weight)
+        forced_volume = kwargs.get('volume', None)
+        
+        if forced_volume:
+            volume = forced_volume
+        else:
+            volume = self.calculate_position_size(symbol, stop_loss_pips, probability, portfolio_weight=weight)
+            
         if volume is None:
             return None
 
