@@ -44,7 +44,7 @@ class GeminiOracle:
             "gemma-3": {"rpm": 30, "rpd": 14400}, 
             "gemini-2.0-flash": {"rpm": 10, "rpd": 1500}, # Este es el que tiene 1500 reales y funciona
             "gemini-2.5-pro": {"rpm": 0, "rpd": 0}, # 0/0 es un bloqueo real por cuota free
-            "gemini-2.5-flash": {"rpm": 5, "rpd": 20},
+            "gemini-2.5-flash": {"rpm": 15, "rpd": 1500}, # 1500 llamadas diarias en uso normal
             "gemini-3-flash": {"rpm": 5, "rpd": 20},
             "gemini-2.5-flash-lite": {"rpm": 10, "rpd": 20},
             "gemini-1.5-flash": {"rpm": 15, "rpd": 1500},
