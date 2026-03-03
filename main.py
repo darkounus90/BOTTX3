@@ -351,6 +351,79 @@ class TX3ProBot:
                 if not self.running: break
                 time.sleep(1)
 
+    def run_preflight_checks(self) -> bool:
+        """🩺 Ejecuta diagnósticos técnicos antes de empezar a operar"""
+        self.logger.banner("🧪 INICIANDO AUTO-PRUEBA DE SISTEMAS")
+        checklist = {
+            "Conexión MT5": False,
+            "Símbolos Watchlist": False,
+            "Chief Oracle (IA)": False,
+            "Gestor de Riesgo": False,
+            "Notificaciones Telegram": False
+        }
+
+        try:
+            # 1. Verificar MT5
+            if self.connector.is_connected():
+                acc = mt5.account_info()
+                if acc:
+                    self.logger.success(f"🔹 MT5: Conectado a Cuenta {acc.login} ({acc.company})")
+                    checklist["Conexión MT5"] = True
+            
+            # 2. Verificar Símbolos
+            missing_symbols = []
+            for sym in BotConfig.WATCHLIST:
+                if not self.connector.ensure_symbol_available(sym):
+                    missing_symbols.append(sym)
+            if not missing_symbols:
+                self.logger.success(f"🔹 Watchlist: Todos los símbolos ({len(BotConfig.WATCHLIST)}) disponibles.")
+                checklist["Símbolos Watchlist"] = True
+            else:
+                self.logger.error(f"❌ Error Símbolos: No disponibles -> {missing_symbols}")
+
+            # 3. Probar Oráculo (IA)
+            if self.oracle.enabled:
+                test_q = self.oracle.ask_oracle("Ping rápido de diagnóstico. Di 'Sistemas OK' y un emoji.")
+                if "Sistemas OK" in test_q or "Oráculo" in test_q or "OK" in test_q:
+                    self.logger.success(f"🔹 Oráculo IA: Respuesta recibida -> {test_q}")
+                    checklist["Chief Oracle (IA)"] = True
+                else:
+                    self.logger.warning(f"⚠️ Oráculo IA: Respondio de forma inesperada pero conectó.")
+                    checklist["Chief Oracle (IA)"] = True
+            else:
+                self.logger.warning("⚠️ Oráculo IA: Está desactivado.")
+                checklist["Chief Oracle (IA)"] = True
+
+            # 4. Verificar Riesgo
+            current_dd = self.risk_manager.check_overall_drawdown()
+            if current_dd["level"] not in ("EMERGENCY", "VIOLATED"):
+                self.logger.success(f"🔹 Riesgo: Drawdown actual estable ({current_dd['loss']:.2f})")
+                checklist["Gestor de Riesgo"] = True
+            else:
+                self.logger.critical("🚨 Riesgo: La cuenta ya está en nivel de DRAWDOWN CRÍTICO.")
+
+            # 5. Probar Telegram
+            if TelegramConfig.ENABLED:
+                # No enviamos mensaje pesado, solo verificamos que los parámetros existan
+                if TelegramConfig.BOT_TOKEN and TelegramConfig.CHAT_ID:
+                    self.logger.success("🔹 Telegram: Configuración de envío detectada.")
+                    checklist["Notificaciones Telegram"] = True
+                else:
+                    self.logger.error("❌ Telegram: Faltan credenciales (Token/ChatId).")
+
+        except Exception as e:
+            self.logger.error(f"Fallo durante la auto-prueba: {e}")
+
+        # Recuento Final
+        success = all(checklist.values())
+        if success:
+            self.logger.success("✨ AUTO-PRUEBA COMPLETADA: Todos los sistemas están operativos.")
+        else:
+            failed = [k for k, v in checklist.items() if not v]
+            self.logger.error(f"❌ FALLO TÉCNICO en: {failed}")
+        
+        return success
+
     def run(self):
         """Loop principal"""
         # 1. Iniciar Dashboard en thread
@@ -409,6 +482,13 @@ class TX3ProBot:
                 self.risk_manager.equity_inicio_dia = max(real_balance, account_info.equity)
         
         self._print_startup_banner()
+        
+        # 🧪 PRE-FLIGHT DIAGNOSTICS (Auto-Prueba de Sistemas)
+        if not self.run_preflight_checks():
+            self.logger.critical("🛑 AUTO-PRUEBA FALLIDA: El bot no puede iniciar con errores críticos.")
+            self.telegram.notify_error("🚨 FALLO DE INICIO: Auto-prueba técnica fallida. Revisa los logs.")
+            return
+
         self.telegram.notify_bot_started(
             phase=self.phase,
             dry_run=self.dry_run,
