@@ -78,13 +78,13 @@ class GeminiOracle:
                 self.enabled = False
                 return
 
-            # 1. Seleccionar Tier 2 (Critical - Preferimos 1.5-flash por cuota de 1500 vs 20)
-            t2_cands = [m for m in available_models if "1.5-flash" in m]
+            # 1. Seleccionar Tier 2 (Critical - Preferimos 2.5-flash por estabilidad y velocidad)
+            t2_cands = [m for m in available_models if "2.5-flash" in m and "lite" not in m]
             if not t2_cands:
-                t2_cands = [m for m in available_models if any(v in m for v in ["2.0", "stable"]) and "flash" in m]
+                t2_cands = [m for m in available_models if "flash" in m]
             self.target_critical = t2_cands[0] if t2_cands else available_models[0]
             
-            # 2. Seleccionar Tier 1 (Light - Prioridad Gemma-3 para CUOTA MASIVA 14.4K)
+            # 2. Seleccionar Tier 1 (Light - Prioridad Gemma-3 para CUOTA MASIVA 14.4k, ideal 1b o 4b)
             t1_cands = [m for m in available_models if "gemma-3" in m]
             if not t1_cands:
                 t1_cands = [m for m in available_models if "8b" in m or "lite" in m]
@@ -92,7 +92,14 @@ class GeminiOracle:
             
             # Configurar Buckets basados en el nombre del modelo
             for tier, model_name in [("light", self.target_light), ("critical", self.target_critical)]:
-                config = next((v for k, v in self.MODEL_CONFIGS.items() if k in model_name), self.MODEL_CONFIGS["default"])
+                # Asegurarse de que coincida con las claves de self.MODEL_CONFIGS
+                match_key = "default"
+                for k in self.MODEL_CONFIGS.keys():
+                    if k in model_name:
+                        match_key = k
+                        break
+                config = self.MODEL_CONFIGS[match_key]
+                
                 self.buckets[tier]["rpm"] = config["rpm"]
                 self.buckets[tier]["tokens"] = config["rpm"]
                 self.buckets[tier]["rpd_limit"] = config["rpd"]

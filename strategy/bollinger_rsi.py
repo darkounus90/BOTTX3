@@ -21,12 +21,12 @@ class BollingerRSIStrategy(BaseStrategy):
         self.symbol = symbol or BotConfig.DEFAULT_SYMBOL
         self.timeframe = mt5.TIMEFRAME_M5 # M5 para entradas más rápidas como definiste
         self.bb_period = 20
-        self.bb_dev = 2.0
+        self.bb_dev = 1.8          # Reducido de 2.0 a 1.8 para tocar la banda más seguido
         self.rsi_period = 14
-        self.rsi_overbought = 75.0 # Más estricto (antes 70)
-        self.rsi_oversold = 25.0   # Más estricto (antes 30)
+        self.rsi_overbought = 65.0 # Aflojado (antes 75) para que el RSI logre dar el "OK"
+        self.rsi_oversold = 35.0   # Aflojado (antes 25) 
         self.adx_period = 14
-        self.adx_threshold = 28.0  # Más conservador (antes 40 hardcoded)
+        self.adx_threshold = 45.0  # Ampliado (antes 28): permite operar en mercados con más inercia
         self.bars_needed = 100
 
     def get_name(self) -> str:
