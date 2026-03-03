@@ -111,22 +111,23 @@ class SessionFilter:
     def is_trading_allowed(self) -> bool:
         """
         Verifica si se permite tradear en este momento.
-
-        Returns:
-            True si estamos en una sesión activa (OVERLAP o ACTIVE)
         """
         session = self.get_current_session()
+        
+        # Solo loguear si la sesión cambió para evitar spam en el loop
+        if not hasattr(self, '_last_notified_session'):
+            self._last_notified_session = None
 
-        if session == self.CLOSED:
-            self.logger.info("🕐 Mercado cerrado — Fuera de horario de trading")
-            return False
+        if session != self._last_notified_session:
+            if session == self.CLOSED:
+                self.logger.info("🕐 Mercado cerrado — Fuera de horario de trading")
+            elif session == self.OVERLAP:
+                self.logger.info("🟢 Sesión OVERLAP activa (London + NY)")
+            elif session == self.ACTIVE:
+                self.logger.info("🟡 Sesión activa")
+            self._last_notified_session = session
 
-        if session == self.OVERLAP:
-            self.logger.info("🟢 Sesión OVERLAP activa (London + NY)")
-        elif session == self.ACTIVE:
-            self.logger.info("🟡 Sesión activa")
-
-        return True
+        return session != self.CLOSED
 
     def get_session_info(self) -> dict:
         """

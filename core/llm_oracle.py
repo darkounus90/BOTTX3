@@ -30,6 +30,8 @@ class GeminiOracle:
         self.api_key = os.environ.get("GEMINI_API_KEY", "")
         
         self.system_ready = False
+        self._last_quota_error = 0
+        self._last_warning_time = datetime.min
         
         if self.enabled:
             if not self.api_key or genai is None:
@@ -138,7 +140,10 @@ class GeminiOracle:
         except Exception as e:
             err_str = str(e).lower()
             if "429" in err_str or "quota" in err_str:
-                self.logger.warning(f"⚠️ Oráculo sin cuota (Límite API Gemini superado). El Bot operará en Modo Quant Puro temporalmente.")
+                now = datetime.now()
+                if (now - self._last_warning_time).total_seconds() > 3600: # Solo avisar una vez por hora
+                    self.logger.warning(f"⚠️ Oráculo sin cuota (Rate Limit Gemini). El Bot operará en Modo Quant Puro.")
+                    self._last_warning_time = now
             else:
                 self.logger.error(f"Falla de conexión al CIO Gemini: {e}")
             return {"decision": "APPROVED", "reason": "Oracle Rate Limit/Failure - Quant Override"}
@@ -162,8 +167,11 @@ class GeminiOracle:
         except Exception as e:
             err_str = str(e).lower()
             if "429" in err_str or "quota" in err_str:
-                self.logger.warning("⚠️ Oráculo sin cuota (Límite API Gemini superado).")
-                return "⚠️ Oráculo temporalmente sin cuota (Rate Limit excedido). Intenta más tarde."
+                now = datetime.now()
+                if (now - self._last_warning_time).total_seconds() > 3600:
+                    self.logger.warning("⚠️ Oráculo sin cuota (Rate Limit Gemini).")
+                    self._last_warning_time = now
+                return "⚠️ Oráculo temporalmente sin cuota (Rate Limit de tu API Key excedido). Intenta en unos minutos o revisa tu cuota en Google AI Studio."
             self.logger.error(f"Error consultando al Oráculo en modo libre: {e}")
             return f"❌ Oráculo en corto circuito: {e}"
 
@@ -195,7 +203,10 @@ class GeminiOracle:
         except Exception as e:
             err_str = str(e).lower()
             if "429" in err_str or "quota" in err_str:
-                self.logger.warning("⚠️ Dr. Quant sin cuota (Límite API Gemini superado).")
-                return "⚠️ Dr. Quant temporalmente indispuesto (Rate Limit de API IA excedido). Revisa logs locales."
+                now = datetime.now()
+                if (now - self._last_warning_time).total_seconds() > 3600:
+                    self.logger.warning("⚠️ Dr. Quant sin cuota (Rate Limit Gemini).")
+                    self._last_warning_time = now
+                return "⚠️ Dr. Quant temporalmente indispuesto (Rate Limit de API IA excedido). El bot sigue vigilando por parámetros Quant."
             self.logger.error(f"Error en Diagnóstico Médico AI: {e}")
             return "❌ Fallo crítico comunicando con la Clínica Quant."
