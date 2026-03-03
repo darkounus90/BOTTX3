@@ -532,6 +532,17 @@ class TX3ProBot:
                         self._notified_disconnect = False
                         reconnect_attempts = 0
                 
+                # Sincronizar trades cerrados por el broker (SL/TP/Trailing)
+                try:
+                    today = datetime.now()
+                    start_today = datetime(today.year, today.month, today.day)
+                    from datetime import timedelta
+                    deals_sync = mt5.history_deals_get(start_today, today + timedelta(days=1))
+                    if deals_sync:
+                        self.journal.sync_mt5_history(deals_sync)
+                except Exception as e:
+                    pass
+
                 self.phase_tracker.update_daily_profit()
                 self._check_daily_reset()
                 self._update_dashboard()
