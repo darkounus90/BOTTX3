@@ -55,14 +55,26 @@ class GeminiOracle:
                 try:
                     genai.configure(api_key=self.api_key)
                     
-                    # Inicializar modelos por niveles
-                    # Tier 1 (Light): Para diagnósticos rápidos y médicos
-                    self.model_light = genai.GenerativeModel(model_name="gemini-1.5-flash")
-                    # Tier 2 (Critical): Para el veto final de trades
-                    self.model_critical = genai.GenerativeModel(model_name="gemini-2.0-flash")
+                    # --- DESCUBRIMIENTO DINÁMICO DE MODELOS ---
+                    available_models = [m.name.replace("models/", "") for m in genai.list_models() 
+                                       if "generateContent" in m.supported_generation_methods]
+                    
+                    # 1. Seleccionar Tier 2 (Critical - Prioridad 2.0-flash)
+                    tier2_candidates = [m for m in available_models if "2.0-flash" in m and "lite" not in m and "experimental" not in m]
+                    self.target_critical = tier2_candidates[0] if tier2_candidates else "gemini-2.0-flash"
+                    
+                    # 2. Seleccionar Tier 1 (Light - Prioridad 1.5-flash)
+                    tier1_candidates = [m for m in available_models if "1.5-flash" in m and "8b" in m] # Intentamos 8b primero
+                    if not tier1_candidates:
+                        tier1_candidates = [m for m in available_models if "1.5-flash" in m]
+                    self.target_light = tier1_candidates[0] if tier1_candidates else "gemini-1.5-flash"
+                    
+                    # Inicializar modelos con los nombres validados
+                    self.model_light = genai.GenerativeModel(model_name=self.target_light)
+                    self.model_critical = genai.GenerativeModel(model_name=self.target_critical)
                     
                     self.system_ready = True
-                    self.logger.success("👁️‍🗨️ AI ORACLE RECONSTRUIDO: Jerarquía y Rate Limiter Activos.")
+                    self.logger.success(f"👁️‍🗨️ AI ORACLE: Tier1={self.target_light} | Tier2={self.target_critical}")
                 except Exception as e:
                     self.logger.error(f"Error inicializando Gemini Oracle: {e}")
                     self.enabled = False
