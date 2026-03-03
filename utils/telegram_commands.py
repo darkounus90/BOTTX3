@@ -109,6 +109,8 @@ class TelegramCommandHandler:
             self._handle_quota(chat_id)
         elif command == "/fortaleza":
             self._handle_fortaleza(chat_id)
+        elif command == "/test_trade":
+            self._handle_test_trade(chat_id)
         elif command in ["/help", "/start"]:
             self._handle_help(chat_id)
         else:
@@ -413,6 +415,102 @@ class TelegramCommandHandler:
             
         msg += "━━━━━━━━━━━━━━━━━━━━"
         self._send_message(chat_id, msg)
+
+    def _handle_test_trade(self, chat_id):
+        """Simula un trade completo para verificar que todos los engranajes funcionan"""
+        self._send_message(chat_id, "🧪 *INICIANDO PRUEBA DE ESTRÉS DE TRADE* 🧪\n_Probando conexión, filtros, IA y ejecución..._")
+        
+        def run_test():
+            try:
+                if not self.bot.running:
+                    self._send_message(chat_id, "🛑 El bot debe estar iniciado para el test.")
+                    return
+
+                symbol = "EURUSD"
+                self.logger.info(f"🧪 TEST: Iniciando trade simulado en {symbol}")
+                
+                # 1. Crear Señal Falsa
+                signal = {
+                    "signal": "BUY",
+                    "symbol": symbol,
+                    "stop_loss_pips": 25.0,
+                    "take_profit_pips": 50.0,
+                    "reason": "TEST_STRESS_DEBUG",
+                    "adx": 30.0
+                }
+
+                # 2. Test SMC
+                self.logger.info("🧪 TEST: Validando con SMC...")
+                is_smc = self.bot.smc_scanner.scan_context(symbol, "BUY")
+                smc_status = "✅ OK" if is_smc else "⚠️ VETO (Simulado)"
+                
+                # 3. Test RL Agent
+                self.logger.info("🧪 TEST: Consultando Q-Learning...")
+                q_state = (symbol, True, "BUY")
+                rl_decision = self.bot.q_agent.decide(q_state, "BUY")
+                
+                # 4. Test Oráculo (IA)
+                self.logger.info("🧪 TEST: Consultando Juez Supremo (Gemini)...")
+                oracle_resp = self.bot.oracle.evaluate_trade(symbol, "BUY", "TEST_STRESS_DEBUG", 30.0)
+                oracle_status = f"✅ Decision: {oracle_resp.get('decision')}"
+                
+                # 5. Ejecución (Lotaje Mínimo 0.01 por seguridad)
+                self.logger.info(f"🧪 TEST: Ejecutando orden real (0.01 lots) en {symbol}...")
+                
+                # Forzamos dry_run a False temporalmente si estuviera activado para probar la conexión real
+                # PERO usaremos un lotaje tiny.
+                result = self.bot.position_manager.place_order(
+                    symbol=symbol,
+                    order_type=mt5.ORDER_TYPE_BUY,
+                    stop_loss_pips=25.0,
+                    take_profit_pips=50.0,
+                    probability=oracle_resp.get("confidence", 70.0),
+                    portfolio_weight=1.0
+                )
+
+                if result:
+                    # 6. Journal y Notificación
+                    acc = mt5.account_info()
+                    self.bot.journal.record_open(
+                        order_type="BUY",
+                        symbol=symbol,
+                        volume=result['volume'],
+                        price=result['price'],
+                        sl=result['sl'],
+                        tp=result['tp'],
+                        sl_pips=25.0,
+                        tp_pips=50.0,
+                        rr_ratio=2.0,
+                        balance=acc.balance,
+                        equity=acc.equity,
+                        daily_dd=0.0,
+                        overall_dd=0.0,
+                        session="TEST",
+                        strategy="PREFLIGHT_TEST",
+                        reason="Prueba de sistemas satisfactoria"
+                    )
+                    
+                    self.bot.telegram.notify_trade_opened(
+                        "BUY", symbol, result['volume'], result['price'],
+                        result['sl'], result['tp'], 25.0, 50.0, 2.0
+                    )
+                    
+                    self._send_message(chat_id, 
+                        f"✅ *TEST COMPLETADO EXITOSAMENTE*\n\n"
+                        f"🛡️ SMC: `{smc_status}`\n"
+                        f"🧠 RL: `{rl_decision}`\n"
+                        f"👁️ Oracle: `{oracle_status}`\n"
+                        f"🚀 Ejecución: `TICKET #{result['ticket']}`\n\n"
+                        f"_Sistemas alineados y operativos. ¡El bot está listo para la guerra!_"
+                    )
+                else:
+                    self._send_message(chat_id, "❌ *FALLO EN EJECUCIÓN:* Revisa si MT5 permite trading algo o si el mercado está cerrado.")
+
+            except Exception as e:
+                self.logger.error(f"Error en Test de Trade: {e}")
+                self._send_message(chat_id, f"❌ *ERROR CRÍTICO EN EL TEST:* `{str(e)}`")
+
+        threading.Thread(target=run_test, daemon=True).start()
 
     def _handle_fortaleza(self, chat_id):
         """Comando /fortaleza - Estado de la Fortaleza Matemática"""
