@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 import MetaTrader5 as mt5
 
-from config.settings import TelegramConfig, ChallengeConfig
+from config.settings import TelegramConfig, ChallengeConfig, BotConfig
 from utils.logger import BotLogger
 
 
@@ -107,6 +107,8 @@ class TelegramCommandHandler:
             self._handle_set_key(chat_id, text)
         elif command == "/quota":
             self._handle_quota(chat_id)
+        elif command == "/fortaleza":
+            self._handle_fortaleza(chat_id)
         elif command in ["/help", "/start"]:
             self._handle_help(chat_id)
         else:
@@ -265,6 +267,7 @@ class TelegramCommandHandler:
             f"🤖 *CONTROL REMOTO TX3 PRO*\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"📡 /status - Estado general y métricas\n"
+            f"🏰 /fortaleza - Fortaleza Matemática\n"
             f"📈 /positions - Detalle de posiciones\n"
             f"💸 /profit - Resumen de ganancias\n"
             f"🛡️ /risk - Drawdown y riesgo\n"
@@ -409,4 +412,46 @@ class TelegramCommandHandler:
             )
             
         msg += "━━━━━━━━━━━━━━━━━━━━"
+        self._send_message(chat_id, msg)
+
+    def _handle_fortaleza(self, chat_id):
+        """Comando /fortaleza - Estado de la Fortaleza Matemática"""
+        acc = mt5.account_info()
+        if not acc:
+            self._send_message(chat_id, "❌ Error: MT5 no conectado.")
+            return
+
+        # 1. Distancia a la Ruina (Piso)
+        initial_bal = ChallengeConfig.BALANCE_INICIAL
+        limit_pct = ChallengeConfig.MAX_OVERALL_DRAWDOWN_PCT / 100.0
+        
+        # Piso dinámico basado en el risk manager
+        actual_limit_loss = self.bot.risk_manager.balance_inicial * limit_pct
+        floor = self.bot.risk_manager.balance_inicial - actual_limit_loss
+
+        buffer = acc.equity - floor
+        max_buffer = initial_bal - (initial_bal * (1-limit_pct))
+        survival_factor = max(0, min(1.0, (buffer / max_buffer)))
+
+        # 2. Correlación
+        positions = self.bot.position_manager.get_open_positions()
+        exposure = "Limpio ✅"
+        if positions:
+            currencies = []
+            for p in positions:
+                currencies.extend([p.symbol[:3], p.symbol[3:]])
+            exposure = ", ".join(set(currencies))
+
+        msg = (
+            f"🏰 *FORTALEZA MATEMÁTICA*\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"🛡️ *Piso de Equity:* `${floor:,.2f}`\n"
+            f"📏 *Buffer de Seguridad:* `${buffer:,.2f}`\n"
+            f"📉 *Survival Factor:* `{survival_factor:.2%}`\n"
+            f"⚖️ *Riesgo Dinámico:* `{BotConfig.MAX_RISK_PER_TRADE_PCT * survival_factor:.3f}%` por trade\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"🔗 *Exposición Neta:* `{exposure}`\n"
+            f"🤖 *Veto IA:* Conectado y Tiered\n"
+            f"━━━━━━━━━━━━━━━━━━━━"
+        )
         self._send_message(chat_id, msg)

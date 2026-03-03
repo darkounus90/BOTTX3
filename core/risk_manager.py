@@ -370,6 +370,17 @@ class RiskManager:
             self.logger.error("No se pudo obtener info para reset diario")
             return
 
+        # ─── FORTALEZA MATEMÁTICA: EQUITY LOCK ───
+        # Si hemos ganado > 2%, subimos el 'piso' para proteger el capital inicial.
+        # Esto evita que una racha mala después de una buena nos devuelva al drawdown original.
+        growth = account_info.balance - ChallengeConfig.BALANCE_INICIAL
+        if growth > (ChallengeConfig.BALANCE_INICIAL * 0.02):
+             # Bloqueamos el 50% de la ganancia como nuevo 'suelo' inviolable
+             new_piso = ChallengeConfig.BALANCE_INICIAL + (growth * 0.5)
+             if new_piso > self.balance_inicial:
+                 self.logger.success(f"🛡️ FORTALEZA: Piso de Equity elevado a ${new_piso:,.2f} (Protegiendo Ganancias)")
+                 self.balance_inicial = new_piso
+
         # El drawdown diario se calcula desde el MAYOR valor entre balance y equity
         self.equity_inicio_dia = max(account_info.balance, account_info.equity)
 

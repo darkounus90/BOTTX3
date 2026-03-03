@@ -22,120 +22,76 @@ class PositionManager:
         self.trades_today = 0
         self.max_trades_per_day = BotConfig.MAX_TRADES_PER_DAY
 
+    def _get_atr(self, symbol: str, period: int = 14) -> float:
+        """Calcula el ATR (Average True Range) para normalizar por volatilidad"""
+        rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M15, 0, period + 1)
+        if rates is None: return 20.0 # Valor default seguro si falla MT5
+        
+        tr_list = []
+        for i in range(1, len(rates)):
+            high = rates[i]['high']
+            low = rates[i]['low']
+            prev_close = rates[i-1]['close']
+            tr = max(high - low, abs(high - prev_close), abs(low - prev_close))
+            tr_list.append(tr)
+        
+        atr_points = sum(tr_list) / len(tr_list)
+        # Convertir a pips
+        point = mt5.symbol_info(symbol).point
+        pip_size = 0.01 if "JPY" in symbol else 0.0001
+        return (atr_points / pip_size) if pip_size > 0 else 20.0
+
     def calculate_position_size(self, symbol: str, stop_loss_pips: float, probability: float = None, portfolio_weight: float = 1.0) -> float | None:
         """
-        Calcula el tamaño de posición basado en:
-        - Riesgo máximo: 0.5% del balance por trade (O Kelly Criterion dinámico)
-        - Stop loss en pips
-
-        Args:
-            symbol: Par de divisas (e.g., "EURUSD")
-            stop_loss_pips: Distancia del stop loss en pips
-            probability: Probabilidad de éxito estimada por la IA (opcional)
-            portfolio_weight: Multiplicador de riesgo del Heatmap de liquidez
-
-        Returns:
-            Tamaño de posición en lotes, o None si hay error
+        Calcula el tamaño de posición (FORTALEZA MATEMÁTICA).
         """
-        account_info = mt5.account_info()
-        if account_info is None:
-            self.logger.error("No se pudo obtener info de cuenta para position sizing")
-            return None
+        acc = mt5.account_info()
+        if not acc: return None
 
-        balance = account_info.balance
-        if getattr(BotConfig, "SIMULATE_50K_CHALLENGE", False):
-            balance = ChallengeConfig.BALANCE_INICIAL
-
-        # Determinar Drawdown Actual (Kelly Scaling)
-        overall_dd_pct = 0.0
-        start_bal = ChallengeConfig.BALANCE_INICIAL
+        # ─── 1. ESCALADO ASINTÓTICO (SURVIVAL ENGINE) ───
+        # El riesgo se asfixia a medida que te acercas al piso de ruina.
+        initial_bal = ChallengeConfig.BALANCE_INICIAL
+        limit_pct = ChallengeConfig.MAX_OVERALL_DRAWDOWN_PCT / 100.0
+        floor = initial_bal * (1 - limit_pct) # El piso absoluto ($45k)
         
-        # Usar el balance inicial dinámico real si está disponible
-        if self.risk_manager and hasattr(self.risk_manager, "balance_inicial"):
-            start_bal = self.risk_manager.balance_inicial
-        elif getattr(BotConfig, "SIMULATE_50K_CHALLENGE", False):
-            start_bal = ChallengeConfig.BALANCE_INICIAL
-            
-        if account_info.equity < start_bal and start_bal > 0:
-            overall_dd_pct = ((start_bal - account_info.equity) / start_bal) * 100.0
-
-        risk_pct = BotConfig.MAX_RISK_PER_TRADE_PCT
+        # 'Distancia a la Ruina' (Buffer de seguridad actual)
+        buffer = acc.equity - floor
+        max_buffer = initial_bal - floor # Buffer inicial ($5k)
         
-        # 1. Ajuste Institucional por Supervivencia (Distancia a la Ruina)
-        max_dd_limit = ChallengeConfig.MAX_OVERALL_DRAWDOWN_PCT
-        if overall_dd_pct > (max_dd_limit * 0.8):
-            risk_pct *= 0.1 # MODO TORTUGA: Reducir riesgo al 10% de lo normal
-            self.logger.warning(f"🐢 MODO TORTUGA: Drawdown {overall_dd_pct:.1f}%. Riesgo asfixiado a {risk_pct:.3f}%")
-        elif overall_dd_pct > (max_dd_limit * 0.5):
-            risk_pct *= 0.5 # MODO DEFENSA
-            self.logger.warning(f"🛡️ DEFENSA: Drawdown {overall_dd_pct:.1f}%. Riesgo reducido a {risk_pct:.3f}%")
-        elif account_info.equity > (start_bal * 1.02): # 2% en positivo real
-            risk_pct *= 1.5 # MODO ACELERADOR
-            self.logger.info(f"🚀 ACELERADOR: Racha positiva confirmada. Riesgo expandido a {risk_pct:.3f}%")
-
-        # 2. Ajuste por Probabilidad (Kelly Criterion IA)
-        kelly_fraction = BotConfig.KELLY_FRACTION
-        if probability is not None and probability > 0:
-            if probability >= 75:
-                risk_pct *= (1.2 * kelly_fraction)  # Alta convicción -> Aumentar
-            elif probability >= 60:
-                risk_pct *= (0.8 * kelly_fraction)  # Buena convicción
-            elif probability < 55:
-                risk_pct *= (0.2 * kelly_fraction)  # Dudoso -> Reducir riesgo
-            self.logger.info(f"⚖️ Kelly Criterion IA (F={kelly_fraction}): {probability:.1f}% -> Riesgo final {risk_pct:.3f}%")
-
-        # Si existe rebalanceo de portafolio, ajustamos peso
-        if getattr(BotConfig, "PORTFOLIO_REBALANCING", False) and 'portfolio_weight' in locals() and portfolio_weight:
-            risk_pct *= portfolio_weight
-            self.logger.info(f"⚖️ Rebalanceo Activo: Modificando riesgo a {risk_pct:.2f}% por calor volumétrico")
-
-        # Riesgo en dólares
-        risk_amount = balance * (risk_pct / 100)
-
-        # Obtener info del símbolo
-        symbol_info = mt5.symbol_info(symbol)
-        if symbol_info is None:
-            self.logger.error(f"Símbolo {symbol} no encontrado")
-            return None
-
-        # --- CÁLCULO BULLETPROOF DEL PIP VALUE ---
-        point = symbol_info.point
-        tick_size = symbol_info.trade_tick_size
-        tick_value = symbol_info.trade_tick_value
+        # Factor de supervivencia: ratio 0.0 a 1.0 de cuánto buffer nos queda
+        survival_factor = max(0, min(1.0, (buffer / max_buffer)))
         
-        if tick_value <= 0 or tick_size <= 0 or point <= 0:
-            self.logger.error(f"Información de tick inválida para {symbol}")
-            return None
-            
-        # Determinar tamaño real de 1 pip (0.01 para pares JPY, 0.0001 para el resto)
+        # El riesgo base (1%) se multiplica por el factor de supervivencia.
+        # Si estás a $500 del suelo, el riesgo cae a un 10%, obligándote a usar micro-lotes.
+        risk_pct = BotConfig.MAX_RISK_PER_TRADE_PCT * survival_factor
+        
+        # ─── 2. ADAPTACIÓN DE VOLATILIDAD (ATR) ───
+        # Si el usuario no mandó un SL técnico, calculamos uno basado en el ruido del mercado.
+        if stop_loss_pips is None or stop_loss_pips <= 5:
+            atr_v = self._get_atr(symbol)
+            stop_loss_pips = atr_v * 1.5 # SL = 1.5 veces el aliento del mercado
+            self.logger.info(f"📏 Math Fortress: Usando ATR Adaptive SL de {stop_loss_pips:.1f} pips para {symbol}")
+
+        # ─── 3. KELLY IA Y REBALANCEO ───
+        if probability is not None:
+            kelly = (probability - 50) / 100 + 0.5 # Ajuste suave de Kelly
+            risk_pct *= kelly 
+        
+        risk_pct *= portfolio_weight
+        risk_amount = acc.balance * (risk_pct / 100)
+
+        # ─── 4. CÁLCULO DE LOTAJE ───
+        si = mt5.symbol_info(symbol)
         pip_size = 0.01 if "JPY" in symbol else 0.0001
+        # Pip Value formula: (PipSize / TickSize) * TickValue
+        pip_val_lot = (pip_size / si.trade_tick_size) * si.trade_tick_value
         
-        # Calcular cuánto vale financieramente 1 PIP exacto para 1 Lote Standard
-        pip_value_per_lot = (pip_size / tick_size) * tick_value
+        lotes = risk_amount / (stop_loss_pips * pip_val_lot)
+        lotes = round(lotes / si.volume_step) * si.volume_step
+        lotes = max(si.volume_min, min(lotes, si.volume_max))
 
-        # Calcular lotes
-        if stop_loss_pips <= 0:
-            self.logger.error(f"Stop loss inválido: {stop_loss_pips} pips")
-            return None
-
-        position_size = risk_amount / (stop_loss_pips * pip_value_per_lot)
-
-        # Ajustar a los límites del símbolo
-        min_lot = symbol_info.volume_min
-        max_lot = symbol_info.volume_max
-        lot_step = symbol_info.volume_step
-
-        # Redondear al step válido
-        position_size = round(position_size / lot_step) * lot_step
-        position_size = max(min_lot, min(position_size, max_lot))
-
-        self.logger.trade(f"Position Size calculado:")
-        self.logger.trade(f"  Balance:    ${balance:,.2f}")
-        self.logger.trade(f"  Riesgo:     ${risk_amount:,.2f} ({risk_pct}%)")
-        self.logger.trade(f"  SL Pips:    {stop_loss_pips}")
-        self.logger.trade(f"  Lotes:      {position_size:.2f}")
-
-        return position_size
+        self.logger.risk(f"🛡️ MATH FORTRESS: {symbol} | Risk {risk_pct:.3f}% | SL: {stop_loss_pips:.1f} | Lotes: {lotes}")
+        return lotes
 
     def place_order(
         self,
@@ -296,30 +252,29 @@ class PositionManager:
 
     def check_correlation_shield(self, symbol: str) -> bool:
         """
-        Escudo Anti-Correlación (Multi-Asset Analysis).
-        Evita tener múltiples posiciones que dependan de la misma base macroeconómica.
+        Escudo Anti-Correlación Pro (Net Currency Exposure).
+        Evita duplicar riesgo en la misma moneda base o cotizada.
         """
         open_positions = self.get_open_positions()
-        if not open_positions:
-            return True
+        if not open_positions: return True
 
-        # Logica ultra rápida para evitar "Risk Cascades" en USD
-        has_usd = "USD" in symbol
+        # Extraer monedas del nuevo símbolo (ej: EUR y USD)
+        new_base = symbol[:3]
+        new_quote = symbol[3:]
         
         for pos in open_positions:
-            if has_usd and ("USD" in pos.symbol) and (pos.symbol != symbol):
-                self.logger.warning(
-                    f"🛡️ ESCUDO ANTI-CORRELACIÓN: {symbol} bloqueado porque "
-                    f"ya existe una posición abierta en {pos.symbol}. (Se evita acumular USD Risk)"
-                )
+            p_base = pos.symbol[:3]
+            p_quote = pos.symbol[3:]
+            
+            # 1. Bloqueo de Moneda Base (ej: EURUSD y EURJPY)
+            if new_base == p_base:
+                self.logger.warning(f"🛡️ CORRELACIÓN: Bloqueado {symbol}. Ya tienes exposición BASE en {new_base} ({pos.symbol}).")
                 return False
                 
-            # Logica para EUR (Ej evitar EURUSD y EURJPY al mismo tiempo)
-            if "EUR" in symbol and ("EUR" in pos.symbol) and (pos.symbol != symbol):
-                 self.logger.warning(
-                    f"🛡️ ESCUDO ANTI-CORRELACIÓN: {symbol} bloqueado para no exponer doble riesgo en el Euro."
-                )
-                 return False
+            # 2. Bloqueo de Moneda Cotizada (ej: EURUSD y GBPUSD)
+            if new_quote == p_quote:
+                self.logger.warning(f"🛡️ CORRELACIÓN: Bloqueado {symbol}. Ya tienes exposición QUOTE en {new_quote} ({pos.symbol}).")
+                return False
 
         return True
 
