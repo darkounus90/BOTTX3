@@ -302,3 +302,37 @@ class TradeJournal:
             "avg_loss": avg_loss,
             "expectancy": expectancy,
         }
+    def get_recent_trades(self, limit: int = 20) -> list:
+        """Obtiene los últimos N trades cerrados para el dashboard"""
+        trades = []
+        try:
+            if not os.path.exists(self.csv_path):
+                return []
+                
+            with open(self.csv_path, "r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                all_rows = list(reader)
+                
+                # Buscamos los cierres (CLOSE) de atrás hacia adelante
+                for row in reversed(all_rows):
+                    if row["action"] == "CLOSE":
+                        # Limpiar datos para el frontend
+                        trade = {
+                            "timestamp": row.get("timestamp", ""),
+                            "symbol": row.get("symbol", ""),
+                            "type": row.get("type", ""),
+                            "volume": row.get("volume", "0.00"),
+                            "profit": float(row.get("profit", 0)),
+                            "profit_pips": float(row.get("profit_pips", 0)),
+                            "duration": row.get("duration", ""),
+                            "strategy": row.get("strategy", ""),
+                            "reason": row.get("reason", "")
+                        }
+                        trades.append(trade)
+                    
+                    if len(trades) >= limit:
+                        break
+        except Exception as e:
+            self.logger.error(f"Error leyendo trades recientes: {e}")
+            
+        return trades

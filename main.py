@@ -223,6 +223,7 @@ class TX3ProBot:
             "sys_news": self.news_filter.enabled if hasattr(self, 'news_filter') else False,
             "simulate_50k": getattr(BotConfig, "SIMULATE_50K_CHALLENGE", False),
             "open_positions": pos_list,
+            "recent_trades": self.journal.get_recent_trades(limit=10),
             "last_update": datetime.now(ZoneInfo("America/New_York")).strftime("%H:%M:%S")
         }
         update_dashboard_data(data)

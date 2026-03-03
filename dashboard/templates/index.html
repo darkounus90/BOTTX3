@@ -355,19 +355,28 @@
             <div class="flex justify-between items-center mb-4 relative z-10">
                 <h3 class="text-sm font-bold text-gray-200 tracking-widest uppercase flex items-center gap-2">
                     <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                        </path>
                     </svg>
                     Live Market Radar (M5)
                 </h3>
                 <div class="flex gap-2" id="tv-symbol-selector">
-                    <button class="px-4 py-1.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-lg text-xs font-bold transition-all" onclick="changeChart('OANDA:EURUSD')">EURUSD</button>
-                    <button class="px-4 py-1.5 bg-gray-800/80 text-gray-400 border border-gray-700/80 rounded-lg text-xs font-bold hover:bg-blue-500/10 hover:text-blue-400 transition-all" onclick="changeChart('OANDA:GBPUSD')">GBPUSD</button>
-                    <button class="px-4 py-1.5 bg-gray-800/80 text-gray-400 border border-gray-700/80 rounded-lg text-xs font-bold hover:bg-blue-500/10 hover:text-blue-400 transition-all" onclick="changeChart('OANDA:USDJPY')">USDJPY</button>
+                    <button
+                        class="px-4 py-1.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-lg text-xs font-bold transition-all"
+                        onclick="changeChart('OANDA:EURUSD')">EURUSD</button>
+                    <button
+                        class="px-4 py-1.5 bg-gray-800/80 text-gray-400 border border-gray-700/80 rounded-lg text-xs font-bold hover:bg-blue-500/10 hover:text-blue-400 transition-all"
+                        onclick="changeChart('OANDA:GBPUSD')">GBPUSD</button>
+                    <button
+                        class="px-4 py-1.5 bg-gray-800/80 text-gray-400 border border-gray-700/80 rounded-lg text-xs font-bold hover:bg-blue-500/10 hover:text-blue-400 transition-all"
+                        onclick="changeChart('OANDA:USDJPY')">USDJPY</button>
                 </div>
             </div>
-            
-            <div id="tradingview_chart" class="w-full h-[400px] rounded-lg overflow-hidden border border-gray-800/50"></div>
-            
+
+            <div id="tradingview_chart" class="w-full h-[400px] rounded-lg overflow-hidden border border-gray-800/50">
+            </div>
+
             <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
             <script type="text/javascript">
                 let tvWidget = null;
@@ -393,7 +402,7 @@
                         ]
                     });
                 }
-                
+
                 function changeChart(symbol) {
                     createTVWidget(symbol);
                     const buttons = document.querySelectorAll('#tv-symbol-selector button');
@@ -405,7 +414,7 @@
                         }
                     });
                 }
-                
+
                 document.addEventListener('DOMContentLoaded', () => {
                     createTVWidget('OANDA:EURUSD');
                 });
@@ -431,7 +440,7 @@
                     <span class="text-xs text-gray-500 font-mono" id="positions-count">Active: 0</span>
                 </div>
 
-                <div class="overflow-x-auto flex-1 p-2">
+                <div class="overflow-x-auto p-2">
                     <table class="w-full text-sm text-left align-middle">
                         <thead class="text-xs text-gray-500 font-mono tracking-wider border-b border-gray-800/50">
                             <tr>
@@ -446,6 +455,41 @@
                         <tbody id="positions-table" class="font-mono text-sm">
                             <tr>
                                 <td colspan="6" class="text-center py-12 text-gray-600">No active positions currently
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Trade History Section (Added) -->
+                <div class="p-5 border-t border-b border-gray-800 bg-gray-900/40 flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-white tracking-wide">Trade History (Recent)</h3>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto p-2">
+                    <table class="w-full text-sm text-left align-middle">
+                        <thead class="text-xs text-gray-500 font-mono tracking-wider border-b border-gray-800/50">
+                            <tr>
+                                <th class="px-4 py-3 font-medium">TIME</th>
+                                <th class="px-4 py-3 font-medium">ASSET</th>
+                                <th class="px-4 py-3 font-medium">TYPE</th>
+                                <th class="px-4 py-3 font-medium">LOTS</th>
+                                <th class="px-4 py-3 font-medium">STRATEGY</th>
+                                <th class="px-4 py-3 font-medium text-right">PROFIT ($)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table" class="font-mono text-xs">
+                            <tr>
+                                <td colspan="6" class="text-center py-8 text-gray-600 italic">History buffer empty...
                                 </td>
                             </tr>
                         </tbody>
@@ -726,6 +770,37 @@
             } else {
                 pCount.textContent = 'Active: 0';
                 tbody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-gray-600">No active positions currently</td></tr>';
+            }
+
+            // Trade History Table (Added)
+            const hbody = document.getElementById('history-table');
+            if (hbody && data.recent_trades && data.recent_trades.length > 0) {
+                hbody.innerHTML = '';
+                data.recent_trades.forEach(trade => {
+                    const row = document.createElement('tr');
+                    const isProfitable = trade.profit >= 0;
+                    const timeOnly = trade.timestamp.includes(' ') ? trade.timestamp.split(' ')[1] : trade.timestamp;
+
+                    row.className = 'border-b border-gray-800/20 hover:bg-gray-800/20 transition-colors';
+                    row.innerHTML = `
+                        <td class="px-4 py-2 text-gray-500 text-[0.65rem]">${timeOnly}</td>
+                        <td class="px-4 py-2 font-bold text-gray-300">${trade.symbol}</td>
+                        <td class="px-4 py-2">
+                             <span class="text-[0.6rem] font-bold ${trade.type === 'BUY' ? 'text-blue-400' : 'text-orange-400'}">${trade.type}</span>
+                        </td>
+                        <td class="px-4 py-2 text-gray-400">${parseFloat(trade.volume).toFixed(2)}</td>
+                        <td class="px-4 py-2">
+                            <div class="flex flex-col">
+                                <span class="text-gray-300 text-[0.65rem] font-bold uppercase">${trade.strategy || 'N/A'}</span>
+                                <span class="text-gray-600 text-[0.6rem] truncate max-w-[120px]">${trade.reason || ''}</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-2 text-right font-bold ${isProfitable ? 'text-emerald-500' : 'text-rose-500'}">
+                            ${isProfitable ? '+' : ''}${trade.profit.toFixed(2)}
+                        </td>
+                    `;
+                    hbody.appendChild(row);
+                });
             }
         }
 
