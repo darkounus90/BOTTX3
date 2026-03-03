@@ -42,11 +42,11 @@ class GeminiOracle:
         # Mapeo de Límites exactos según AI Studio del Usuario (Marzo 2025)
         self.MODEL_CONFIGS = {
             "gemma-3": {"rpm": 30, "rpd": 14400}, 
-            "gemini-2.5-pro": {"rpm": 15, "rpd": 15000}, # Ilimitado/Unmetered en AI Studio
+            "gemini-2.5-pro": {"rpm": 0, "rpd": 0}, # 0/0 significa BLOQUEADO / Sin Acceso Gratis
             "gemini-2.5-flash": {"rpm": 5, "rpd": 20},
             "gemini-3-flash": {"rpm": 5, "rpd": 20},
             "gemini-2.5-flash-lite": {"rpm": 10, "rpd": 20},
-            "gemini-2.0-flash": {"rpm": 10, "rpd": 1500},
+            "gemini-2.0-flash": {"rpm": 10, "rpd": 1500}, # Este es el que tiene 1500 reales
             "gemini-1.5-flash": {"rpm": 15, "rpd": 1500},
             "default": {"rpm": 5, "rpd": 20}
         }
@@ -80,11 +80,10 @@ class GeminiOracle:
                 return
 
             # 1. Seleccionar Tier 2 (Critical)
-            # Prioridad máxima: gemini-2.5-pro (ilimitado/unmetered)
-            t2_cands = [m for m in available_models if "2.5-pro" in m]
+            # Prioridad máxima a gemini-2.0-flash que tiene 1500 limit.
+            t2_cands = [m for m in available_models if "2.0-flash" in m]
             if not t2_cands:
-                # Fallback a 2.0-flash (1500) o 1.5-flash (1500)
-                t2_cands = [m for m in available_models if "2.0-flash" in m or "1.5-flash" in m]
+                t2_cands = [m for m in available_models if "1.5-flash" in m]
             if not t2_cands:
                 t2_cands = [m for m in available_models if "flash" in m]
             self.target_critical = t2_cands[0] if t2_cands else available_models[0]
@@ -299,10 +298,10 @@ class GeminiOracle:
                 self.logger.error("❌ Oráculo (Re-init): No se encontraron modelos compatibles.")
                 return False
 
-            # 1. Seleccionar Tier 2 (Critical - Preferimos 2.5-pro)
-            tier2_candidates = [m for m in available_models if "2.5-pro" in m]
+            # 1. Seleccionar Tier 2 (Critical - Preferimos 2.0-flash)
+            tier2_candidates = [m for m in available_models if "2.0-flash" in m]
             if not tier2_candidates:
-                tier2_candidates = [m for m in available_models if "2.0-flash" in m or "1.5-flash" in m]
+                tier2_candidates = [m for m in available_models if "1.5-flash" in m]
             if not tier2_candidates:
                 tier2_candidates = [m for m in available_models if "flash" in m]
             self.target_critical = tier2_candidates[0] if tier2_candidates else available_models[0]
