@@ -54,7 +54,7 @@ class GeminiOracle:
         # Estado de los Buckets por Tier
         self.buckets = {
             "light": {"tokens": 25, "last_refill": time.time(), "rpm": 25, "rpd_count": 0, "rpd_limit": 14000},
-            "critical": {"tokens": 5, "last_refill": time.time(), "rpm": 5, "rpd_count": 0, "rpd_limit": 20}
+            "critical": {"tokens": 15, "last_refill": time.time(), "rpm": 15, "rpd_count": 0, "rpd_limit": 1500}
         }
         
         # Caché de señales para evitar duplicar llamadas en la misma vela M5
