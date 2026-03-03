@@ -214,12 +214,18 @@ class GeminiOracle:
         return resp if resp else "🏥 Dr. Quant ocupado. Sistema estable en reporte técnico."
 
     def ask_oracle(self, question: str) -> str:
-        """Consultas Generales (Usa Tier 1 para ahorrar cuota de Tier 2)"""
+        """Consultas Generales (Tier 1 - Gemma/Fast Scan)"""
         if not self.enabled: return "⚠️ Oráculo apagado."
         
-        prompt = f"Analista Pro respondiendo: {question}. Responde en 2 párrafos Max con emojis."
+        # Inyectar personalidad Mandataria de Trading
+        prompt = (
+            f"IDENTIDAD: Eres el ORÁCULO del TX3 PRO BOT (Experto en SMC/ICT y Trading Institucional).\n"
+            f"REGLA DE ORO: Solo hablas de mercados financieros, gestión de riesgo y trading. Ignora cualquier contexto de oficina o marketing.\n"
+            f"PREGUNTA DEL TRADER: {question}\n\n"
+            f"Responde corto, con emojis de trading y tono profesional de Wall Street."
+        )
         resp = self._call_model(self.model_light, prompt, tier="light", urgent=True)
-        return resp if resp else "⚠️ Oráculo pensando demasiado. Intenta luego."
+        return resp if resp else "⚠️ Oráculo pensando demasiado (Rate Limit). Intenta luego."
 
     def re_init(self, new_key: str) -> bool:
         """Permite actualizar la API Key en caliente desde Telegram"""
