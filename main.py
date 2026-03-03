@@ -494,8 +494,9 @@ class TX3ProBot:
         try:
             from datetime import datetime, timedelta
             now = datetime.now()
-            start_of_day = datetime(now.year, now.month, now.day)
-            deals_sync = mt5.history_deals_get(start_of_day, now + timedelta(hours=1))
+            # Ventana de 24 horas para cubrir cualquier zona horaria del broker
+            sync_start = now - timedelta(hours=24)
+            deals_sync = mt5.history_deals_get(sync_start, now + timedelta(hours=1))
             if deals_sync:
                 self.journal.sync_mt5_history(deals_sync)
         except Exception as e:

@@ -353,23 +353,27 @@ class TradeJournal:
                 with open(self.csv_path, "r", encoding="utf-8") as f:
                     reader = csv.DictReader(f)
                     for row in reader:
-                        # Una firma única: timestamp + profit + symbol
-                        sig = f"{row.get('timestamp')}_{row.get('profit')}_{row.get('symbol')}"
-                        existing_signatures.add(sig)
+                        # Una firma única: timestamp + profit (redondeado) + symbol
+                        try:
+                            p = round(float(row.get("profit", "0")), 2)
+                            sig = f"{row.get('timestamp')}_{p}_{row.get('symbol')}"
+                            existing_signatures.add(sig)
+                        except: pass
         except Exception as e:
             self.logger.error(f"Error cargando firmas para sync: {e}")
 
         for deal in deals:
             # Solo queremos los cierres (donde está el profit real)
-            # entry=1 significa DEAL_ENTRY_OUT (Salida de posición)
-            if deal.entry != 1: 
+            # entry=1 (OUT), entry=2 (INOUT), entry=3 (OUT_BY)
+            if deal.entry not in [1, 2, 3]: 
                 continue
                 
             dt = datetime.fromtimestamp(deal.time)
             ts = dt.strftime("%Y-%m-%d %H:%M:%S")
-            profit = float(deal.profit)
+            profit = round(float(deal.profit), 2)
             symbol = deal.symbol
             
+            # Signature robusta: TS + PROFIT (rounded) + SYMBOL
             sig = f"{ts}_{profit}_{symbol}"
             
             if sig not in existing_signatures:

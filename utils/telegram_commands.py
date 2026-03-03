@@ -524,10 +524,10 @@ class TelegramCommandHandler:
         try:
             from datetime import datetime, timedelta
             now = datetime.now()
-            # De hoy a las 00:00
-            start_of_day = datetime(now.year, now.month, now.day)
+            # Mirar 24 horas atrás para evitar problemas de zona horaria del broker
+            lookback_start = now - timedelta(hours=24)
             
-            deals = mt5.history_deals_get(start_of_day, now + timedelta(hours=1))
+            deals = mt5.history_deals_get(lookback_start, now + timedelta(hours=1))
             
             if deals is None:
                 self._send_message(chat_id, "❌ No se pudo obtener el historial. Verifica la conexión a MT5.")
