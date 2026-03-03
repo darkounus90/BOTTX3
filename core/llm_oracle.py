@@ -42,10 +42,11 @@ class GeminiOracle:
         # Mapeo de Límites exactos según AI Studio del Usuario (Marzo 2025)
         self.MODEL_CONFIGS = {
             "gemma-3": {"rpm": 30, "rpd": 14400}, 
+            "gemini-2.5-pro": {"rpm": 15, "rpd": 15000}, # Ilimitado/Unmetered en AI Studio
             "gemini-2.5-flash": {"rpm": 5, "rpd": 20},
             "gemini-3-flash": {"rpm": 5, "rpd": 20},
             "gemini-2.5-flash-lite": {"rpm": 10, "rpd": 20},
-            "gemini-2.0-flash": {"rpm": 10, "rpd": 1500}, # Asumimos 1500 si no se muestra el límite de 20
+            "gemini-2.0-flash": {"rpm": 10, "rpd": 1500},
             "gemini-1.5-flash": {"rpm": 15, "rpd": 1500},
             "default": {"rpm": 5, "rpd": 20}
         }
@@ -79,8 +80,11 @@ class GeminiOracle:
                 return
 
             # 1. Seleccionar Tier 2 (Critical)
-            # Acorde a AI Studio gratuíto, 2.5-flash tiene 20 RPD, pero queremos el mejor disponible
-            t2_cands = [m for m in available_models if "2.5-flash" in m and "lite" not in m]
+            # Prioridad máxima: gemini-2.5-pro (ilimitado/unmetered)
+            t2_cands = [m for m in available_models if "2.5-pro" in m]
+            if not t2_cands:
+                # Fallback a 2.0-flash (1500) o 1.5-flash (1500)
+                t2_cands = [m for m in available_models if "2.0-flash" in m or "1.5-flash" in m]
             if not t2_cands:
                 t2_cands = [m for m in available_models if "flash" in m]
             self.target_critical = t2_cands[0] if t2_cands else available_models[0]
@@ -97,6 +101,7 @@ class GeminiOracle:
                 # Por seguridad extra frente a los nombres cambiantes, buscamos la mejor coincidencia
                 match_key = "default"
                 if "gemma-3" in model_name: match_key = "gemma-3"
+                elif "2.5-pro" in model_name: match_key = "gemini-2.5-pro"
                 elif "2.5-flash" in model_name: match_key = "gemini-2.5-flash"
                 elif "1.5-flash" in model_name: match_key = "gemini-1.5-flash"
                 elif "2.0-flash" in model_name: match_key = "gemini-2.0-flash"
@@ -294,14 +299,16 @@ class GeminiOracle:
                 self.logger.error("❌ Oráculo (Re-init): No se encontraron modelos compatibles.")
                 return False
 
-            # 1. Seleccionar Tier 2 (Critical - Preferimos 1.5 por cuota)
-            tier2_candidates = [m for m in available_models if "1.5-flash" in m]
+            # 1. Seleccionar Tier 2 (Critical - Preferimos 2.5-pro)
+            tier2_candidates = [m for m in available_models if "2.5-pro" in m]
+            if not tier2_candidates:
+                tier2_candidates = [m for m in available_models if "2.0-flash" in m or "1.5-flash" in m]
             if not tier2_candidates:
                 tier2_candidates = [m for m in available_models if "flash" in m]
             self.target_critical = tier2_candidates[0] if tier2_candidates else available_models[0]
             
             # 2. Seleccionar Tier 1 (Light - Prioridad Gemma-3 14.4K RPD)
-            tier1_candidates = [m for m in available_models if "gemma-3" in m]
+            tier1_candidates = [m for m in available_models if "gemma-3-1b" in m or "gemma-3-4b" in m]
             if not tier1_candidates:
                 tier1_candidates = [m for m in available_models if "lite" in m or "8b" in m]
             self.target_light = tier1_candidates[0] if tier1_candidates else self.target_critical
@@ -315,7 +322,14 @@ class GeminiOracle:
             
             # Re-configurar Buckets para los nuevos modelos detectados
             for tier, model_name in [("light", self.target_light), ("critical", self.target_critical)]:
-                config = next((v for k, v in self.MODEL_CONFIGS.items() if k in model_name), self.MODEL_CONFIGS["default"])
+                match_key = "default"
+                if "gemma-3" in model_name: match_key = "gemma-3"
+                elif "2.5-pro" in model_name: match_key = "gemini-2.5-pro"
+                elif "2.5-flash" in model_name: match_key = "gemini-2.5-flash"
+                elif "1.5-flash" in model_name: match_key = "gemini-1.5-flash"
+                elif "2.0-flash" in model_name: match_key = "gemini-2.0-flash"
+                
+                config = self.MODEL_CONFIGS[match_key]
                 self.buckets[tier]["rpm"] = config["rpm"]
                 self.buckets[tier]["rpd_limit"] = config["rpd"]
 
