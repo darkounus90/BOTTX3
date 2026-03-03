@@ -336,3 +336,78 @@ class TradeJournal:
             self.logger.error(f"Error leyendo trades recientes: {e}")
             
         return trades
+    def sync_mt5_history(self, deals: tuple):
+        """
+        Sincroniza el historial de MT5 con el Journal.
+        Evita duplicados escaneando el profit y timestamp único.
+        """
+        if not deals:
+            return 0
+            
+        sync_count = 0
+        existing_signatures = set()
+        
+        # Cargar firmas existentes para evitar duplicados
+        try:
+            if os.path.exists(self.csv_path):
+                with open(self.csv_path, "r", encoding="utf-8") as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        # Una firma única: timestamp + profit + symbol
+                        sig = f"{row.get('timestamp')}_{row.get('profit')}_{row.get('symbol')}"
+                        existing_signatures.add(sig)
+        except Exception as e:
+            self.logger.error(f"Error cargando firmas para sync: {e}")
+
+        for deal in deals:
+            # Solo queremos los cierres (donde está el profit real)
+            # entry=1 significa DEAL_ENTRY_OUT (Salida de posición)
+            if deal.entry != 1: 
+                continue
+                
+            dt = datetime.fromtimestamp(deal.time)
+            ts = dt.strftime("%Y-%m-%d %H:%M:%S")
+            profit = float(deal.profit)
+            symbol = deal.symbol
+            
+            sig = f"{ts}_{profit}_{symbol}"
+            
+            if sig not in existing_signatures:
+                # No está en el journal, lo agregamos
+                trade_id = f"SYNC-{deal.ticket}"
+                
+                row = {
+                    "timestamp": ts,
+                    "trade_id": trade_id,
+                    "action": "CLOSE", # Lo tratamos como cierre para el dashboard
+                    "type": "BUY" if deal.type == 0 else "SELL", # DEAL_TYPE_BUY = 0, SELL = 1
+                    "symbol": symbol,
+                    "volume": deal.volume,
+                    "price": deal.price,
+                    "sl": "",
+                    "tp": "",
+                    "sl_pips": "",
+                    "tp_pips": "",
+                    "rr_ratio": "",
+                    "profit": profit,
+                    "profit_pips": 0, # Difícil calcular pips sin el open price exacto aquí
+                    "balance_after": 0, # Desconocido del deal directo
+                    "equity_after": 0,
+                    "daily_dd_used": 0,
+                    "overall_dd_used": 0,
+                    "session": "N/A",
+                    "strategy": "EXTERNAL/MANUAL",
+                    "reason": "Sincronizado desde MT5",
+                    "duration": "N/A",
+                    "phase": self.phase,
+                    "comment": f"Deal #{deal.deal}",
+                }
+                
+                self._write_csv_row(row)
+                existing_signatures.add(sig)
+                sync_count += 1
+                
+        if sync_count > 0:
+            self.logger.success(f"📓 Sincronizados {sync_count} trades externos al journal.")
+            
+        return sync_count

@@ -111,6 +111,8 @@ class TelegramCommandHandler:
             self._handle_fortaleza(chat_id)
         elif command == "/test_trade":
             self._handle_test_trade(chat_id)
+        elif command == "/sync":
+            self._handle_sync(chat_id)
         elif command in ["/help", "/start"]:
             self._handle_help(chat_id)
         else:
@@ -514,6 +516,42 @@ class TelegramCommandHandler:
                 self._send_message(chat_id, f"❌ *ERROR CRÍTICO EN EL TEST:* `{str(e)}`")
 
         threading.Thread(target=run_test, daemon=True).start()
+
+    def _handle_sync(self, chat_id):
+        """Sincroniza el historial de hoy desde MT5 al diario local"""
+        self._send_message(chat_id, "🔄 *SINCRONIZANDO HISTORIAL DE MT5...*")
+        
+        try:
+            from datetime import datetime, timedelta
+            now = datetime.now()
+            # De hoy a las 00:00
+            start_of_day = datetime(now.year, now.month, now.day)
+            
+            deals = mt5.history_deals_get(start_of_day, now + timedelta(hours=1))
+            
+            if deals is None:
+                self._send_message(chat_id, "❌ No se pudo obtener el historial. Verifica la conexión a MT5.")
+                return
+
+            # Sincronizar
+            new_trades = self.bot.journal.sync_mt5_history(deals)
+            
+            # Obtener resumen actualizado
+            stats = self.bot.journal.get_today_stats()
+            
+            msg = (
+                f"✅ *SINCRONIZACIÓN COMPLETADA*\n\n"
+                f"📥 Registros nuevos: `{new_trades}`\n"
+                f"📊 Trades hoy: `{stats['trades']}`\n"
+                f"💰 Profit hoy: `${stats['total_profit']:+,.2f}`\n"
+                f"📈 Win Rate: `{stats['win_rate']:.1f}%`\n\n"
+                f"_El dashboard se actualizará en el siguiente ciclo._"
+            )
+            self._send_message(chat_id, msg)
+            
+        except Exception as e:
+            self.logger.error(f"Error en comando /sync: {e}")
+            self._send_message(chat_id, f"❌ Error en sincronización: `{str(e)}`")
 
     def _handle_fortaleza(self, chat_id):
         """Comando /fortaleza - Estado de la Fortaleza Matemática"""
