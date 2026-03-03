@@ -105,6 +105,8 @@ class TelegramCommandHandler:
             self._handle_doctor(chat_id)
         elif command == "/set_key":
             self._handle_set_key(chat_id, text)
+        elif command == "/quota":
+            self._handle_quota(chat_id)
         elif command in ["/help", "/start"]:
             self._handle_help(chat_id)
         else:
@@ -137,12 +139,17 @@ class TelegramCommandHandler:
         positions = self.bot.position_manager.get_open_positions()
         
         uptime_str = "N/A"
-        if hasattr(self.bot.telegram, "_start_time"):
-            delta = datetime.now() - self.bot.telegram._start_time
+        if hasattr(self, "_start_time"):
+            delta = datetime.now() - self._start_time
             hours, remainder = divmod(int(delta.total_seconds()), 3600)
             minutes, _ = divmod(remainder, 60)
             uptime_str = f"{hours}h {minutes}m"
             
+        # Integrar Info de IA
+        ai_info = self.bot.oracle.get_quota_report()
+        t1 = ai_info.get("light", {})
+        t2 = ai_info.get("critical", {})
+        
         msg = (
             f"📊 *ESTADO DEL BOT*\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
@@ -150,9 +157,12 @@ class TelegramCommandHandler:
             f"💼 Equity: `${equity:,.2f}`\n"
             f"{profit_emoji} P&L Abierto: `{open_profit_sign}${open_profit:,.2f}`\n"
             f"📈 Posiciones Activas: `{len(positions)}`\n"
-            f"⏱ Uptime: `{uptime_str}`\n"
-            f"🕐 Hora local: `{datetime.now().strftime('%H:%M:%S')}`\n"
-            f"━━━━━━━━━━━━━━━━━━━━"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"🧠 *AI BUDGET*\n"
+            f"T1 (Gemma): `{t1.get('used_today')}/{t1.get('limit_today')}`\n"
+            f"T2 (Gemini): `{t2.get('used_today')}/{t2.get('limit_today')}`\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"⏱ Uptime: `{uptime_str}` | `{datetime.now().strftime('%H:%M')}`"
         )
         self._send_message(chat_id, msg)
 
@@ -255,16 +265,14 @@ class TelegramCommandHandler:
             f"🤖 *CONTROL REMOTO TX3 PRO*\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"📡 /status - Estado general y métricas\n"
-            f"📈 /positions - Detalle de posiciones abiertas\n"
+            f"📈 /positions - Detalle de posiciones\n"
             f"💸 /profit - Resumen de ganancias\n"
-            f"🛡️ /risk - Estado de Drawdown y riesgo\n"
-            f"🧠 /ask <pregunta> - Consulta directa al Oráculo AI\n"
-            f"📝 /report - Reporte de Inteligencia Artificial\n"
-            f"⏸️ /pause - Pausa el bot temporalmente\n"
-            f"▶️ /resume - Reanuda la operativa\n"
-            f"🧹 /flat - Cierra todas las posiciones abiertas\n"
-            f"🔑 /set_key <clave> - Cambia la API Key de Gemini en caliente\n"
-            f"ℹ️ /help - Muestra este menú\n"
+            f"🛡️ /risk - Drawdown y riesgo\n"
+            f"🧠 /ask <pregunta> - Consulta al Oráculo\n"
+            f"📊 /quota - Ver telemetría de cuota AI\n"
+            f"⏸️ /pause | ▶️ /resume | 🧹 /flat\n"
+            f"🔑 /set_key <clave> - Cambiar API Key\n"
+            f"ℹ️ /help - Menu\n"
             f"━━━━━━━━━━━━━━━━━━━━"
         )
         self._send_message(chat_id, msg)
@@ -383,3 +391,22 @@ class TelegramCommandHandler:
         else:
             self._send_message(chat_id, "❌ *Error al actualizar la API Key.*\nRevisa los logs del sistema.")
 
+    def _handle_quota(self, chat_id):
+        """Comando /quota - Telemetría detallada de IA"""
+        report = self.bot.oracle.get_quota_report()
+        
+        msg = "🧠 *TELEMETRÍA AI ORACLE*\n━━━━━━━━━━━━━━━━━━━━\n"
+        
+        for name, data in report.items():
+            tier_name = "LIGHT (Consultas/Salud)" if name == "light" else "CRITICAL (Trades)"
+            status = data.get("status", "🟢 OK")
+            msg += (
+                f"🔹 *{tier_name}*\n"
+                f"🤖 Modelo: `{data.get('model')}`\n"
+                f"📊 Hoy: `{data.get('used_today')}` / `{data.get('limit_today')}`\n"
+                f"⚡ Carga RPM: `{data.get('load_rpm')}`\n"
+                f"🚥 Estado: {status}\n\n"
+            )
+            
+        msg += "━━━━━━━━━━━━━━━━━━━━"
+        self._send_message(chat_id, msg)
