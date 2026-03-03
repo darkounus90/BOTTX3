@@ -51,11 +51,11 @@ class GeminiOracle:
             "default": {"rpm": 5, "rpd": 20}
         }
         
-        # Estado de los Buckets por Tier
-        self.buckets = {
-            "light": {"tokens": 25, "last_refill": time.time(), "rpm": 25, "rpd_count": 0, "rpd_limit": 14000},
-            "critical": {"tokens": 5, "last_refill": time.time(), "rpm": 5, "rpd_count": 0, "rpd_limit": 20} # Empatado a 20 tiros reales por día
-        }
+        # Estado de los Buckets (Se inicializa dinámico en _setup_system)
+        self.buckets = {}
+        self.models_instances = {}
+        self.cascade_models = []
+        self.target_light = "gemma-3-1b"
         
         # Caché de señales para evitar duplicar llamadas en la misma vela M5
         self._signal_cache = {}
@@ -64,7 +64,7 @@ class GeminiOracle:
             self._setup_system()
 
     def _setup_system(self):
-        """Inicializa modelos y configura sus buckets específicos"""
+        """Inicializa modelos en cascada y configura sus buckets"""
         if not self.api_key or genai is None:
             self.enabled = False
             return
@@ -79,50 +79,69 @@ class GeminiOracle:
                 self.enabled = False
                 return
 
-            # 1. Seleccionar Tier 2 (Critical)
-            # Prioridad máxima al modelo gemini-2.5-flash ya que Google limitó a 0 los pro en Free Tier
-            t2_cands = [m for m in available_models if "2.5-flash" in m and "lite" not in m]
-            if not t2_cands:
-                t2_cands = [m for m in available_models if "1.5-flash" in m]
-            if not t2_cands:
-                t2_cands = [m for m in available_models if "flash" in m and "lite" not in m]
-            self.target_critical = t2_cands[0] if t2_cands else available_models[0]
+            # 1. Armar la cascada de modelos inteligentes
+            cands = []
+            for m in available_models:
+                # Omitir modelos incompatibles
+                if "vision" in m or "embedding" in m or "text-bison" in m or "pro" in m:
+                    continue
+                # Evitamos poner a Gemma o Lite en la cima principal de la cascada
+                if "lite" in m or "gemma" in m:
+                    continue
+                cands.append(m)
             
-            # 2. Seleccionar Tier 1 (Light - Prioridad Gemma 3)
+            # Ordenar (Ej: gemini-3, gemini-2.5, gemini-1.5...)
+            cands.sort(reverse=True)
+            self.cascade_models = cands[:4] # Top 4 mejores de IA
+
+            # Anexamos Lite como fallback justo antes de Gemma
+            lite_cands = [m for m in available_models if "flash-lite" in m]
+            if lite_cands:
+                self.cascade_models.append(lite_cands[0])
+
+            # 2. Seleccionar el Fallback Definitivo (Gemma-3)
             # Aquí es donde están los 14,400 Requests per Day
             t1_cands = [m for m in available_models if "gemma-3-1b" in m or "gemma-3-4b" in m]
             if not t1_cands:
-                t1_cands = [m for m in available_models if "8b" in m or "lite" in m]
-            self.target_light = t1_cands[0] if t1_cands else self.target_critical
-            
-            # Configurar Buckets basados en el nombre del modelo
-            for tier, model_name in [("light", self.target_light), ("critical", self.target_critical)]:
-                # Por seguridad extra frente a los nombres cambiantes, buscamos la mejor coincidencia
+                t1_cands = [m for m in available_models if "8b" in m or "gemma" in m]
+            self.target_light = t1_cands[0] if t1_cands else "default-light"
+
+            # 3. Configurar Buckets para la lista final
+            all_used_models = self.cascade_models + [self.target_light]
+            for m_name in list(set(all_used_models)):
                 match_key = "default"
-                if "gemma-3" in model_name: match_key = "gemma-3"
-                elif "2.5-pro" in model_name: match_key = "gemini-2.5-pro"
-                elif "2.5-flash" in model_name: match_key = "gemini-2.5-flash"
-                elif "1.5-flash" in model_name: match_key = "gemini-1.5-flash"
-                elif "2.0-flash" in model_name: match_key = "gemini-2.0-flash"
+                if "gemma" in m_name: match_key = "gemma-3"
+                elif "2.5-flash" in m_name: match_key = "gemini-2.5-flash"
+                elif "1.5-flash" in m_name: match_key = "gemini-1.5-flash"
+                elif "2.0-flash" in m_name: match_key = "gemini-2.0-flash"
+                elif "3-flash" in m_name: match_key = "gemini-3-flash"
+                elif "lite" in m_name: match_key = "gemini-2.5-flash-lite"
                     
-                config = self.MODEL_CONFIGS[match_key]
+                config = self.MODEL_CONFIGS.get(match_key, self.MODEL_CONFIGS["default"])
                 
-                self.buckets[tier]["rpm"] = config["rpm"]
-                self.buckets[tier]["tokens"] = config["rpm"]
-                self.buckets[tier]["rpd_limit"] = config["rpd"]
-            
-            self.model_light = genai.GenerativeModel(model_name=self.target_light)
-            self.model_critical = genai.GenerativeModel(model_name=self.target_critical)
+                self.buckets[m_name] = {
+                    "tokens": config["rpm"],
+                    "last_refill": time.time(),
+                    "rpm": config["rpm"],
+                    "rpd_count": 0,
+                    "rpd_limit": config["rpd"]
+                }
+                
+                if m_name in available_models:
+                    self.models_instances[m_name] = genai.GenerativeModel(model_name=m_name)
             
             self.system_ready = True
-            self.logger.success(f"👁️‍🗨️ IA ORACLE: T1({self.target_light}:{self.buckets['light']['rpd_limit']} reqs) | T2({self.target_critical}:{self.buckets['critical']['rpd_limit']} reqs)")
+            
+            # Log de Cascada
+            cascade_names_str = " -> ".join([m.replace('models/', '') for m in self.cascade_models])
+            self.logger.success(f"👁️‍🗨️ IA CASCADA: {cascade_names_str} -> {self.target_light.replace('models/', '')}")
         except Exception as e:
             self.logger.error(f"Error configuración Oráculo: {e}")
             self.enabled = False
 
-    def _get_token(self, tier: str) -> bool:
-        """Token Bucket específico por Tier con control RPD"""
-        bucket = self.buckets.get(tier)
+    def _get_token(self, m_name: str) -> bool:
+        """Token Bucket específico por modelo con control RPD"""
+        bucket = self.buckets.get(m_name)
         if not bucket: return False
         
         # Verificar RPD (Límite diario)
@@ -145,17 +164,20 @@ class GeminiOracle:
             return True
         return False
 
-    def _call_model(self, model, prompt, tier="light", urgent=False):
-        """Wrapper con Rate Limit por Tier"""
+    def _call_model(self, model_name: str, prompt: str, urgent=False):
+        """Wrapper con Rate Limit por modelo"""
         if not self.system_ready: return None
         
-        if not self._get_token(tier):
+        if not self._get_token(model_name):
             if urgent:
                 time.sleep(5)
                 # No reintentar infinitamente si es por RPD
-                if self.buckets[tier]["rpd_count"] < self.buckets[tier]["rpd_limit"]:
-                    return self._call_model(model, prompt, tier, urgent)
+                if self.buckets[model_name]["rpd_count"] < self.buckets[model_name]["rpd_limit"]:
+                    return self._call_model(model_name, prompt, urgent)
             return None
+
+        model = self.models_instances.get(model_name)
+        if not model: return None
 
         # Reintento exponencial simple
         last_error = "UNKNOWN_ERROR"
@@ -175,15 +197,17 @@ class GeminiOracle:
         return f"ERROR_{last_error}"
 
     def get_quota_report(self) -> dict:
-        """Devuelve telemetría de consumo de IA"""
+        """Devuelve telemetría de consumo de IA por modelo en cascada"""
         report = {}
-        target_l = getattr(self, "target_light", "None")
-        target_c = getattr(self, "target_critical", "None")
+        keys_to_report = self.cascade_models + [self.target_light]
         
-        for tier in ["light", "critical"]:
-            b = self.buckets[tier]
-            report[tier] = {
-                "model": target_l if tier == "light" else target_c,
+        for i, m_name in enumerate(keys_to_report):
+            if m_name not in self.buckets: continue
+            b = self.buckets[m_name]
+            tier_name = f"Cascade_{i+1}" if m_name != self.target_light else "Light_Fallback"
+            
+            report[tier_name] = {
+                "model": m_name.replace("models/", ""),
                 "used_today": b["rpd_count"],
                 "limit_today": b["rpd_limit"],
                 "load_rpm": f"{int(b['rpm'] - b['tokens'])}/{b['rpm']}",
@@ -192,7 +216,7 @@ class GeminiOracle:
         return report
 
     def evaluate_trade(self, symbol: str, signal_type: str, reason: str, adx: float = None) -> dict:
-        """Veto CIO (Tier 2 - Critical con Fallback a Tier 1)"""
+        """Veto CIO (Búsqueda en Cascada Inteligente -> Respaldo Ligero)"""
         if not self.enabled or not self.system_ready:
             return {"decision": "APPROVED", "reason": "Oracle Bypass (Disabled)"}
 
@@ -205,15 +229,17 @@ class GeminiOracle:
             if last_candle == candle_key:
                 return last_decision
 
-        # 2. SELECCIÓN DE TIER (Inteligente)
-        tier_to_use = "critical"
-        model_to_use = self.model_critical
+        # 2. SELECCIÓN DE MODELO (CASCADA -> GEMMA)
+        model_name_to_use = self.target_light # Comienza asumiendo el fallback (Gemma)
         
-        # Si Gemini (Critical) está sin cuota diaria, usar Gemma (Light) como respaldo
-        if self.buckets["critical"]["rpd_count"] >= self.buckets["critical"]["rpd_limit"]:
-            self.logger.warning(f"⚠️ Tier 2 (Gemini) sin balas. Activando respaldo Tier 1 (Gemma) para {symbol}.")
-            tier_to_use = "light"
-            model_to_use = self.model_light
+        # Buscar el primero de la cascada inteligente que aún tenga cuota diaria (RPD)
+        for m_name in self.cascade_models:
+            if m_name in self.buckets and self.buckets[m_name]["rpd_count"] < self.buckets[m_name]["rpd_limit"]:
+                model_name_to_use = m_name
+                break
+                
+        if model_name_to_use == self.target_light:
+            self.logger.warning(f"⚠️ Cascada IA agotada. Fallback absoluto a {self.target_light} para {symbol}.")
 
         # 3. PREPARAR CONTEXTO AVANZADO
         context_data = "Estructura H1/M15 neutral"
@@ -235,7 +261,7 @@ class GeminiOracle:
             f"RESPONDE SOLO JSON: {{'decision':'APPROVED|REJECTED', 'reason':'motivo corto', 'confidence':0-100}}"
         )
 
-        resp_text = self._call_model(model_to_use, prompt, tier=tier_to_use, urgent=True)
+        resp_text = self._call_model(model_name_to_use, prompt, urgent=True)
         
         if not resp_text:
             return {"decision": "APPROVED", "reason": "Quant Bypass (No Quota)"}
