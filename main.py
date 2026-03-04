@@ -184,12 +184,39 @@ class TX3ProBot:
         daily_dd = self.risk_manager.check_daily_drawdown()
         overall_dd = self.risk_manager.check_overall_drawdown()
         
+        # Determinar MODE mental
+        bot_mode = "off"
+        if self.running and not self.is_paused:
+            if daily_dd["level"] in ("WARNING", "EMERGENCY") or overall_dd["level"] in ("WARNING", "EMERGENCY"):
+                bot_mode = "defense"
+            else:
+                bot_mode = "normal"
+        elif self.is_paused:
+            bot_mode = "paused"
+
         # Formatear posiciones para JSON
         pos_list = []
+        risk_pct_session = 0.0
+        balance = account["balance"] if account else 0
+        
         for p in positions:
+            # Calcular risk_pct_trade (pips a SL * valor / balance)
+            risk_pct_trade = 0.0
+            if p.sl > 0 and balance > 0:
+                profit = mt5.order_calc_profit(p.type, p.symbol, p.volume, p.price_open, p.sl)
+                if profit is not None and profit < 0:
+                    risk_pct_trade = (abs(profit) / balance) * 100.0
+            
+            risk_pct_session += risk_pct_trade
+            
+            # Extraer strategy_id de comment (por ej: "Breakout_P1")
+            strat_id = p.comment.split("_P")[0] if p.comment else "Unknown"
+
             pos_list.append({
                 "ticket": p.ticket,
                 "symbol": p.symbol,
+                "strategy_id": strat_id,
+                "risk_pct_trade": round(risk_pct_trade, 3),
                 "type": "BUY" if p.type == mt5.ORDER_TYPE_BUY else "SELL",
                 "volume": p.volume,
                 "price_open": p.price_open,
@@ -204,7 +231,9 @@ class TX3ProBot:
 
         data = {
             "status": "PAUSED" if self.is_paused else ("RUNNING" if self.running else "STOPPED"),
-            "mode": "DEMO" if self.dry_run else "LIVE",
+            "mode": bot_mode,
+            "sim_mode": "DEMO" if self.dry_run else "LIVE",
+            "risk_pct_session": round(risk_pct_session, 3),
             "kelly_fraction": BotConfig.KELLY_FRACTION,
             "phase": self.phase,
             "balance": account["balance"] if account else 0,
@@ -573,6 +602,42 @@ class TX3ProBot:
                 if hasattr(self, 'q_agent'):
                     self.q_agent.shadow_update_closed_trades()
 
+                # ─── B.1 AI Exit Engine (Salidas Inteligentes) ─────────
+                if self.oracle.enabled:
+                    current_min = datetime.now().minute
+                    for p in self.position_manager.get_open_positions():
+                        # Solo analiza si es ganadora (Ahorro estricto de cuota API)
+                        if p.profit > 0:
+                            si = mt5.symbol_info(p.symbol)
+                            pip_size = 0.01 if "JPY" in p.symbol else 0.0001
+                            tick = mt5.symbol_info_tick(p.symbol)
+                            
+                            pips_profit = 0.0
+                            if tick and si:
+                                if p.type == mt5.ORDER_TYPE_BUY:
+                                    pips_profit = (tick.bid - p.price_open) / pip_size
+                                else:
+                                    pips_profit = (p.price_open - tick.ask) / pip_size
+                                    
+                            # Empieza a evaluar solo si hay más de 5 pips de ganancia
+                            if pips_profit >= 5.0:
+                                t_type = "BUY" if p.type == mt5.ORDER_TYPE_BUY else "SELL"
+                                
+                                # Consultar solo en cierres de vela de 15 minutos (0, 15, 30, 45)
+                                if current_min % 15 == 0:
+                                    if not hasattr(self, "last_ai_exit_checks"):
+                                        self.last_ai_exit_checks = {}
+                                    
+                                    last_chk = self.last_ai_exit_checks.get(p.ticket, -1)
+                                    if last_chk != current_min:
+                                        self.last_ai_exit_checks[p.ticket] = current_min
+                                        decision = self.oracle.evaluate_exit(p.symbol, pips_profit, t_type)
+                                        if decision.get("decision") == "CLOSE":
+                                            self.logger.success(f"🤖🧠 ORÁCULO ORDENA CIERRE ANTICIPADO: Ticket #{p.ticket} | Razón: {decision.get('reason')}")
+                                            self.position_manager.close_position(p.ticket)
+                                            if hasattr(self.telegram, 'chat_id'):
+                                                self.telegram._send_message(self.telegram.chat_id, f"🤖🧠 *CIA (Salida Inteligente)*\nCierre Anticipado en {p.symbol} (+{pips_profit:.1f} pips)\nRazón: {decision.get('reason')}")
+
                 # ─── C. Verificar Riesgo (Emergencia) ──────────────
                 if hasattr(self.risk_manager, 'check_and_hedge_crashing_positions'):
                     self.risk_manager.check_and_hedge_crashing_positions()
@@ -704,7 +769,8 @@ class TX3ProBot:
                                             stop_loss_pips=signal['stop_loss_pips'],
                                             take_profit_pips=signal['take_profit_pips'],
                                             probability=probability,
-                                            portfolio_weight=port_weight
+                                            portfolio_weight=port_weight,
+                                            strategy_tag=strategy.get_name()
                                         )
                                     
                                         if result:

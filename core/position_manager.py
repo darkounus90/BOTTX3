@@ -199,6 +199,11 @@ class PositionManager:
             self.logger.error(f"Tipo de orden inválido: {order_type}")
             return None
 
+        strategy_tag = kwargs.get('strategy_tag', 'TX3')
+        # MT5 comentarios están limitados a 31 caracteres. ej: "breakout_asia_P1"
+        safe_tag = strategy_tag.replace(" ", "_")[:25]
+        order_comment = f"{safe_tag}_P{self.phase}"
+        
         # ─── Crear y enviar request ──────────────────────────────────
         request = {
             "action": mt5.TRADE_ACTION_DEAL,
@@ -210,7 +215,7 @@ class PositionManager:
             "tp": tp,
             "deviation": BotConfig.DEVIATION,
             "magic": BotConfig.MAGIC_NUMBER,
-            "comment": f"{BotConfig.ORDER_COMMENT_PREFIX}_Phase{self.phase}",
+            "comment": order_comment,
             "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": mt5.ORDER_FILLING_IOC,
         }

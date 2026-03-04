@@ -93,7 +93,7 @@ class BotConfig:
 
     # ─── TRAILING STOP ────────────────────────────────────────────────
     TRAILING_STOP_ENABLED = True
-    TRAILING_ACTIVATION_PIPS = 10        # Activar trailing tras +10 pips (Break Even seguro)
+    TRAILING_ACTIVATION_PIPS = 5         # Activar trailing tras +5 pips (Asegurar más rápido)
     TRAILING_STEP_PIPS = 5               # Mover SL cada 5 pips de ganancia
 
     # ─── ORDERS ───────────────────────────────────────────────────────

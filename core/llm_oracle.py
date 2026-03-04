@@ -320,6 +320,63 @@ class GeminiOracle:
         except Exception as e:
             return {"decision": "APPROVED", "reason": f"IA Parsing Error: {e}"}
 
+    def evaluate_exit(self, symbol: str, current_profit_pips: float, order_type: str) -> dict:
+        """Consultamos a la IA si es prudente cerrar un trade que está en ganancia (Ahorro de Cuota)."""
+        if not self.enabled or not self.system_ready:
+            return {"decision": "HOLD", "reason": "Oracle Bypass"}
+
+        # 1. VERIFICAR CACHÉ (Ahorro de cuota por vela de M15)
+        now_nyc = datetime.now(ZoneInfo("America/New_York"))
+        candle_key = now_nyc.strftime("%Y%m%d%H") + str(now_nyc.minute // 15)
+        cache_id = f"EXIT_{symbol}_{order_type}"
+        
+        if cache_id in self._signal_cache:
+            last_candle, last_decision = self._signal_cache[cache_id]
+            if last_candle == candle_key:
+                return last_decision
+
+        context_data = "Estructura H1/M15 neutral"
+        try:
+            import MetaTrader5 as mt5
+            rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M15, 0, 5)
+            if rates is not None:
+                closes = [r['close'] for r in rates]
+                trend = "Higher Highs" if closes[-1] > closes[0] else "Lower Lows"
+                context_data = f"Trend: {trend} | Last 5 Candles M15: {closes}"
+        except: pass
+
+        prompt = (
+            f"ERES CIO DE HEDGE FUND (SMC/ICT Professional).\n"
+            f"Tenemos una posición {order_type} viva en {symbol} con +{current_profit_pips:.1f} pips de ganancia flotante.\n"
+            f"Estructura M15/H1 actual: {context_data}\n\n"
+            f"REGLA DE GESTIÓN DE RIESGO:\n"
+            f"Decide si cerramos la operación para asegurar la ganancia anticipadamente (CLOSE) o si la tendencia sigue firme y tiene espacio para correr (HOLD).\n"
+            f"Si intuyes rechazo de liquidez, soporte o resistencia inminente en contra del trade, asegura.\n"
+            f"RESPONDE SOLO JSON: {{'decision':'CLOSE|HOLD', 'reason':'breve motivo'}}"
+        )
+
+        models_to_try = [m for m in self.cascade_models if m in self.buckets and self.buckets[m]["rpd_count"] < self.buckets[m]["rpd_limit"]]
+        models_to_try.append(self.target_light)
+
+        resp_text = None
+        for m_name in models_to_try:
+            resp_text = self._call_model(m_name, prompt, urgent=False)
+            if resp_text and not resp_text.startswith("ERROR_"):
+                break
+
+        if not resp_text or resp_text.startswith("ERROR_"):
+            return {"decision": "HOLD", "reason": "Oráculo cansado (Limites), mantenemos regla técnica"}
+
+        try:
+            clean_text = resp_text.replace("```json", "").replace("```", "").strip()
+            data = json.loads(clean_text)
+            data["decision"] = data.get("decision", "HOLD").upper()
+            
+            self._signal_cache[cache_id] = (candle_key, data)
+            return data
+        except Exception as e:
+            return {"decision": "HOLD", "reason": f"Error del Oráculo: {e}"}
+
     def evaluate_system_health(self, metrics: dict) -> str:
         """Diagnóstico Médico (Fallback Ligero)"""
         if not self.enabled: return "⚠️ Dr. Quant offline."
