@@ -83,7 +83,7 @@ class GeminiOracle:
             cands = []
             for m in available_models:
                 # Omitir incompatibles, versiones obsoletas y modelos de voz/pro
-                if any(x in m for x in ["vision", "embedding", "text-bison", "pro", "tts", "robotics"]):
+                if any(x in m for x in ["vision", "embedding", "text-bison", "tts", "robotics"]):
                     continue
                 # Evitamos poner a Gemma o Lite en la cima principal de la cascada
                 if "lite" in m or "gemma" in m:
@@ -91,7 +91,18 @@ class GeminiOracle:
                 cands.append(m)
             
             # Ordenar: Queremos que las versiones "3" vayan primero, luego "2.5", luego "flash-latest"
-            cands.sort(reverse=True)
+            # Prioridad extrema para versiones Pro/Ultra
+            def _sort_key(m_name):
+                base = 0
+                if "pro" in m_name or "ultra" in m_name: base += 1000
+                if "3.1" in m_name: base += 310
+                elif "3.0" in m_name or "-3-" in m_name: base += 300
+                elif "2.5" in m_name: base += 250
+                elif "2.0" in m_name: base += 200
+                elif "1.5" in m_name: base += 150
+                return base
+                
+            cands.sort(key=_sort_key, reverse=True)
             self.cascade_models = cands[:4] # Top 4 mejores de IA pesada
 
             # Anexamos todos los Lite disponibles como Fallback Intermedio (Ej: 3.1-lite, 2.5-lite)
