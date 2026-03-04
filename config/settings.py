@@ -100,7 +100,7 @@ class BotConfig:
     MAGIC_NUMBER = 234000
     DEVIATION = 20
     ORDER_COMMENT_PREFIX = "TX3_Pro"
-    MAX_SPREAD_PIPS = 25.0               # Filtro relajado temporalmente para pruebas en cuenta Demo FPMarkets (comisiones de 15+ "puntos" de MT5)
+    MAX_SPREAD_PIPS = 1.5                # Filtro: No operar si el spread es mayor a 1.5 pips
 
     # ─── TIMING ───────────────────────────────────────────────────────
     LOOP_INTERVAL_SECONDS = 2            # Actualización ultra rápida (2s) para Dashboard y MT5
