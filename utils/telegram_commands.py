@@ -370,11 +370,17 @@ class TelegramCommandHandler:
             except Exception:
                 pass
 
+            overall_dd_val = self.bot.risk_manager.check_overall_drawdown()["loss"]
+            daily_dd_val = self.bot.risk_manager.check_daily_drawdown()["loss"]
+            balance_val = acc["balance"] if acc else 50000.0
+            overall_pct = (overall_dd_val / balance_val) * 100 if balance_val > 0 else 0
+
             metrics = {
                 "uptime": uptime_str,
                 "hours_since_last_trade": hours_since_last,
-                "daily_dd": self.bot.risk_manager.check_daily_drawdown()["loss"],
-                "overall_dd": self.bot.risk_manager.check_overall_drawdown()["loss"],
+                "daily_dd": f"${daily_dd_val:.2f}",
+                "overall_dd": f"${overall_dd_val:.2f} ({overall_pct:.2f}%)",
+                "balance": f"${balance_val:.2f}",
                 "mt5_connected": self.bot.connector.is_connected(),
                 "recent_errors": "Revisar logs en caso de silencio"
             }
