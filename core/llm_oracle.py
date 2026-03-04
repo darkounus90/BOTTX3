@@ -34,7 +34,10 @@ class GeminiOracle:
     def __init__(self, logger: BotLogger):
         self.logger = logger
         self.enabled = BotConfig.ORACLE_ENABLED
-        self.api_key = os.environ.get("GEMINI_API_KEY", "")
+        keys_env = os.environ.get("GEMINI_API_KEY", "")
+        self.api_keys = [k.strip() for k in keys_env.split(",") if k.strip()]
+        self.current_key_idx = 0
+        self.api_key = self.api_keys[0] if self.api_keys else ""
         
         self.system_ready = False
         self._last_warning_time = datetime.min
@@ -120,6 +123,7 @@ class GeminiOracle:
             self.target_light = t1_cands[0] if t1_cands else "default-light"
 
             # 3. Configurar Buckets para la lista final
+            num_keys = len(self.api_keys) if self.api_keys else 1
             all_used_models = self.cascade_models + [self.target_light]
             for m_name in list(set(all_used_models)):
                 match_key = "default"
@@ -135,12 +139,16 @@ class GeminiOracle:
                 if m_name in available_models:
                     self.models_instances[m_name] = genai.GenerativeModel(model_name=m_name)
                 
+                # Multiplicar los límites por la cantidad de API keys disponibles
+                base_rpm = config["rpm"] * num_keys
+                base_rpd = config["rpd"] * num_keys
+                
                 self.buckets[m_name] = {
-                    "tokens": config["rpm"],
+                    "tokens": base_rpm,
                     "last_refill": time.time(),
-                    "rpm": config["rpm"],
+                    "rpm": base_rpm,
                     "rpd_count": 0,
-                    "rpd_limit": config["rpd"]
+                    "rpd_limit": base_rpd
                 }
             
             self.system_ready = True
@@ -196,6 +204,12 @@ class GeminiOracle:
         last_error = "UNKNOWN_ERROR"
         for attempt in range(2):
             try:
+                # Round-Robin API Keys para distribuir consumo si hay múltiples
+                if len(self.api_keys) > 1:
+                    self.current_key_idx = (self.current_key_idx + 1) % len(self.api_keys)
+                    self.api_key = self.api_keys[self.current_key_idx]
+                    genai.configure(api_key=self.api_key)
+
                 # Gemma-3 requiere prompts más directos, limpiamos posibles instrucciones conflictivas
                 response = model.generate_content(prompt)
                 return response.text.strip()
@@ -203,8 +217,14 @@ class GeminiOracle:
                 err_str = str(e).lower()
                 last_error = str(e)
                 if "429" in err_str or "quota" in err_str:
-                    if "retry in" in err_str:
-                        # Error de RPM largo, saltamos directamente de modelo para no congelar el trade
+                    if len(self.api_keys) > 1:
+                        # Forzar cambio de clave si da error de cuota en una
+                        self.current_key_idx = (self.current_key_idx + 1) % len(self.api_keys)
+                        self.api_key = self.api_keys[self.current_key_idx]
+                        genai.configure(api_key=self.api_key)
+                        
+                    if "retry in" in err_str and len(self.api_keys) <= 1:
+                        # Error de RPM largo y no hay otra clave, saltamos directamente de modelo
                         self.logger.warning(f"⏩ Quota excedida en {model.model_name}. Saltando de modelo...")
                         break
                     time.sleep(3 * (attempt + 1))
@@ -335,8 +355,13 @@ class GeminiOracle:
         return resp if resp and not resp.startswith("ERROR_") else "⚠️ Oráculo pensando demasiado (Rate Limit). Intenta luego."
 
     def re_init(self, new_key: str) -> bool:
-        """Permite actualizar la API Key en caliente desde Telegram"""
-        self.api_key = new_key
+        """Permite actualizar la API Key en caliente (soporta múltiples separadas por coma)"""
+        self.api_keys = [k.strip() for k in new_key.split(",") if k.strip()]
+        if not self.api_keys:
+            self.api_keys = [""]
+        self.current_key_idx = 0
+        self.api_key = self.api_keys[0]
+
         # Actualizar variable de entorno para persistencia en esta sesión
         os.environ["GEMINI_API_KEY"] = new_key
         

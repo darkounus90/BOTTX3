@@ -9,6 +9,7 @@ set TELEGRAM_CHAT_ID=1176201993
 
 :: (Opcional) Contraseña para el dashboard web
 set DASHBOARD_SECRET=tx3-pro-bot-secret
+set GEMINI_API_KEY=AIzaSyAgAV3K-t5rv_P7ru_NpyI8rcgGWObWkS8,AIzaSyC1OgAyHJKbauD_-S9ohpGGpdsmLDFrO-4
 
 :: 2. Ejecutar el bot en Fase 1
 echo 🚀 Iniciando TX3 Pro Bot - Fase 1...

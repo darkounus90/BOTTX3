@@ -8,6 +8,7 @@ $env:TELEGRAM_CHAT_ID="1176201993"
 
 # (Opcional) Contraseña para el dashboard web
 $env:DASHBOARD_SECRET="tx3-pro-bot-secret"
+$env:GEMINI_API_KEY="AIzaSyAgAV3K-t5rv_P7ru_NpyI8rcgGWObWkS8,AIzaSyC1OgAyHJKbauD_-S9ohpGGpdsmLDFrO-4"
 
 # 2. Ejecutar el bot en Fase 1
 Write-Host "🚀 Iniciando TX3 Pro Bot - Fase 1..." -ForegroundColor Cyan

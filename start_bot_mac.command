@@ -22,6 +22,7 @@ echo ""
 export TELEGRAM_BOT_TOKEN="8407569871:AAFwcNzt8Mk0U0Bp3MGwT6OAaxHzRhy-2zg"
 export TELEGRAM_CHAT_ID="1176201993"
 export DASHBOARD_SECRET="tx3-pro-bot-secret"
+export GEMINI_API_KEY="AIzaSyAgAV3K-t5rv_P7ru_NpyI8rcgGWObWkS8,AIzaSyC1OgAyHJKbauD_-S9ohpGGpdsmLDFrO-4"
 
 echo "[3/3] 🚀 Arrancando Bot Principal en Fase 1..."
 echo "=========================================================="
