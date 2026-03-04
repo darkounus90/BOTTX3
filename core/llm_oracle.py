@@ -281,7 +281,7 @@ class GeminiOracle:
             return {"decision": "APPROVED", "reason": f"IA Parsing Error: {e}"}
 
     def evaluate_system_health(self, metrics: dict) -> str:
-        """Diagnóstico Médico (Tier 1 - Light)"""
+        """Diagnóstico Médico (Fallback Ligero)"""
         if not self.enabled: return "⚠️ Dr. Quant offline."
         
         prompt = (
@@ -289,11 +289,11 @@ class GeminiOracle:
             f"Responde corto (1 párrafo) de diagnóstico y 1 consejo."
         )
         
-        resp = self._call_model(self.model_light, prompt, tier="light", urgent=False)
+        resp = self._call_model(self.target_light, prompt, urgent=False)
         return resp if resp else "🏥 Dr. Quant ocupado. Sistema estable en reporte técnico."
 
     def ask_oracle(self, question: str) -> str:
-        """Consultas Generales (Tier 1 - Gemma/Fast Scan)"""
+        """Consultas Generales (Cascada -> Respaldo Ligero)"""
         if not self.enabled: return "⚠️ Oráculo apagado."
         
         # Inyectar personalidad Mandataria de Trading
@@ -303,11 +303,13 @@ class GeminiOracle:
             f"PREGUNTA DEL TRADER: {question}\n\n"
             f"Responde corto, con emojis de trading y tono profesional de Wall Street."
         )
-        resp = self._call_model(self.model_light, prompt, tier="light", urgent=True)
         
-        # Fallback a Tier 2 si Tier 1 falla o no hay cuota
-        if not resp and self.buckets["critical"]["rpd_count"] < self.buckets["critical"]["rpd_limit"]:
-            resp = self._call_model(self.model_critical, prompt, tier="critical", urgent=True)
+        model_to_use = self.cascade_models[0] if self.cascade_models else self.target_light
+        resp = self._call_model(model_to_use, prompt, urgent=True)
+        
+        # Fallback a Light si la Cascada falla
+        if not resp and model_to_use != self.target_light:
+            resp = self._call_model(self.target_light, prompt, urgent=True)
             
         return resp if resp else "⚠️ Oráculo pensando demasiado (Rate Limit). Intenta luego."
 
@@ -322,59 +324,19 @@ class GeminiOracle:
             return False
             
         try:
-            genai.configure(api_key=self.api_key)
+            self.buckets = {}
+            self.models_instances = {}
+            self.cascade_models = []
             
-            # --- DESCUBRIMIENTO DINÁMICO DE MODELOS ---
-            raw_models = list(genai.list_models())
-            available_models = [m.name for m in raw_models if "generateContent" in m.supported_generation_methods]
-            
-            if not available_models:
-                self.logger.error("❌ Oráculo (Re-init): No se encontraron modelos compatibles.")
-                return False
-
-            # 1. Seleccionar Tier 2 (Critical - Preferimos 2.5-flash)
-            tier2_candidates = [m for m in available_models if "2.5-flash" in m and "lite" not in m]
-            if not tier2_candidates:
-                tier2_candidates = [m for m in available_models if "1.5-flash" in m]
-            if not tier2_candidates:
-                tier2_candidates = [m for m in available_models if "flash" in m and "lite" not in m]
-            self.target_critical = tier2_candidates[0] if tier2_candidates else available_models[0]
-            
-            # 2. Seleccionar Tier 1 (Light - Prioridad Gemma-3 14.4K RPD)
-            tier1_candidates = [m for m in available_models if "gemma-3-1b" in m or "gemma-3-4b" in m]
-            if not tier1_candidates:
-                tier1_candidates = [m for m in available_models if "lite" in m or "8b" in m]
-            self.target_light = tier1_candidates[0] if tier1_candidates else self.target_critical
-            
-            # Inicializar modelos
-            self.model_light = genai.GenerativeModel(model_name=self.target_light)
-            self.model_critical = genai.GenerativeModel(model_name=self.target_critical)
-            
-            self.system_ready = True
-            self.enabled = True
-            
-            # Re-configurar Buckets para los nuevos modelos detectados
-            for tier, model_name in [("light", self.target_light), ("critical", self.target_critical)]:
-                match_key = "default"
-                if "gemma-3" in model_name: match_key = "gemma-3"
-                elif "2.5-pro" in model_name: match_key = "gemini-2.5-pro"
-                elif "2.5-flash" in model_name: match_key = "gemini-2.5-flash"
-                elif "1.5-flash" in model_name: match_key = "gemini-1.5-flash"
-                elif "2.0-flash" in model_name: match_key = "gemini-2.0-flash"
-                
-                config = self.MODEL_CONFIGS[match_key]
-                self.buckets[tier]["rpm"] = config["rpm"]
-                self.buckets[tier]["rpd_limit"] = config["rpd"]
-
-            # Resetear Rate Limiter y Cache al cambiar de llave
-            for tier in ["light", "critical"]:
-                self.buckets[tier]["tokens"] = self.buckets[tier]["rpm"]
-                self.buckets[tier]["rpd_count"] = 0
-                
+            # Reutiliza el sistema de cascada dinámico
+            self._setup_system()
             self._signal_cache = {}
             
-            self.logger.success(f"🔑 Oráculo reconectado con nueva llave.")
-            return True
+            if self.enabled:
+                self.logger.success(f"🔑 Oráculo reconectado con nueva llave.")
+                return True
+            else:
+                return False
         except Exception as e:
             self.logger.error(f"Error en re-init del Oráculo: {e}")
             return False
