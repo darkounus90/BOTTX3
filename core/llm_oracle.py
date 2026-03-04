@@ -256,11 +256,15 @@ class GeminiOracle:
 
         prompt = (
             f"ERES CIO DE HEDGE FUND (SMC/ICT Professional).\n"
-            f"Símbolo: {symbol} | Señal: {signal_type} | ADX: {adx}\n"
-            f"Contexto Estructural: {context_data}\n"
-            f"Técnica: {reason}\n\n"
-            f"Busca 'Inducement' o 'Liquidity Void'. Veta si es una trampa retail.\n"
-            f"RESPONDE SOLO JSON: {{'decision':'APPROVED|REJECTED', 'reason':'motivo corto', 'confidence':0-100}}"
+            f"Símbolo: {symbol} | Señal: {signal_type} | ADX: {adx} | Estructura H1/M5: {context_data}\n"
+            f"Lógica Matemática de Alerta: {reason}\n\n"
+            f"REGLA DE ESTRATEGIA ACTUAL (HUNTING LIQUIDITTY):\n"
+            f"- Si el precio rompe una Zona de Venta Roja por ENCIMA, es Breakout Alcista -> COMPRA.\n"
+            f"- Si el precio rebota y cae MÁS ABAJO de una Zona de Venta Roja, es Liquidity Sweep bajista -> VENDE.\n"
+            f"- Si el precio rompe una Zona de Compra Verde por DEBAJO, es Liquidity Sweep falso -> COMPRA el rebote.\n"
+            f"- Si el precio rebota hacia ARRIBA antes de tocar el soporte verde -> VENDE para ir a rellenarlo.\n\n"
+            f"Revisa si la técnica descrita hace match con estas trampas. Veta si es una operación obvia retail destinada a tocar Stop Loss.\n"
+            f"RESPONDE SOLO JSON: {{'decision':'APPROVED|REJECTED', 'reason':'motivo corto y técnico', 'confidence':0-100}}"
         )
 
         resp_text = self._call_model(model_name_to_use, prompt, urgent=True)
