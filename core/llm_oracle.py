@@ -258,12 +258,12 @@ class GeminiOracle:
             f"ERES CIO DE HEDGE FUND (SMC/ICT Professional).\n"
             f"Símbolo: {symbol} | Señal: {signal_type} | ADX: {adx} | Estructura H1/M5: {context_data}\n"
             f"Lógica Matemática de Alerta: {reason}\n\n"
-            f"REGLA DE ESTRATEGIA ACTUAL (HUNTING LIQUIDITTY):\n"
-            f"- Si el precio rompe una Zona de Venta Roja por ENCIMA, es Breakout Alcista -> COMPRA.\n"
-            f"- Si el precio rebota y cae MÁS ABAJO de una Zona de Venta Roja, es Liquidity Sweep bajista -> VENDE.\n"
-            f"- Si el precio rompe una Zona de Compra Verde por DEBAJO, es Liquidity Sweep falso -> COMPRA el rebote.\n"
-            f"- Si el precio rebota hacia ARRIBA antes de tocar el soporte verde -> VENDE para ir a rellenarlo.\n\n"
-            f"Revisa si la técnica descrita hace match con estas trampas. Veta si es una operación obvia retail destinada a tocar Stop Loss.\n"
+            f"REGLA DE CAZA DE LIQUIDEZ (FILTRADA POR TENDENCIA MAYOR H1):\n"
+            f"- ZONA DE VENTA ROJA: Si la rompe por ENCIMA (Breakout) -> COMPRA (Solo si tendencia H1 es Alcista).\n"
+            f"- ZONA DE VENTA ROJA: Si rebota y rechaza MÁS ABAJO (Sweep Bajista) -> VENDE (Solo si tendencia H1 es Bajista).\n"
+            f"- ZONA DE COMPRA VERDE: Si la rompe MÁS ABAJO asustando a la masa (Sweep Alcista) -> COMPRA el rebote falso sin dudar.\n"
+            f"- VETO MANDATORIO: NUNCA vendas acercándote a una Zona Verde (Soporte) si la tendencia es Alcista. Vetar ventas contra muro.\n\n"
+            f"Analiza si la técnica actual ({signal_type}) respeta la Marea H1 descrita en tu Contexto y caza estas trampas institucionales. Veta cuchillos cayendo.\n"
             f"RESPONDE SOLO JSON: {{'decision':'APPROVED|REJECTED', 'reason':'motivo corto y técnico', 'confidence':0-100}}"
         )
 
