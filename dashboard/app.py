@@ -111,11 +111,27 @@ def run_dashboard(bot_logger: BotLogger):
     log = logging.getLogger("werkzeug")
     log.setLevel(logging.ERROR)
 
-    socketio.run(
-        app,
-        host=DashboardConfig.HOST,
-        port=int(DashboardConfig.PORT),
-        debug=False,
-        use_reloader=False,
-        allow_unsafe_werkzeug=True
-    )
+    try:
+        socketio.run(
+            app,
+            host=DashboardConfig.HOST,
+            port=int(DashboardConfig.PORT),
+            debug=False,
+            use_reloader=False,
+            allow_unsafe_werkzeug=True
+        )
+    except TypeError:
+        # Fallback para versiones antiguas de Flask-SocketIO que no soportan allow_unsafe_werkzeug
+        logger.warning("Flask-SocketIO TypeError emitido. Intentando sin parámetros modernos...")
+        try:
+            socketio.run(
+                app,
+                host=DashboardConfig.HOST,
+                port=int(DashboardConfig.PORT),
+                debug=False,
+                use_reloader=False
+            )
+        except Exception as fallback_e:
+            logger.error(f"❌ Error crítico levantando el Dashboard (Fallback): {fallback_e}")
+    except Exception as e:
+        logger.error(f"❌ Error crítico levantando el Dashboard: {e}")
