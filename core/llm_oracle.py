@@ -191,13 +191,14 @@ class GeminiOracle:
             except Exception as e:
                 err_str = str(e).lower()
                 last_error = str(e)
-                self.logger.error(f"AI Error en {model.model_name}: {e}")
                 if "429" in err_str or "quota" in err_str:
                     if "retry in" in err_str:
                         # Error de RPM largo, saltamos directamente de modelo para no congelar el trade
+                        self.logger.warning(f"⏩ Quota excedida en {model.model_name}. Saltando de modelo...")
                         break
                     time.sleep(3 * (attempt + 1))
                     continue
+                self.logger.error(f"AI Error en {model.model_name}: {e}")
                 break
         return f"ERROR_{last_error}"
 
@@ -292,9 +293,8 @@ class GeminiOracle:
             f"REGLA DE ORO: Si el porcentaje de pérdida flotante es inferior al 3%, NO HAGAS ALARMAS. Es una fluctuación normal ($90 dolares es apenas el 0.1% de una cuenta de 50k, es irrelevante). Tranquiliza al usuario.\n"
             f"Responde corto (1 párrafo) de diagnóstico y 1 consejo técnico."
         )
-        
         resp = self._call_model(self.target_light, prompt, urgent=False)
-        return resp if resp else "🏥 Dr. Quant ocupado. Sistema estable en reporte técnico."
+        return resp if resp and not resp.startswith("ERROR_") else "🏥 Dr. Quant ocupado. Sistema estable en reporte técnico."
 
     def ask_oracle(self, question: str) -> str:
         """Consultas Generales (Cascada -> Respaldo Ligero)"""
@@ -312,10 +312,10 @@ class GeminiOracle:
         resp = self._call_model(model_to_use, prompt, urgent=True)
         
         # Fallback a Light si la Cascada falla
-        if not resp and model_to_use != self.target_light:
+        if (not resp or resp.startswith("ERROR_")) and model_to_use != self.target_light:
             resp = self._call_model(self.target_light, prompt, urgent=True)
             
-        return resp if resp else "⚠️ Oráculo pensando demasiado (Rate Limit). Intenta luego."
+        return resp if resp and not resp.startswith("ERROR_") else "⚠️ Oráculo pensando demasiado (Rate Limit). Intenta luego."
 
     def re_init(self, new_key: str) -> bool:
         """Permite actualizar la API Key en caliente desde Telegram"""
