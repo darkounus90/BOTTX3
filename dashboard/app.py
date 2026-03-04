@@ -114,7 +114,8 @@ def run_dashboard(bot_logger: BotLogger):
     socketio.run(
         app,
         host=DashboardConfig.HOST,
-        port=DashboardConfig.PORT,
+        port=int(DashboardConfig.PORT),
         debug=False,
         use_reloader=False,
+        allow_unsafe_werkzeug=True
     )
