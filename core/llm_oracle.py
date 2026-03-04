@@ -121,6 +121,9 @@ class GeminiOracle:
                     
                 config = self.MODEL_CONFIGS.get(match_key, self.MODEL_CONFIGS["default"])
                 
+                if m_name in available_models:
+                    self.models_instances[m_name] = genai.GenerativeModel(model_name=m_name)
+                
                 self.buckets[m_name] = {
                     "tokens": config["rpm"],
                     "last_refill": time.time(),
@@ -128,9 +131,6 @@ class GeminiOracle:
                     "rpd_count": 0,
                     "rpd_limit": config["rpd"]
                 }
-                
-                if m_name in available_models:
-                    self.models_instances[m_name] = genai.GenerativeModel(model_name=m_name)
             
             self.system_ready = True
             
@@ -193,6 +193,9 @@ class GeminiOracle:
                 last_error = str(e)
                 self.logger.error(f"AI Error en {model.model_name}: {e}")
                 if "429" in err_str or "quota" in err_str:
+                    if "retry in" in err_str:
+                        # Error de RPM largo, saltamos directamente de modelo para no congelar el trade
+                        break
                     time.sleep(3 * (attempt + 1))
                     continue
                 break
@@ -231,19 +234,7 @@ class GeminiOracle:
             if last_candle == candle_key:
                 return last_decision
 
-        # 2. SELECCIÓN DE MODELO (CASCADA -> GEMMA)
-        model_name_to_use = self.target_light # Comienza asumiendo el fallback (Gemma)
-        
-        # Buscar el primero de la cascada inteligente que aún tenga cuota diaria (RPD)
-        for m_name in self.cascade_models:
-            if m_name in self.buckets and self.buckets[m_name]["rpd_count"] < self.buckets[m_name]["rpd_limit"]:
-                model_name_to_use = m_name
-                break
-                
-        if model_name_to_use == self.target_light:
-            self.logger.warning(f"⚠️ Cascada IA agotada. Fallback absoluto a {self.target_light} para {symbol}.")
-
-        # 3. PREPARAR CONTEXTO AVANZADO
+        # 3. PREPARAR CONTEXTO AVANZADO Y PROMPT
         context_data = "Estructura H1/M15 neutral"
         try:
             import MetaTrader5 as mt5
@@ -267,13 +258,20 @@ class GeminiOracle:
             f"RESPONDE SOLO JSON: {{'decision':'APPROVED|REJECTED', 'reason':'motivo corto y técnico', 'confidence':0-100}}"
         )
 
-        resp_text = self._call_model(model_name_to_use, prompt, urgent=True)
-        
-        if not resp_text:
-            return {"decision": "APPROVED", "reason": "Quant Bypass (No Quota)"}
+        models_to_try = [m for m in self.cascade_models if m in self.buckets and self.buckets[m]["rpd_count"] < self.buckets[m]["rpd_limit"]]
+        models_to_try.append(self.target_light)
 
-        if isinstance(resp_text, str) and resp_text.startswith("ERROR_"):
-            return {"decision": "APPROVED", "reason": f"Quant Bypass ({resp_text})"}
+        resp_text = None
+        model_used = None
+        for m_name in models_to_try:
+            resp_text = self._call_model(m_name, prompt, urgent=True)
+            if resp_text and not resp_text.startswith("ERROR_"):
+                model_used = m_name
+                break
+            self.logger.warning(f"⏩ Modelo {m_name} saturado o con error. Ejecutando salto de Cascada al siguiente nivel...")
+
+        if not resp_text or resp_text.startswith("ERROR_"):
+            return {"decision": "APPROVED", "reason": "Quant Bypass (Todos los Modelos IA fallaron)"}
 
         try:
             clean_text = resp_text.replace("```json", "").replace("```", "").strip()
