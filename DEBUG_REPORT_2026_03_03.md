@@ -50,3 +50,34 @@ El bot estaba permitiendo (Técnicamente) operaciones lentas de "Spreads y Rango
 
 **La Solución:**
 Se programaron e insertaron 2 candados absolutos (`RESTRICT_TO_LONDON_NY` y `FRIDAY_FLAT_HOUR` en `settings.py` integrados en el código Core del Objeto). Si hoy es viernes y dan las 12 PM mediodía, el bot manda Killswitch y cierra el grifo automáticamente hasta la apertura del domingo. Ignorando a perpetuidad las madrugadas poco volátiles del Yen/Aussie.
+
+---
+
+## 🛑 6. Desbordamiento Silencioso por Límites de API Personalizados (Hard RPD Quota)
+**El Problema:**
+Al escanear el panel de usuario directamente en AI Studio de Google, descubrimos que las nuevas llaves tenían aplicada una penalización ultra restrictiva en capa Free: el límite diario de `gemini-2.5-flash` era de tan solo **20 Requests Per Day (RPD)**, y no las típicas 1,500. El bot, asumiendo su tanque normal de gasolina, no gestionaba el ahogo inminente e inevitable del trade #21.
+
+**La Solución:**
+Actualizamos los valores críticos en el núcleo central (`llm_oracle.py`). Al endurecer el Token Bucket local `rpd_limit` en estricto 20, aseguramos que el Bot sepa detener la Inteligencia superior y activar transparentemente el *Quant Bypass (Red de Trading Matemática)* o IAs más simples inmediatamente al gastar esos 20 tickets únicos, evitando crasheos 429 durante el día.
+
+---
+
+## 🛑 7. Punto Único de Fallo en IA y Sub-utilización (Dynamic AI Cascade Waterfall)
+**El Problema:**
+El script revelaba que Google habilita aleatoriamente excelentes versiones híbridas temporales (Gemini 3.0, Flash-Lites) dependiendo de la cuenta, pero nuestro bot mantenía una lista programada "Hard-Coded" inamovible (Tier 1 vs Tier 2), desaprovechando estas mejoras masivas de latencia gratuita si el Tier 2 principal caía.
+
+**La Solución:**
+Desarrollamos una Arquitectura de "Cascada Inteligente". Acabamos con las posiciones fijas y programamos al Core para autodetectar los modelos desde los servidores de Google al iniciar el '.bat'. Construye dinámicamente una cadena de priorización: 
+**Prioridad (Tier Oro):** Gemini 3.0 / 2.5 Normales.
+**Respaldo Secundario (Tier Plata):**  Versiones `Flash-Lite`.
+**Caída Libre (Tier Cobre):** Modelos `Gemma-3` equilibrados (Con cupón infinito de 14.4K RPD).
+Si uno se queda sin cuota, salta silenciosamente al siguiente sin perder el Trade en MetaTrader. 
+
+---
+
+## 🛑 8. Fallo de Referencia en el Auto-Diagnóstico de Arranque (Crash Dr. Quant)
+**El Problema:**
+El Bot fallaba su rigurosa Auto-Prueba de inicio deteniéndose con un temible código: `'GeminiOracle' object has no attribute 'model_light'`. Causado justamente a raíz del cambio de Arquitectura en Cascada, ya que las revisiones diagnósticas de salud médica (el bot leyendo MT5) buscaban variables estáticas de la generación pasada de código que ya habían sido borradas y modernizadas.
+
+**La Solución:**
+Reprogramamos los módulos `evaluate_system_health` y `ask_oracle` retirando cualquier mención obsoleta de llamadas `model_light`. Ahora apuntan a la constante `target_light` encastrada armoniosamente con el array de strings de la Cascada Inteligente. Auto-Test completamente verde y en línea.
