@@ -139,7 +139,7 @@ class DashboardConfig:
     """Configuración del dashboard web"""
 
     ENABLED = True
-    HOST = "0.0.0.0"
+    HOST = "45.131.114.82"
     PORT = 5050
     SECRET_KEY = os.environ.get("DASHBOARD_SECRET", "tx3-pro-bot-secret")
     UPDATE_INTERVAL_MS = 5000            # Actualizar cada 5 segundos
