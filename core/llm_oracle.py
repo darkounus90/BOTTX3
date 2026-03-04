@@ -278,6 +278,12 @@ class GeminiOracle:
             clean_text = resp_text.replace("```json", "").replace("```", "").strip()
             data = json.loads(clean_text)
             data["decision"] = data.get("decision", "APPROVED").upper()
+            
+            # Decorar la razón con el modelo que lo aprobó para transparencia del usuario
+            base_reason = data.get("reason", "Aprobado por IA")
+            clean_model_name = model_used.replace("models/", "") if model_used else "Desconocido"
+            data["reason"] = f"{base_reason} [Consultado por: {clean_model_name}]"
+            
             self._signal_cache[cache_id] = (candle_key, data)
             return data
         except Exception as e:
