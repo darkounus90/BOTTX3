@@ -132,6 +132,16 @@ def run_dashboard(bot_logger: BotLogger):
                 use_reloader=False
             )
         except Exception as fallback_e:
-            logger.error(f"❌ Error crítico levantando el Dashboard (Fallback): {fallback_e}")
-    except Exception as e:
+            logger.error(f"❌ Error crítico levantando el Dashboard (Fallback 1): {fallback_e}")
+            try:
+                logger.warning("🔄 Intentando Fallback 2: Servidor nativo Flask puro (Sin WebSockets)...")
+                app.run(
+                    host=DashboardConfig.HOST,
+                    port=int(DashboardConfig.PORT),
+                    debug=False,
+                    use_reloader=False
+                )
+            except BaseException as e2:
+                logger.error(f"❌ FALLO TOTAL del Dashboard: {e2}")
+    except BaseException as e:
         logger.error(f"❌ Error crítico levantando el Dashboard: {e}")
