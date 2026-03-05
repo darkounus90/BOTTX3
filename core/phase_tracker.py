@@ -56,8 +56,18 @@ class PhaseTracker:
         if account_info is None:
             return
 
-        # El profit del día se calcula comparando con el balance al inicio del día
-        self.current_day_profit = account_info.profit  # P&L de posiciones abiertas
+        # El daily profit = ganancia de las operaciones cerradas en el día + flotante actual.
+        from datetime import datetime
+        now = datetime.now()
+        start_of_day = datetime(now.year, now.month, now.day)
+        
+        deals = mt5.history_deals_get(start_of_day, now)
+        closed_profit = 0.0
+        if deals:
+             # entry 1=OUT, 2=INOUT, 3=OUT_BY (todos representan salidas con profit real)
+             closed_profit = sum(d.profit for d in deals if d.entry in [1, 2, 3])
+
+        self.current_day_profit = closed_profit + account_info.profit
 
     def end_of_day(self):
         """
