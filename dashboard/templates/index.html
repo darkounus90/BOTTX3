@@ -215,10 +215,10 @@
                 <div
                     class="absolute -right-6 -top-6 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all">
                 </div>
-                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Account Balance</h3>
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Balance de la Cuenta</h3>
                 <div class="text-3xl font-bold text-white tracking-tight" id="balance">$0.00</div>
                 <div class="mt-3 flex items-center justify-between text-sm border-t border-gray-800 pt-3">
-                    <span class="text-gray-500">Equity Live</span>
+                    <span class="text-gray-500">Equidad en Vivo</span>
                     <span class="font-mono text-blue-400 font-medium" id="equity">$0.00</span>
                 </div>
             </div>
@@ -228,11 +228,11 @@
                 <div
                     class="absolute -right-6 -top-6 w-24 h-24 bg-green-500/10 rounded-full blur-2xl group-hover:bg-green-500/20 transition-all">
                 </div>
-                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Daily Profit</h3>
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Beneficio Diario</h3>
                 <div class="text-3xl font-bold text-gray-500" id="daily-profit">$0.00</div>
                 <div class="mt-3 flex flex-col gap-1 border-t border-gray-800 pt-3">
                     <div class="flex justify-between text-xs text-gray-500">
-                        <span>Progress</span>
+                        <span>Progreso</span>
                         <span id="daily-pct-text">0.0%</span>
                     </div>
                     <div class="w-full bg-gray-800/80 rounded-full h-1.5 overflow-hidden">
@@ -248,8 +248,8 @@
                     class="absolute -right-6 -top-6 w-24 h-24 bg-orange-500/10 rounded-full blur-2xl group-hover:bg-orange-500/20 transition-all">
                 </div>
                 <div class="flex justify-between items-start">
-                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Daily Drawdown</h3>
-                    <span class="text-[0.65rem] border border-gray-700 text-gray-400 px-2 py-0.5 rounded-md">LIMIT
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Drawdown Diario</h3>
+                    <span class="text-[0.65rem] border border-gray-700 text-gray-400 px-2 py-0.5 rounded-md">LÍMITE
                         5%</span>
                 </div>
                 <div class="text-3xl font-bold text-orange-400 tracking-tight" id="daily-dd">$0.00</div>
@@ -266,8 +266,8 @@
                     class="absolute -right-6 -top-6 w-24 h-24 bg-red-500/10 rounded-full blur-2xl group-hover:bg-red-500/20 transition-all">
                 </div>
                 <div class="flex justify-between items-start">
-                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Max Drawdown</h3>
-                    <span class="text-[0.65rem] border border-gray-700 text-gray-400 px-2 py-0.5 rounded-md">LIMIT
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Drawdown Máximo</h3>
+                    <span class="text-[0.65rem] border border-gray-700 text-gray-400 px-2 py-0.5 rounded-md">LÍMITE
                         10%</span>
                 </div>
                 <div class="text-3xl font-bold text-red-400 tracking-tight" id="overall-dd">$0.00</div>
@@ -291,7 +291,7 @@
                                 d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z">
                             </path>
                         </svg>
-                        Bot Equity Curve (Live)
+                        Curva de Equidad del Bot
                     </h3>
                 </div>
                 <!-- Div with explicit height constraints so the canvas doesn't expand infinitely -->
@@ -308,10 +308,10 @@
                 <div>
                     <h3
                         class="text-sm font-bold text-gray-200 tracking-widest uppercase border-b border-gray-800 pb-2 mb-4 relative z-10">
-                        Phase Progress</h3>
+                        Progreso de Fase</h3>
 
                     <div class="flex justify-between items-center mb-3 text-sm relative z-10">
-                        <span class="text-gray-400">Profit Target</span>
+                        <span class="text-gray-400">Objetivo de Beneficio</span>
                         <span class="font-mono font-bold text-blue-400" id="stat-target">$0.00</span>
                     </div>
 
@@ -365,12 +365,12 @@
                             d="M12 2A10 10 0 1 0 22 12A10 10 0 0 0 12 2Zm0 0A10 10 0 0 1 22 12A10 10 0 0 1 12 22M12 2Z">
                         </path>
                     </svg>
-                    Live Exposures
+                    Exposiciones en Vivo
                 </h3>
 
                 <div id="exposures-container" class="space-y-3 relative z-10 w-full">
                     <div class="text-xs text-gray-500 text-center uppercase tracking-widest font-mono italic mt-8">
-                        Waiting for data...</div>
+                        Esperando datos...</div>
                 </div>
             </div>
         </div>
@@ -384,7 +384,7 @@
                             d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
                         </path>
                     </svg>
-                    Live Market Radar (M5)
+                    Radar de Mercado (M5)
                 </h3>
                 <div class="flex gap-2" id="tv-symbol-selector">
                     <button
@@ -460,9 +460,9 @@
                                     d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
                             </svg>
                         </div>
-                        <h3 class="text-lg font-bold text-white tracking-wide">Live Positions</h3>
+                        <h3 class="text-lg font-bold text-white tracking-wide">Posiciones en Vivo</h3>
                     </div>
-                    <span class="text-xs text-gray-500 font-mono" id="positions-count">Active: 0</span>
+                    <span class="text-xs text-gray-500 font-mono" id="positions-count">Activas: 0</span>
                 </div>
 
                 <div class="overflow-x-auto p-2">
@@ -470,16 +470,17 @@
                         <thead class="text-xs text-gray-500 font-mono tracking-wider border-b border-gray-800/50">
                             <tr>
                                 <th class="px-4 py-3 font-medium">TICKET</th>
-                                <th class="px-4 py-3 font-medium">ASSET</th>
-                                <th class="px-4 py-3 font-medium">INFO / STRATEGY</th>
-                                <th class="px-4 py-3 font-medium">LOTS & RISK</th>
-                                <th class="px-4 py-3 font-medium">ENTRY</th>
-                                <th class="px-4 py-3 font-medium text-right">PROFIT</th>
+                                <th class="px-4 py-3 font-medium">ACTIVO</th>
+                                <th class="px-4 py-3 font-medium">INFO / ESTRATEGIA</th>
+                                <th class="px-4 py-3 font-medium">LOTES Y RIESGO</th>
+                                <th class="px-4 py-3 font-medium">ENTRADA</th>
+                                <th class="px-4 py-3 font-medium text-right">BENEFICIO</th>
                             </tr>
                         </thead>
                         <tbody id="positions-table" class="font-mono text-sm">
                             <tr>
-                                <td colspan="6" class="text-center py-12 text-gray-600">No active positions currently
+                                <td colspan="6" class="text-center py-12 text-gray-600">No hay posiciones activas
+                                    actualmente
                                 </td>
                             </tr>
                         </tbody>
@@ -496,7 +497,7 @@
                                     d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                         </div>
-                        <h3 class="text-lg font-bold text-white tracking-wide">Trade History (Recent)</h3>
+                        <h3 class="text-lg font-bold text-white tracking-wide">Historial de Operaciones</h3>
                     </div>
                 </div>
 
@@ -504,17 +505,17 @@
                     <table class="w-full text-sm text-left align-middle">
                         <thead class="text-xs text-gray-500 font-mono tracking-wider border-b border-gray-800/50">
                             <tr>
-                                <th class="px-4 py-3 font-medium">TIME</th>
-                                <th class="px-4 py-3 font-medium">ASSET</th>
+                                <th class="px-4 py-3 font-medium">HORA</th>
+                                <th class="px-4 py-3 font-medium">ACTIVO</th>
                                 <th class="px-4 py-3 font-medium">INFO</th>
-                                <th class="px-4 py-3 font-medium">LOTS</th>
-                                <th class="px-4 py-3 font-medium">STRATEGY</th>
-                                <th class="px-4 py-3 font-medium text-right">PROFIT ($)</th>
+                                <th class="px-4 py-3 font-medium">LOTES</th>
+                                <th class="px-4 py-3 font-medium">ESTRATEGIA</th>
+                                <th class="px-4 py-3 font-medium text-right">BENEFICIO ($)</th>
                             </tr>
                         </thead>
                         <tbody id="history-table" class="font-mono text-xs">
                             <tr>
-                                <td colspan="6" class="text-center py-8 text-gray-600 italic">History buffer empty...
+                                <td colspan="6" class="text-center py-8 text-gray-600 italic">Historial vacío...
                                 </td>
                             </tr>
                         </tbody>
@@ -531,14 +532,14 @@
                                 d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
                             </path>
                         </svg>
-                        <h3 class="text-sm font-bold text-gray-200 tracking-widest uppercase">System Terminal</h3>
+                        <h3 class="text-sm font-bold text-gray-200 tracking-widest uppercase">Terminal del Sistema</h3>
                     </div>
                 </div>
 
                 <div id="logs-container"
                     class="flex-1 overflow-y-auto p-4 font-mono bg-[#050510] shadow-inner space-y-1.5 scroll-smooth">
                     <!-- Logs injected via JS -->
-                    <div class="log-entry text-gray-500 italic">Initializing subsystem...</div>
+                    <div class="log-entry text-gray-500 italic">Inicializando subsistema...</div>
                 </div>
             </div>
         </div>
@@ -548,7 +549,7 @@
             <div id="connection-status"
                 class="flex items-center gap-3 bg-gray-900/50 px-3 py-1.5 rounded-full border border-gray-800">
                 <span class="inline-block w-2.5 h-2.5 rounded-full bg-gray-600"></span>
-                <span>SYSTEM OFFLINE</span>
+                <span>SISTEMA FUERA DE LÍNEA</span>
             </div>
             <div class="tracking-widest opacity-80 text-[0.65rem] uppercase">
                 ⚙️ Desarrollado por <span class="text-blue-400 font-bold">Clar.Os9</span>
@@ -581,7 +582,7 @@
                 data: {
                     labels: [], // Timestamps
                     datasets: [{
-                        label: 'Live Equity',
+                        label: 'Equidad en Vivo',
                         data: [], // Values
                         borderColor: '#3B82F6',
                         backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -607,7 +608,7 @@
                             borderWidth: 1,
                             callbacks: {
                                 label: function (context) {
-                                    return ' Equity: ' + formatCurrency(context.parsed.y);
+                                    return ' Equidad: ' + formatCurrency(context.parsed.y);
                                 }
                             }
                         }
@@ -637,10 +638,10 @@
             isConnected = connected;
             const el = document.getElementById('connection-status');
             if (connected) {
-                el.innerHTML = '<span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 glow-dot animate-pulse"></span><span class="text-emerald-500 font-bold">LIVE SOCKET</span>';
+                el.innerHTML = '<span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 glow-dot animate-pulse"></span><span class="text-emerald-500 font-bold">CONEXIÓN VIVA</span>';
                 el.classList.add('border-emerald-500/30', 'bg-emerald-500/5');
             } else {
-                el.innerHTML = '<span class="inline-block w-2.5 h-2.5 rounded-full bg-rose-500"></span><span class="text-rose-500">POLLING BACKUP</span>';
+                el.innerHTML = '<span class="inline-block w-2.5 h-2.5 rounded-full bg-rose-500"></span><span class="text-rose-500">RESPALDO (POLLING)</span>';
                 el.classList.remove('border-emerald-500/30', 'bg-emerald-500/5');
             }
         }
@@ -774,7 +775,7 @@
                 window._lastPosHash = posHash;
                 if (data.open_positions && data.open_positions.length > 0) {
                     tbody.innerHTML = '';
-                    pCount.textContent = `Active: ${data.open_positions.length}`;
+                    pCount.textContent = `Activas: ${data.open_positions.length}`;
 
                     // Usar un fragmento para no causar reflows en cada iteración
                     const fragment = document.createDocumentFragment();
@@ -814,8 +815,8 @@
                     });
                     tbody.appendChild(fragment);
                 } else {
-                    pCount.textContent = 'Active: 0';
-                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-gray-600">No active positions currently</td></tr>';
+                    pCount.textContent = 'Activas: 0';
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-gray-600">No hay posiciones activas actualmente</td></tr>';
                 }
             }
 
