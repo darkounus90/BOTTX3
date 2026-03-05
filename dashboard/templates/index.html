@@ -162,7 +162,12 @@
                 <div>
                     <h1 class="text-3xl font-bold tracking-tight text-white">TX3 Pro <span
                             class="text-blue-500 font-light">$50K</span></h1>
-                    <p class="text-sm text-gray-400 font-mono tracking-wider mt-1">MISSION CONTROL SYSTEM</p>
+                    <div class="flex items-center gap-2 mt-1">
+                        <p class="text-sm text-gray-400 font-mono tracking-wider">MISSION CONTROL SYSTEM</p>
+                        <span
+                            class="text-[0.6rem] bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">BETA
+                            v1.2</span>
+                    </div>
                 </div>
             </div>
 
@@ -276,7 +281,7 @@
         </div>
 
         <!-- Middle Analytics Section Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
             <!-- Equity Curve Chart -->
             <div class="glass-panel col-span-1 md:col-span-2 p-5 flex flex-col min-h-[250px] relative overflow-hidden">
                 <div class="flex justify-between items-center mb-4 relative z-10">
@@ -346,6 +351,26 @@
                         <span class="text-xl font-mono font-bold text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]"
                             id="stat-kelly">0.25</span>
                     </div>
+                </div>
+            </div>
+
+            <!-- Live Exposures Heatmap -->
+            <div class="glass-panel p-5 flex flex-col min-h-[250px] relative overflow-hidden group">
+                <div class="absolute -right-6 -top-6 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl transition-all">
+                </div>
+                <h3
+                    class="text-sm font-bold text-gray-200 tracking-widest uppercase border-b border-gray-800 pb-2 mb-4 relative z-10 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 2A10 10 0 1 0 22 12A10 10 0 0 0 12 2Zm0 0A10 10 0 0 1 22 12A10 10 0 0 1 12 22M12 2Z">
+                        </path>
+                    </svg>
+                    Live Exposures
+                </h3>
+
+                <div id="exposures-container" class="space-y-3 relative z-10 w-full">
+                    <div class="text-xs text-gray-500 text-center uppercase tracking-widest font-mono italic mt-8">
+                        Waiting for data...</div>
                 </div>
             </div>
         </div>
@@ -524,6 +549,9 @@
                 class="flex items-center gap-3 bg-gray-900/50 px-3 py-1.5 rounded-full border border-gray-800">
                 <span class="inline-block w-2.5 h-2.5 rounded-full bg-gray-600"></span>
                 <span>SYSTEM OFFLINE</span>
+            </div>
+            <div class="tracking-widest opacity-80 text-[0.65rem] uppercase">
+                ⚙️ Desarrollado por <span class="text-blue-400 font-bold">Clar.Os9</span>
             </div>
             <div id="last-update-time" class="tracking-widest opacity-60">SYNC: --:--:--</div>
         </footer>
@@ -740,7 +768,7 @@
             // Positions Table - Fast Rendering Hash Check
             const tbody = document.getElementById('positions-table');
             const pCount = document.getElementById('positions-count');
-            
+
             const posHash = JSON.stringify(data.open_positions || []);
             if (window._lastPosHash !== posHash) {
                 window._lastPosHash = posHash;
@@ -751,31 +779,38 @@
                     // Usar un fragmento para no causar reflows en cada iteración
                     const fragment = document.createDocumentFragment();
                     data.open_positions.forEach(pos => {
-                        const row = document.createElement('tr');
-                        const isBuy = pos.type === 'BUY';
-                        const isProfitable = pos.profit >= 0;
+                        const tr = document.createElement('tr');
+                        tr.className = "border-b border-gray-800/50 hover:bg-gray-800/30 transition-all font-mono group";
 
-                        row.className = 'border-b border-gray-800/40 hover:bg-gray-800/40 transition-colors group';
-                        row.innerHTML = `
-                            <td class="px-4 py-3 text-gray-400">#${pos.ticket}</td>
-                            <td class="px-4 py-3 font-bold text-white group-hover:text-blue-400 transition-colors">${pos.symbol}</td>
-                            <td class="px-4 py-3 pr-2">
-                                <span class="px-2 py-0.5 mt-1 block w-fit rounded text-[0.65rem] font-bold ${isBuy ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-orange-500/10 text-orange-400 border border-orange-500/20'}">
-                                    ${pos.type}
-                                </span>
-                                <span class="text-[0.6rem] text-gray-500 uppercase tracking-wider block mt-1">${pos.trade_intent || 'APERTURA'}</span>
-                                <span class="text-[0.6rem] text-purple-400 font-bold tracking-wider uppercase block mt-0.5">${pos.strategy_id || 'DEFAULT'}</span>
-                            </td>
-                            <td class="px-4 py-3">
-                                <span class="text-gray-300 block font-bold">${pos.volume.toFixed(2)} Lots</span>
-                                <span class="text-[0.65rem] text-rose-400 block mt-1">Risk: ${pos.risk_pct_trade ? pos.risk_pct_trade.toFixed(2) + '%' : 'N/A'}</span>
-                            </td>
-                            <td class="px-4 py-3 text-gray-400">${pos.price_open}</td>
-                            <td class="px-4 py-3 text-right font-bold ${isProfitable ? 'text-emerald-400' : 'text-rose-400'}">
-                                ${isProfitable ? '+' : ''}${formatCurrency(pos.profit)}
-                            </td>
+                        const typeColor = pos.type === 'BUY' ? 'text-blue-400' : 'text-red-400';
+                        const typeBg = pos.type === 'BUY' ? 'bg-blue-500/10 border-blue-500/20' : 'bg-red-500/10 border-red-500/20';
+
+                        // Parse strategy
+                        let stratDisplay = pos.strategy || "Unknown";
+                        let stratColor = "text-gray-400";
+                        if (stratDisplay.includes("Gemini")) {
+                            stratColor = "text-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.5)]";
+                        } else if (stratDisplay.includes("SMC")) {
+                            stratColor = "text-cyan-400";
+                        } else if (stratDisplay.includes("EXTERNAL")) {
+                            stratColor = "text-purple-400";
+                        } else {
+                            stratColor = "text-green-400";
+                        }
+
+                        // Parse Profit
+                        let profitVal = parseFloat(pos.profit || 0);
+                        let profitClass = profitVal >= 0 ? 'text-emerald-400' : 'text-rose-400';
+
+                        tr.innerHTML = `
+                            <td class="px-4 py-3"><span class="text-xs text-gray-500 bg-gray-800/80 px-2 py-0.5 rounded border border-gray-700">#${pos.ticket}</span></td>
+                            <td class="px-4 py-3 font-bold text-gray-300 group-hover:text-white transition-all">${pos.symbol} <span class="ml-2 text-[0.65rem] ${typeColor} ${typeBg} border px-1.5 py-0.5 rounded">${pos.type}</span></td>
+                            <td class="px-4 py-3 text-[0.7rem]"><span class="font-bold ${stratColor}">${stratDisplay}</span></td>
+                            <td class="px-4 py-3"><span class="font-bold text-gray-400">${pos.volume}</span></td>
+                            <td class="px-4 py-3 text-gray-500"><span class="text-gray-400">${pos.price_open}</span></td>
+                            <td class="px-4 py-3 text-right font-bold ${profitClass}" style="text-shadow: 0 0 10px ${profitVal >= 0 ? 'rgba(52, 211, 153, 0.2)' : 'rgba(251, 113, 133, 0.2)'}">${profitVal > 0 ? '+' : ''}${profitVal.toFixed(2)}</td>
                         `;
-                        fragment.appendChild(row);
+                        fragment.appendChild(tr);
                     });
                     tbody.appendChild(fragment);
                 } else {
@@ -787,7 +822,7 @@
             // Trade History Table - Fast Rendering Hash Check
             const hbody = document.getElementById('history-table');
             const histHash = JSON.stringify(data.recent_trades || []);
-            
+
             if (hbody && window._lastHistHash !== histHash) {
                 window._lastHistHash = histHash;
                 if (data.recent_trades && data.recent_trades.length > 0) {
@@ -822,6 +857,31 @@
                     hbody.appendChild(hfragment);
                 }
             }
+
+            // Update Dashboard Data State tracking Exposures 
+            if (data.live_exposures && Object.keys(data.live_exposures).length > 0) {
+                const expContainer = document.getElementById('exposures-container');
+                if (expContainer) {
+                    expContainer.innerHTML = '';
+                    for (const [sym, risk] of Object.entries(data.live_exposures)) {
+                        const widthPct = Math.min(100, (risk / 3.0) * 100); // Scaled visually against a 3% theoretical limit
+                        expContainer.innerHTML += `
+                            <div class="space-y-1 w-full group">
+                                <div class="flex justify-between text-xs font-mono">
+                                    <span class="text-gray-300 font-bold tracking-wider">${sym}</span>
+                                    <span class="${risk > 2.0 ? 'text-red-400 font-bold' : 'text-cyan-400'}">${risk.toFixed(2)}% Riesgo</span>
+                                </div>
+                                <div class="w-full bg-gray-800/80 rounded-full h-1.5 overflow-hidden">
+                                    <div class="${risk > 2.0 ? 'bg-gradient-to-r from-red-500 to-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.6)]' : 'bg-gradient-to-r from-cyan-500 to-blue-400 shadow-[0_0_8px_rgba(6,182,212,0.4)]'} h-full rounded-full transition-all duration-700 w-[${widthPct}%]" style="width: ${widthPct}%"></div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            } else if (data.live_exposures && document.getElementById('exposures-container')) {
+                document.getElementById('exposures-container').innerHTML = `<div class="text-xs text-gray-500 text-center uppercase tracking-widest font-mono italic mt-8">0 Exposiciones Reales</div>`;
+            }
+
         }
 
         function addLogEntry(log) {

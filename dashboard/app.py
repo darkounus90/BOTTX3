@@ -28,6 +28,7 @@ dashboard_data = {
     "win_rate": 0.0,
     "equity_history": [],
     "open_positions": [],
+    "live_exposures": {},
     "last_update": "",
     "logs": [],
 }

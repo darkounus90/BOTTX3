@@ -196,6 +196,7 @@ class TX3ProBot:
 
         # Formatear posiciones para JSON
         pos_list = []
+        live_exposures = {}
         risk_pct_session = 0.0
         balance = account["balance"] if account else 0
         
@@ -208,6 +209,9 @@ class TX3ProBot:
                     risk_pct_trade = (abs(profit) / balance) * 100.0
             
             risk_pct_session += risk_pct_trade
+            if p.symbol not in live_exposures:
+                 live_exposures[p.symbol] = 0.0
+            live_exposures[p.symbol] += risk_pct_trade
             
             # Extraer strategy_id de comment (por ej: "Breakout_P1") -> "Breakout"
             strat_id = p.comment.split("_P")[0] if p.comment else "Automated"
@@ -262,6 +266,7 @@ class TX3ProBot:
             "sys_news": self.news_filter.enabled if hasattr(self, 'news_filter') else False,
             "simulate_50k": getattr(BotConfig, "SIMULATE_50K_CHALLENGE", False),
             "open_positions": pos_list,
+            "live_exposures": live_exposures,
             "recent_trades": self.journal.get_recent_trades(limit=15),
             "last_update": datetime.now(ZoneInfo("America/New_York")).strftime("%H:%M:%S")
         }
@@ -760,6 +765,8 @@ class TX3ProBot:
                                             # Añadir la razón del oráculo al comentario del Trade
                                             signal['reason'] += f" | 𓂀 {oracle_resp.get('reason')}"
                                             signal['probability'] = oracle_resp.get('confidence', 50.0)
+                                            # Taguea IA
+                                            signal['strategy_tag'] = f"Gemini_{strategy.get_name()}"
                                         
                                     if self.dry_run:
                                         self.logger.info(f"🔍 DRY RUN SIGNAL: {signal['signal']} {symbol}")
@@ -780,7 +787,7 @@ class TX3ProBot:
                                             take_profit_pips=signal['take_profit_pips'],
                                             probability=probability,
                                             portfolio_weight=port_weight,
-                                            strategy_tag=strategy.get_name()
+                                            strategy_tag=signal.get('strategy_tag', f"Base_{strategy.get_name()}")
                                         )
                                     
                                         if result:
