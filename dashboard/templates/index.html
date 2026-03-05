@@ -416,291 +416,293 @@
             </div>
 
         </div>
-    </div>
 
-    <!-- Institutional Market Context Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Live Exposures Heatmap (Moved from Middle Analytics) -->
-        <div class="glass-panel p-5 flex flex-col min-h-[250px] relative overflow-hidden group">
-            <div class="absolute -right-6 -top-6 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl transition-all">
+        <!-- Institutional Market Context Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Live Exposures Heatmap (Moved from Middle Analytics) -->
+            <div class="glass-panel p-5 flex flex-col min-h-[250px] relative overflow-hidden group">
+                <div class="absolute -right-6 -top-6 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl transition-all">
+                </div>
+                <h3
+                    class="text-sm font-bold text-gray-200 tracking-widest uppercase border-b border-gray-800 pb-2 mb-4 relative z-10 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 2A10 10 0 1 0 22 12A10 10 0 0 0 12 2Zm0 0A10 10 0 0 1 22 12A10 10 0 0 1 12 22M12 2Z">
+                        </path>
+                    </svg>
+                    Exposiciones en Vivo
+                </h3>
+                <div id="exposures-container" class="space-y-3 relative z-10 w-full">
+                    <div class="text-xs text-gray-500 text-center uppercase tracking-widest font-mono italic mt-8">
+                        Esperando
+                        datos...</div>
+                </div>
             </div>
-            <h3
-                class="text-sm font-bold text-gray-200 tracking-widest uppercase border-b border-gray-800 pb-2 mb-4 relative z-10 flex items-center gap-2">
-                <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M12 2A10 10 0 1 0 22 12A10 10 0 0 0 12 2Zm0 0A10 10 0 0 1 22 12A10 10 0 0 1 12 22M12 2Z">
-                    </path>
-                </svg>
-                Exposiciones en Vivo
-            </h3>
-            <div id="exposures-container" class="space-y-3 relative z-10 w-full">
-                <div class="text-xs text-gray-500 text-center uppercase tracking-widest font-mono italic mt-8">Esperando
-                    datos...</div>
+
+            <!-- Active Trading Session Widget -->
+            <div class="glass-panel p-5 relative overflow-hidden group">
+                <div class="absolute -right-6 -top-6 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl transition-all">
+                </div>
+                <div class="flex justify-between items-center mb-4 relative z-10">
+                    <h3 class="text-sm font-bold text-gray-200 tracking-widest uppercase flex items-center gap-2">
+                        <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                            </path>
+                        </svg>
+                        Reloj Institucional
+                    </h3>
+                    <span id="session-badge"
+                        class="text-[0.65rem] px-2 py-0.5 rounded-md font-bold bg-gray-500/10 text-gray-400 border border-gray-500/20">CERRADO</span>
+                </div>
+
+                <div class="flex gap-2 justify-between items-center relative z-10">
+                    <!-- NY -->
+                    <div id="sess-ny"
+                        class="flex flex-col items-center justify-center bg-gray-900/40 border border-gray-800 rounded-lg py-2 px-1 flex-1 opacity-50 grayscale transition-all">
+                        <span class="text-[0.6rem] text-gray-500 uppercase font-bold mb-1">NY</span>
+                        <div class="w-2 h-2 rounded-full bg-blue-500 mb-1"></div>
+                        <span class="text-xs font-mono text-gray-400">8AM-5PM</span>
+                    </div>
+                    <!-- London -->
+                    <div id="sess-lon"
+                        class="flex flex-col items-center justify-center bg-gray-900/40 border border-gray-800 rounded-lg py-2 px-1 flex-1 opacity-50 grayscale transition-all">
+                        <span class="text-[0.6rem] text-gray-500 uppercase font-bold mb-1">London</span>
+                        <div class="w-2 h-2 rounded-full bg-orange-500 mb-1"></div>
+                        <span class="text-xs font-mono text-gray-400">3AM-12PM</span>
+                    </div>
+                    <!-- Tokyo -->
+                    <div id="sess-tok"
+                        class="flex flex-col items-center justify-center bg-gray-900/40 border border-gray-800 rounded-lg py-2 px-1 flex-1 opacity-50 grayscale transition-all">
+                        <span class="text-[0.6rem] text-gray-500 uppercase font-bold mb-1">Tokyo</span>
+                        <div class="w-2 h-2 rounded-full bg-red-500 mb-1"></div>
+                        <span class="text-xs font-mono text-gray-400">7PM-2AM</span>
+                    </div>
+                    <!-- Sydney -->
+                    <div id="sess-syd"
+                        class="flex flex-col items-center justify-center bg-gray-900/40 border border-gray-800 rounded-lg py-2 px-1 flex-1 opacity-50 grayscale transition-all">
+                        <span class="text-[0.6rem] text-gray-500 uppercase font-bold mb-1">Sydney</span>
+                        <div class="w-2 h-2 rounded-full bg-emerald-500 mb-1"></div>
+                        <span class="text-xs font-mono text-gray-400">5P-1A</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Economic News Radar Widget -->
+            <div class="glass-panel p-5 relative overflow-hidden group">
+                <div class="absolute -right-6 -top-6 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl transition-all">
+                </div>
+                <div class="flex justify-between items-center mb-4 relative z-10">
+                    <h3 class="text-sm font-bold text-gray-200 tracking-widest uppercase flex items-center gap-2">
+                        <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z">
+                            </path>
+                        </svg>
+                        Radar Macro & NLP News
+                    </h3>
+                </div>
+
+                <div id="news-container" class="space-y-2 relative z-10 w-full h-full flex flex-col justify-start">
+                    <div class="text-xs text-gray-500 text-center uppercase tracking-widest font-mono italic">Escaneando
+                        calendario económico...</div>
+                </div>
             </div>
         </div>
 
-        <!-- Active Trading Session Widget -->
+        <!-- TradingView Charts Section -->
         <div class="glass-panel p-5 relative overflow-hidden group">
-            <div class="absolute -right-6 -top-6 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl transition-all"></div>
             <div class="flex justify-between items-center mb-4 relative z-10">
                 <h3 class="text-sm font-bold text-gray-200 tracking-widest uppercase flex items-center gap-2">
-                    <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
                         </path>
                     </svg>
-                    Reloj Institucional
+                    Radar de Mercado (M5)
                 </h3>
-                <span id="session-badge"
-                    class="text-[0.65rem] px-2 py-0.5 rounded-md font-bold bg-gray-500/10 text-gray-400 border border-gray-500/20">CERRADO</span>
-            </div>
-
-            <div class="flex gap-2 justify-between items-center relative z-10">
-                <!-- NY -->
-                <div id="sess-ny"
-                    class="flex flex-col items-center justify-center bg-gray-900/40 border border-gray-800 rounded-lg py-2 px-1 flex-1 opacity-50 grayscale transition-all">
-                    <span class="text-[0.6rem] text-gray-500 uppercase font-bold mb-1">NY</span>
-                    <div class="w-2 h-2 rounded-full bg-blue-500 mb-1"></div>
-                    <span class="text-xs font-mono text-gray-400">8AM-5PM</span>
-                </div>
-                <!-- London -->
-                <div id="sess-lon"
-                    class="flex flex-col items-center justify-center bg-gray-900/40 border border-gray-800 rounded-lg py-2 px-1 flex-1 opacity-50 grayscale transition-all">
-                    <span class="text-[0.6rem] text-gray-500 uppercase font-bold mb-1">London</span>
-                    <div class="w-2 h-2 rounded-full bg-orange-500 mb-1"></div>
-                    <span class="text-xs font-mono text-gray-400">3AM-12PM</span>
-                </div>
-                <!-- Tokyo -->
-                <div id="sess-tok"
-                    class="flex flex-col items-center justify-center bg-gray-900/40 border border-gray-800 rounded-lg py-2 px-1 flex-1 opacity-50 grayscale transition-all">
-                    <span class="text-[0.6rem] text-gray-500 uppercase font-bold mb-1">Tokyo</span>
-                    <div class="w-2 h-2 rounded-full bg-red-500 mb-1"></div>
-                    <span class="text-xs font-mono text-gray-400">7PM-2AM</span>
-                </div>
-                <!-- Sydney -->
-                <div id="sess-syd"
-                    class="flex flex-col items-center justify-center bg-gray-900/40 border border-gray-800 rounded-lg py-2 px-1 flex-1 opacity-50 grayscale transition-all">
-                    <span class="text-[0.6rem] text-gray-500 uppercase font-bold mb-1">Sydney</span>
-                    <div class="w-2 h-2 rounded-full bg-emerald-500 mb-1"></div>
-                    <span class="text-xs font-mono text-gray-400">5P-1A</span>
+                <div class="flex gap-2" id="tv-symbol-selector">
+                    <button
+                        class="px-4 py-1.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-lg text-xs font-bold transition-all"
+                        onclick="changeChart('OANDA:EURUSD')">EURUSD</button>
+                    <button
+                        class="px-4 py-1.5 bg-gray-800/80 text-gray-400 border border-gray-700/80 rounded-lg text-xs font-bold hover:bg-blue-500/10 hover:text-blue-400 transition-all"
+                        onclick="changeChart('OANDA:GBPUSD')">GBPUSD</button>
+                    <button
+                        class="px-4 py-1.5 bg-gray-800/80 text-gray-400 border border-gray-700/80 rounded-lg text-xs font-bold hover:bg-blue-500/10 hover:text-blue-400 transition-all"
+                        onclick="changeChart('OANDA:USDJPY')">USDJPY</button>
                 </div>
             </div>
-        </div>
 
-        <!-- Economic News Radar Widget -->
-        <div class="glass-panel p-5 relative overflow-hidden group">
-            <div class="absolute -right-6 -top-6 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl transition-all"></div>
-            <div class="flex justify-between items-center mb-4 relative z-10">
-                <h3 class="text-sm font-bold text-gray-200 tracking-widest uppercase flex items-center gap-2">
-                    <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z">
-                        </path>
-                    </svg>
-                    Radar Macro & NLP News
-                </h3>
+            <div id="tradingview_chart" class="w-full h-[400px] rounded-lg overflow-hidden border border-gray-800/50">
             </div>
 
-            <div id="news-container" class="space-y-2 relative z-10 w-full h-full flex flex-col justify-start">
-                <div class="text-xs text-gray-500 text-center uppercase tracking-widest font-mono italic">Escaneando
-                    calendario económico...</div>
-            </div>
-        </div>
-    </div>
+            <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+            <script type="text/javascript">
+                let tvWidget = null;
+                let currentTVSymbol = 'OANDA:EURUSD';
 
-    <!-- TradingView Charts Section -->
-    <div class="glass-panel p-5 relative overflow-hidden group">
-        <div class="flex justify-between items-center mb-4 relative z-10">
-            <h3 class="text-sm font-bold text-gray-200 tracking-widest uppercase flex items-center gap-2">
-                <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
-                    </path>
-                </svg>
-                Radar de Mercado (M5)
-            </h3>
-            <div class="flex gap-2" id="tv-symbol-selector">
-                <button
-                    class="px-4 py-1.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-lg text-xs font-bold transition-all"
-                    onclick="changeChart('OANDA:EURUSD')">EURUSD</button>
-                <button
-                    class="px-4 py-1.5 bg-gray-800/80 text-gray-400 border border-gray-700/80 rounded-lg text-xs font-bold hover:bg-blue-500/10 hover:text-blue-400 transition-all"
-                    onclick="changeChart('OANDA:GBPUSD')">GBPUSD</button>
-                <button
-                    class="px-4 py-1.5 bg-gray-800/80 text-gray-400 border border-gray-700/80 rounded-lg text-xs font-bold hover:bg-blue-500/10 hover:text-blue-400 transition-all"
-                    onclick="changeChart('OANDA:USDJPY')">USDJPY</button>
-            </div>
-        </div>
+                function createTVWidget(symbol) {
+                    currentTVSymbol = symbol;
+                    const isDark = document.documentElement.classList.contains('dark');
+                    tvWidget = new TradingView.widget({
+                        "autosize": true,
+                        "symbol": symbol,
+                        "interval": "5",
+                        "timezone": "Etc/UTC",
+                        "theme": isDark ? "dark" : "light",
+                        "style": "1",
+                        "locale": "en",
+                        "enable_publishing": false,
+                        "backgroundColor": isDark ? "#0B1120" : "#f1f5f9",
+                        "gridColor": isDark ? "rgba(56, 189, 248, 0.05)" : "rgba(15, 23, 42, 0.05)",
+                        "hide_top_toolbar": false,
+                        "hide_legend": false,
+                        "save_image": false,
+                        "container_id": "tradingview_chart",
+                        "studies": [
+                            "BollingerBands@tv-basicstudies",
+                            "RSI@tv-basicstudies"
+                        ]
+                    });
+                }
 
-        <div id="tradingview_chart" class="w-full h-[400px] rounded-lg overflow-hidden border border-gray-800/50">
-        </div>
+                function changeChart(symbol) {
+                    createTVWidget(symbol);
+                    const buttons = document.querySelectorAll('#tv-symbol-selector button');
+                    buttons.forEach(btn => {
+                        if (btn.innerText === symbol.split(':')[1]) {
+                            btn.className = "px-4 py-1.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-lg text-xs font-bold transition-all";
+                        } else {
+                            btn.className = "px-4 py-1.5 bg-gray-800/80 text-gray-400 border border-gray-700/80 rounded-lg text-xs font-bold hover:bg-blue-500/10 hover:text-blue-400 transition-all";
+                        }
+                    });
+                }
 
-        <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-        <script type="text/javascript">
-            let tvWidget = null;
-            let currentTVSymbol = 'OANDA:EURUSD';
-
-            function createTVWidget(symbol) {
-                currentTVSymbol = symbol;
-                const isDark = document.documentElement.classList.contains('dark');
-                tvWidget = new TradingView.widget({
-                    "autosize": true,
-                    "symbol": symbol,
-                    "interval": "5",
-                    "timezone": "Etc/UTC",
-                    "theme": isDark ? "dark" : "light",
-                    "style": "1",
-                    "locale": "en",
-                    "enable_publishing": false,
-                    "backgroundColor": isDark ? "#0B1120" : "#f1f5f9",
-                    "gridColor": isDark ? "rgba(56, 189, 248, 0.05)" : "rgba(15, 23, 42, 0.05)",
-                    "hide_top_toolbar": false,
-                    "hide_legend": false,
-                    "save_image": false,
-                    "container_id": "tradingview_chart",
-                    "studies": [
-                        "BollingerBands@tv-basicstudies",
-                        "RSI@tv-basicstudies"
-                    ]
+                document.addEventListener('DOMContentLoaded', () => {
+                    createTVWidget('OANDA:EURUSD');
                 });
-            }
 
-            function changeChart(symbol) {
-                createTVWidget(symbol);
-                const buttons = document.querySelectorAll('#tv-symbol-selector button');
-                buttons.forEach(btn => {
-                    if (btn.innerText === symbol.split(':')[1]) {
-                        btn.className = "px-4 py-1.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-lg text-xs font-bold transition-all";
-                    } else {
-                        btn.className = "px-4 py-1.5 bg-gray-800/80 text-gray-400 border border-gray-700/80 rounded-lg text-xs font-bold hover:bg-blue-500/10 hover:text-blue-400 transition-all";
-                    }
-                });
-            }
+                function toggleTheme() {
+                    const html = document.documentElement;
+                    html.classList.toggle('dark');
 
-            document.addEventListener('DOMContentLoaded', () => {
-                createTVWidget('OANDA:EURUSD');
-            });
+                    // Re-render chart with new theme
+                    createTVWidget(currentTVSymbol);
+                }
+            </script>
+        </div>
 
-            function toggleTheme() {
-                const html = document.documentElement;
-                html.classList.toggle('dark');
+        <!-- Lower Section Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                // Re-render chart with new theme
-                createTVWidget(currentTVSymbol);
-            }
-        </script>
-    </div>
-
-    <!-- Lower Section Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        <!-- Open Positions Table -->
-        <div class="glass-panel col-span-2 flex flex-col overflow-hidden">
-            <div class="p-5 border-b border-gray-800 bg-gray-900/40 flex justify-between items-center">
-                <div class="flex items-center gap-3">
-                    <div
-                        class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
-                        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                        </svg>
+            <!-- Open Positions Table -->
+            <div class="glass-panel col-span-2 flex flex-col overflow-hidden">
+                <div class="p-5 border-b border-gray-800 bg-gray-900/40 flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+                            <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-white tracking-wide">Posiciones en Vivo</h3>
                     </div>
-                    <h3 class="text-lg font-bold text-white tracking-wide">Posiciones en Vivo</h3>
+                    <span class="text-xs text-gray-500 font-mono" id="positions-count">Activas: 0</span>
                 </div>
-                <span class="text-xs text-gray-500 font-mono" id="positions-count">Activas: 0</span>
-            </div>
 
-            <div class="overflow-x-auto overflow-y-auto max-h-[300px] p-2 custom-scrollbar">
-                <table class="w-full text-sm text-left align-middle">
-                    <thead class="text-xs text-gray-500 font-mono tracking-wider border-b border-gray-800/50">
-                        <tr>
-                            <th class="px-4 py-3 font-medium">TICKET</th>
-                            <th class="px-4 py-3 font-medium">ACTIVO</th>
-                            <th class="px-4 py-3 font-medium">INFO / ESTRATEGIA</th>
-                            <th class="px-4 py-3 font-medium">LOTES Y RIESGO</th>
-                            <th class="px-4 py-3 font-medium">ENTRADA</th>
-                            <th class="px-4 py-3 font-medium text-right">BENEFICIO</th>
-                        </tr>
-                    </thead>
-                    <tbody id="positions-table" class="font-mono text-sm">
-                        <tr>
-                            <td colspan="6" class="text-center py-12 text-gray-600">No hay posiciones activas
-                                actualmente
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                <div class="overflow-x-auto overflow-y-auto max-h-[300px] p-2 custom-scrollbar">
+                    <table class="w-full text-sm text-left align-middle">
+                        <thead class="text-xs text-gray-500 font-mono tracking-wider border-b border-gray-800/50">
+                            <tr>
+                                <th class="px-4 py-3 font-medium">TICKET</th>
+                                <th class="px-4 py-3 font-medium">ACTIVO</th>
+                                <th class="px-4 py-3 font-medium">INFO / ESTRATEGIA</th>
+                                <th class="px-4 py-3 font-medium">LOTES Y RIESGO</th>
+                                <th class="px-4 py-3 font-medium">ENTRADA</th>
+                                <th class="px-4 py-3 font-medium text-right">BENEFICIO</th>
+                            </tr>
+                        </thead>
+                        <tbody id="positions-table" class="font-mono text-sm">
+                            <tr>
+                                <td colspan="6" class="text-center py-12 text-gray-600">No hay posiciones activas
+                                    actualmente
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
-            <!-- Trade History Section (Added) -->
-            <div class="p-5 border-t border-b border-gray-800 bg-gray-900/40 flex justify-between items-center">
-                <div class="flex items-center gap-3">
-                    <div
-                        class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
-                        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
+                <!-- Trade History Section (Added) -->
+                <div class="p-5 border-t border-b border-gray-800 bg-gray-900/40 flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-white tracking-wide">Historial de Operaciones</h3>
                     </div>
-                    <h3 class="text-lg font-bold text-white tracking-wide">Historial de Operaciones</h3>
+                </div>
+
+                <div class="overflow-x-auto overflow-y-auto max-h-[350px] p-2 custom-scrollbar">
+                    <table class="w-full text-sm text-left align-middle">
+                        <thead class="text-xs text-gray-500 font-mono tracking-wider border-b border-gray-800/50">
+                            <tr>
+                                <th class="px-4 py-3 font-medium">HORA</th>
+                                <th class="px-4 py-3 font-medium">ACTIVO</th>
+                                <th class="px-4 py-3 font-medium">INFO</th>
+                                <th class="px-4 py-3 font-medium">LOTES</th>
+                                <th class="px-4 py-3 font-medium">ESTRATEGIA</th>
+                                <th class="px-4 py-3 font-medium text-right">BENEFICIO ($)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table" class="font-mono text-xs">
+                            <tr>
+                                <td colspan="6" class="text-center py-8 text-gray-600 italic">Historial vacío...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            <div class="overflow-x-auto overflow-y-auto max-h-[350px] p-2 custom-scrollbar">
-                <table class="w-full text-sm text-left align-middle">
-                    <thead class="text-xs text-gray-500 font-mono tracking-wider border-b border-gray-800/50">
-                        <tr>
-                            <th class="px-4 py-3 font-medium">HORA</th>
-                            <th class="px-4 py-3 font-medium">ACTIVO</th>
-                            <th class="px-4 py-3 font-medium">INFO</th>
-                            <th class="px-4 py-3 font-medium">LOTES</th>
-                            <th class="px-4 py-3 font-medium">ESTRATEGIA</th>
-                            <th class="px-4 py-3 font-medium text-right">BENEFICIO ($)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="history-table" class="font-mono text-xs">
-                        <tr>
-                            <td colspan="6" class="text-center py-8 text-gray-600 italic">Historial vacío...
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+            <!-- Terminal / Live Logs -->
+            <div class="glass-panel col-span-1 flex flex-col overflow-hidden max-h-[800px]">
+                <div class="p-4 border-b border-gray-800 bg-gray-900/60 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+                            </path>
+                        </svg>
+                        <h3 class="text-sm font-bold text-gray-200 tracking-widest uppercase">Terminal del Sistema</h3>
+                    </div>
+                </div>
 
-        <!-- Terminal / Live Logs -->
-        <div class="glass-panel col-span-1 flex flex-col overflow-hidden max-h-[800px]">
-            <div class="p-4 border-b border-gray-800 bg-gray-900/60 flex justify-between items-center">
-                <div class="flex items-center gap-2">
-                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
-                        </path>
-                    </svg>
-                    <h3 class="text-sm font-bold text-gray-200 tracking-widest uppercase">Terminal del Sistema</h3>
+                <div id="logs-container"
+                    class="flex-1 overflow-y-auto p-4 font-mono bg-[#050510] shadow-inner space-y-1.5 scroll-smooth">
+                    <!-- Logs injected via JS -->
+                    <div class="log-entry text-gray-500 italic">Inicializando subsistema...</div>
                 </div>
             </div>
+        </div>
 
-            <div id="logs-container"
-                class="flex-1 overflow-y-auto p-4 font-mono bg-[#050510] shadow-inner space-y-1.5 scroll-smooth">
-                <!-- Logs injected via JS -->
-                <div class="log-entry text-gray-500 italic">Inicializando subsistema...</div>
+        <!-- Footer -->
+        <footer class="flex justify-between items-center text-xs font-mono text-gray-500 pt-4 px-2">
+            <div id="connection-status"
+                class="flex items-center gap-3 bg-gray-900/50 px-3 py-1.5 rounded-full border border-gray-800">
+                <span class="inline-block w-2.5 h-2.5 rounded-full bg-gray-600"></span>
+                <span>SISTEMA FUERA DE LÍNEA</span>
             </div>
-        </div>
-    </div>
-
-    <!-- Footer -->
-    <footer class="flex justify-between items-center text-xs font-mono text-gray-500 pt-4 px-2">
-        <div id="connection-status"
-            class="flex items-center gap-3 bg-gray-900/50 px-3 py-1.5 rounded-full border border-gray-800">
-            <span class="inline-block w-2.5 h-2.5 rounded-full bg-gray-600"></span>
-            <span>SISTEMA FUERA DE LÍNEA</span>
-        </div>
-        <div class="tracking-widest opacity-80 text-[0.65rem] uppercase">
-            ⚙️ Desarrollado por <span class="text-blue-400 font-bold">Clar.Os9</span>
-        </div>
-        <div id="last-update-time" class="tracking-widest opacity-60">SYNC: --:--:--</div>
-    </footer>
+            <div class="tracking-widest opacity-80 text-[0.65rem] uppercase">
+                ⚙️ Desarrollado por <span class="text-blue-400 font-bold">Clar.Os9</span>
+            </div>
+            <div id="last-update-time" class="tracking-widest opacity-60">SYNC: --:--:--</div>
+        </footer>
 
     </div>
 
