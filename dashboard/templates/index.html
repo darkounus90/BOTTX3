@@ -28,14 +28,13 @@
                         mono: ['JetBrains Mono', 'monospace'],
                     },
                     colors: {
-                        txbase: '#0A0612',      // Deep premium plum-black
-                        txpanel: 'rgba(23, 15, 36, 0.75)', // Rich dark violet glass
-                        txborder: 'rgba(107, 70, 193, 0.3)', // Violet border
-                        txaccent: '#D4AF37',   // Classic Gold 
-                        txaccentHover: '#F3E5AB', // Light Gold/Vanilla
-                        txdanger: '#F43F5E',   // Rose red
-                        txsuccess: '#10B981',  // Emerald
-                        txwarning: '#F59E0B'   // Amber
+                        txbase: 'var(--tx-base)',
+                        txpanel: 'var(--tx-panel)',
+                        txborder: 'var(--tx-border)',
+                        txaccent: '#06b6d4',
+                        txdanger: '#f43f5e',
+                        txsuccess: '#10b981',
+                        txwarning: '#f59e0b'
                     },
                     animation: {
                         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
@@ -53,33 +52,85 @@
     </script>
 
     <style>
-        body {
-            background-color: #0A0612;
-            color: #E2E8F0;
-            background-image:
-                radial-gradient(circle at 10% 40%, rgba(212, 175, 55, 0.08), transparent 30%),
-                /* Gold glow */
-                radial-gradient(circle at 90% 20%, rgba(139, 92, 246, 0.12), transparent 35%);
-            /* Purple glow */
-            background-attachment: fixed;
-            overflow-x: hidden;
+        :root {
+            /* Light Mode - Liquid Glass */
+            --tx-base: #f1f5f9;
+            --tx-panel: rgba(255, 255, 255, 0.7);
+            --tx-border: rgba(203, 213, 225, 0.6);
+            --panel-shadow: rgba(0, 0, 0, 0.05);
+            --glow-1: rgba(6, 182, 212, 0.15);
+            /* cyan */
+            --glow-2: rgba(99, 102, 241, 0.15);
+            /* indigo */
+            --text-color: #1e293b;
         }
 
-        /* Glassmorphism Classes */
+        .dark {
+            /* Dark Mode - Liquid Glass */
+            --tx-base: #0B1120;
+            --tx-panel: rgba(15, 23, 42, 0.6);
+            --tx-border: rgba(56, 189, 248, 0.15);
+            --panel-shadow: rgba(0, 0, 0, 0.3);
+            --glow-1: rgba(6, 182, 212, 0.12);
+            --glow-2: rgba(99, 102, 241, 0.12);
+            --text-color: #f8fafc;
+        }
+
+        body {
+            background-color: var(--tx-base);
+            color: var(--text-color);
+            background-image:
+                radial-gradient(circle at 10% 40%, var(--glow-1), transparent 30%),
+                radial-gradient(circle at 90% 20%, var(--glow-2), transparent 35%);
+            background-attachment: fixed;
+            overflow-x: hidden;
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+
+        /* Liquid Glass Panels */
         .glass-panel {
-            background: var(--txpanel, rgba(17, 24, 39, 0.6));
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--txborder, rgba(55, 65, 81, 0.4));
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-            border-radius: 1rem;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            background: var(--tx-panel);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--tx-border);
+            box-shadow: 0 8px 32px 0 var(--panel-shadow);
+            border-radius: 1.25rem;
+            transition: all 0.3s ease;
         }
 
         .glass-panel:hover {
             transform: translateY(-2px);
-            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4);
-            border-color: rgba(59, 130, 246, 0.3);
+            box-shadow: 0 12px 40px 0 var(--panel-shadow);
+            border-color: rgba(6, 182, 212, 0.4);
+        }
+
+        /* Seamless Theme Overrides */
+        html:not(.dark) .text-white,
+        html:not(.dark) .text-gray-200 {
+            color: #1e293b !important;
+        }
+
+        html:not(.dark) .text-gray-400,
+        html:not(.dark) .text-gray-500 {
+            color: #64748b !important;
+        }
+
+        html:not(.dark) .bg-gray-900\/40,
+        html:not(.dark) .bg-gray-900\/50,
+        html:not(.dark) .bg-gray-900\/60,
+        html:not(.dark) .bg-gray-800\/80 {
+            background: rgba(255, 255, 255, 0.6) !important;
+            border-color: rgba(203, 213, 225, 0.5) !important;
+        }
+
+        html:not(.dark) .border-gray-800\/50,
+        html:not(.dark) .border-gray-800,
+        html:not(.dark) .border-gray-700\/80 {
+            border-color: rgba(203, 213, 225, 0.8) !important;
+        }
+
+        html:not(.dark) .bg-blue-500\/10 {
+            background: rgba(59, 130, 246, 0.15) !important;
         }
 
         /* Specific text gradients */
@@ -101,24 +152,23 @@
             background-image: linear-gradient(to right, #F87171, #EF4444);
         }
 
-        /* Custom Scrollbar for Logs */
+        /* Custom Scrollbar */
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
         }
 
         ::-webkit-scrollbar-track {
-            background: rgba(15, 23, 42, 0.5);
-            border-radius: 4px;
+            background: transparent;
         }
 
         ::-webkit-scrollbar-thumb {
-            background: rgba(55, 65, 81, 0.8);
+            background: rgba(6, 182, 212, 0.3);
             border-radius: 4px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: rgba(75, 85, 99, 1);
+            background: rgba(6, 182, 212, 0.8);
         }
 
         /* Log Entries */
@@ -132,7 +182,7 @@
         }
 
         .log-entry:hover {
-            background-color: rgba(255, 255, 255, 0.03);
+            background-color: rgba(6, 182, 212, 0.05);
         }
 
         .glow-dot {
@@ -174,6 +224,15 @@
             </div>
 
             <div class="flex items-center gap-3">
+                <button onclick="toggleTheme()"
+                    class="w-10 h-10 rounded-xl bg-gray-500/10 flex items-center justify-center text-gray-500 hover:text-cyan-400 transition-colors border border-gray-500/20"
+                    title="Alternar Tema">
+                    <svg id="theme-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
+                        </path>
+                    </svg>
+                </button>
                 <div id="mode-badge"
                     class="px-4 py-1.5 rounded-lg text-sm font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.15)] hidden md:block">
                     LIVE
@@ -283,9 +342,9 @@
         </div>
 
         <!-- Middle Analytics Section Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Equity Curve Chart -->
-            <div class="glass-panel col-span-1 md:col-span-2 p-5 flex flex-col min-h-[250px] relative overflow-hidden">
+            <div class="glass-panel col-span-1 lg:col-span-2 p-5 flex flex-col min-h-[250px] relative overflow-hidden">
                 <div class="flex justify-between items-center mb-4 relative z-10">
                     <h3 class="text-sm font-bold text-gray-200 tracking-widest uppercase flex items-center gap-2">
                         <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -356,30 +415,30 @@
                 </div>
             </div>
 
-            <!-- Live Exposures Heatmap -->
-            <div class="glass-panel p-5 flex flex-col min-h-[250px] relative overflow-hidden group">
-                <div class="absolute -right-6 -top-6 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl transition-all">
-                </div>
-                <h3
-                    class="text-sm font-bold text-gray-200 tracking-widest uppercase border-b border-gray-800 pb-2 mb-4 relative z-10 flex items-center gap-2">
-                    <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 2A10 10 0 1 0 22 12A10 10 0 0 0 12 2Zm0 0A10 10 0 0 1 22 12A10 10 0 0 1 12 22M12 2Z">
-                        </path>
-                    </svg>
-                    Exposiciones en Vivo
-                </h3>
-
-                <div id="exposures-container" class="space-y-3 relative z-10 w-full">
-                    <div class="text-xs text-gray-500 text-center uppercase tracking-widest font-mono italic mt-8">
-                        Esperando datos...</div>
-                </div>
-            </div>
         </div>
     </div>
 
     <!-- Institutional Market Context Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Live Exposures Heatmap (Moved from Middle Analytics) -->
+        <div class="glass-panel p-5 flex flex-col min-h-[250px] relative overflow-hidden group">
+            <div class="absolute -right-6 -top-6 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl transition-all">
+            </div>
+            <h3
+                class="text-sm font-bold text-gray-200 tracking-widest uppercase border-b border-gray-800 pb-2 mb-4 relative z-10 flex items-center gap-2">
+                <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 2A10 10 0 1 0 22 12A10 10 0 0 0 12 2Zm0 0A10 10 0 0 1 22 12A10 10 0 0 1 12 22M12 2Z">
+                    </path>
+                </svg>
+                Exposiciones en Vivo
+            </h3>
+            <div id="exposures-container" class="space-y-3 relative z-10 w-full">
+                <div class="text-xs text-gray-500 text-center uppercase tracking-widest font-mono italic mt-8">Esperando
+                    datos...</div>
+            </div>
+        </div>
+
         <!-- Active Trading Session Widget -->
         <div class="glass-panel p-5 relative overflow-hidden group">
             <div class="absolute -right-6 -top-6 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl transition-all"></div>
@@ -390,7 +449,7 @@
                             d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
                         </path>
                     </svg>
-                    Reloj Mundial Institucional
+                    Reloj Institucional
                 </h3>
                 <span id="session-badge"
                     class="text-[0.65rem] px-2 py-0.5 rounded-md font-bold bg-gray-500/10 text-gray-400 border border-gray-500/20">CERRADO</span>
@@ -400,7 +459,7 @@
                 <!-- NY -->
                 <div id="sess-ny"
                     class="flex flex-col items-center justify-center bg-gray-900/40 border border-gray-800 rounded-lg py-2 px-1 flex-1 opacity-50 grayscale transition-all">
-                    <span class="text-[0.6rem] text-gray-500 uppercase font-bold mb-1">New York</span>
+                    <span class="text-[0.6rem] text-gray-500 uppercase font-bold mb-1">NY</span>
                     <div class="w-2 h-2 rounded-full bg-blue-500 mb-1"></div>
                     <span class="text-xs font-mono text-gray-400">8AM-5PM</span>
                 </div>
@@ -423,7 +482,7 @@
                     class="flex flex-col items-center justify-center bg-gray-900/40 border border-gray-800 rounded-lg py-2 px-1 flex-1 opacity-50 grayscale transition-all">
                     <span class="text-[0.6rem] text-gray-500 uppercase font-bold mb-1">Sydney</span>
                     <div class="w-2 h-2 rounded-full bg-emerald-500 mb-1"></div>
-                    <span class="text-xs font-mono text-gray-400">5PM-1AM</span>
+                    <span class="text-xs font-mono text-gray-400">5P-1A</span>
                 </div>
             </div>
         </div>
@@ -440,12 +499,9 @@
                     </svg>
                     Radar Macro & NLP News
                 </h3>
-                <span
-                    class="text-[0.65rem] px-2 py-0.5 rounded-md font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">EVENTOS
-                    HIGH IMPACT</span>
             </div>
 
-            <div id="news-container" class="space-y-2 relative z-10 w-full h-full flex flex-col justify-center">
+            <div id="news-container" class="space-y-2 relative z-10 w-full h-full flex flex-col justify-start">
                 <div class="text-xs text-gray-500 text-center uppercase tracking-widest font-mono italic">Escaneando
                     calendario económico...</div>
             </div>
@@ -482,18 +538,22 @@
         <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
         <script type="text/javascript">
             let tvWidget = null;
+            let currentTVSymbol = 'OANDA:EURUSD';
+
             function createTVWidget(symbol) {
+                currentTVSymbol = symbol;
+                const isDark = document.documentElement.classList.contains('dark');
                 tvWidget = new TradingView.widget({
                     "autosize": true,
                     "symbol": symbol,
                     "interval": "5",
                     "timezone": "Etc/UTC",
-                    "theme": "dark",
+                    "theme": isDark ? "dark" : "light",
                     "style": "1",
                     "locale": "en",
                     "enable_publishing": false,
-                    "backgroundColor": "#0B0F19",
-                    "gridColor": "rgba(55, 65, 81, 0.2)",
+                    "backgroundColor": isDark ? "#0B1120" : "#f1f5f9",
+                    "gridColor": isDark ? "rgba(56, 189, 248, 0.05)" : "rgba(15, 23, 42, 0.05)",
                     "hide_top_toolbar": false,
                     "hide_legend": false,
                     "save_image": false,
@@ -520,6 +580,14 @@
             document.addEventListener('DOMContentLoaded', () => {
                 createTVWidget('OANDA:EURUSD');
             });
+
+            function toggleTheme() {
+                const html = document.documentElement;
+                html.classList.toggle('dark');
+
+                // Re-render chart with new theme
+                createTVWidget(currentTVSymbol);
+            }
         </script>
     </div>
 
