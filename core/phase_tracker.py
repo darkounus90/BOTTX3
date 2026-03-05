@@ -134,7 +134,7 @@ class PhaseTracker:
                         f"Día {i + 1} = {day_pct:.1f}% "
                         f"(máx: {self.consistency_rule_pct}%)"
                     )
-                return False
+                    return False
 
         return True
 
