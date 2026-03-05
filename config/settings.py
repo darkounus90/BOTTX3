@@ -60,6 +60,7 @@ class BotConfig:
 
     # ─── RISK MANAGEMENT ──────────────────────────────────────────────
     MAX_RISK_PER_TRADE_PCT = 1.0                 # 1.0% = $500 base. Modo Agresivo de Pruebas.
+    STRICT_CONSISTENCY_MODE = True       # Si es True: Anula las variaciones de lotaje por IA o Supervivencia para prop-firms estrictas
     KELLY_FRACTION = 0.5                 # Kelly agresivo: IA puede apalancar más si está muy segura.
     MAX_TRADES_PER_DAY = 10              # Más disparos permitidos por día.
     MAX_OPEN_POSITIONS = 3               # Permite hasta 3 posiciones simultáneas.

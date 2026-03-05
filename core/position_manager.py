@@ -61,9 +61,15 @@ class PositionManager:
         # Factor de supervivencia: ratio 0.0 a 1.0 de cuánto buffer nos queda
         survival_factor = max(0, min(1.0, (buffer / max_buffer)))
         
-        # El riesgo base (1%) se multiplica por el factor de supervivencia.
-        # Si estás a $500 del suelo, el riesgo cae a un 10%, obligándote a usar micro-lotes.
-        risk_pct = BotConfig.MAX_RISK_PER_TRADE_PCT * survival_factor
+        # Modo Estricto para Prop Firms: Anular toda variación dinámica para evitar violar reglas de consistencia de lotaje
+        strict_mode = getattr(BotConfig, "STRICT_CONSISTENCY_MODE", False)
+        
+        if strict_mode:
+            risk_pct = BotConfig.MAX_RISK_PER_TRADE_PCT
+            self.logger.debug(f"📐 Modo Estricto Ativo: Riesgo fijado en {risk_pct}% (Ignorando Survival Factor)")
+        else:
+            # El riesgo base (1%) se multiplica por el factor de supervivencia.
+            risk_pct = BotConfig.MAX_RISK_PER_TRADE_PCT * survival_factor
         
         # ─── 2. ADAPTACIÓN DE VOLATILIDAD (ATR) ───
         # Si el usuario no mandó un SL técnico, calculamos uno basado en el ruido del mercado.
@@ -74,20 +80,24 @@ class PositionManager:
 
         # ─── 3. KELLY IA Y REBALANCEO (MODULACIÓN POR CONFIANZA IA) ───
         if probability is not None:
-            # Re-escalamos la agresión en base a qué tan seguro está Gemini (0-100)
-            if probability >= 85.0:
-                self.logger.info(f"🔥 IA Ultra-Confident ({probability}%). Aumentando lotaje 50% (High Conviction).")
-                risk_pct *= 1.5   # Aumenta el riesgo 50% si está muy seguro
-            elif probability >= 70.0:
-                self.logger.info(f"👍 IA Normal Confident ({probability}%). Lotaje estándar.")
-                risk_pct *= 1.0   # Riesgo normal
-            elif probability < 60.0:
-                self.logger.warning(f"📉 IA Low Confidence ({probability}%). Reduciendo lotaje a la MITAD (Defensive).")
-                risk_pct *= 0.5   # Reduce a la mitad si duda
+            if strict_mode:
+                self.logger.debug(f"🤖 IA Confident={probability}%. Pero el Modo Estricto omite modificación de riesgo.")
             else:
-                risk_pct *= 0.8   # Ligera reducción si está en zona gris (60-69%)
+                # Re-escalamos la agresión en base a qué tan seguro está Gemini (0-100)
+                if probability >= 85.0:
+                    self.logger.info(f"🔥 IA Ultra-Confident ({probability}%). Aumentando lotaje 50% (High Conviction).")
+                    risk_pct *= 1.5   # Aumenta el riesgo 50% si está muy seguro
+                elif probability >= 70.0:
+                    self.logger.info(f"👍 IA Normal Confident ({probability}%). Lotaje estándar.")
+                    risk_pct *= 1.0   # Riesgo normal
+                elif probability < 60.0:
+                    self.logger.warning(f"📉 IA Low Confidence ({probability}%). Reduciendo lotaje a la MITAD (Defensive).")
+                    risk_pct *= 0.5   # Reduce a la mitad si duda
+                else:
+                    risk_pct *= 0.8   # Ligera reducción si está en zona gris (60-69%)
                 
-        risk_pct *= portfolio_weight
+        if not strict_mode:
+            risk_pct *= portfolio_weight
         
         # Límite duro absoluto para evitar locuras (cap al 3% de riesgo real de la cuenta)
         risk_pct = min(risk_pct, BotConfig.MAX_RISK_PER_TRADE_PCT * 3.0) 
