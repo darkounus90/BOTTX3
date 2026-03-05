@@ -610,7 +610,7 @@
                 <span class="text-xs text-gray-500 font-mono" id="positions-count">Activas: 0</span>
             </div>
 
-            <div class="overflow-x-auto p-2">
+            <div class="overflow-x-auto overflow-y-auto max-h-[300px] p-2 custom-scrollbar">
                 <table class="w-full text-sm text-left align-middle">
                     <thead class="text-xs text-gray-500 font-mono tracking-wider border-b border-gray-800/50">
                         <tr>
@@ -646,7 +646,7 @@
                 </div>
             </div>
 
-            <div class="overflow-x-auto p-2">
+            <div class="overflow-x-auto overflow-y-auto max-h-[350px] p-2 custom-scrollbar">
                 <table class="w-full text-sm text-left align-middle">
                     <thead class="text-xs text-gray-500 font-mono tracking-wider border-b border-gray-800/50">
                         <tr>
@@ -669,7 +669,7 @@
         </div>
 
         <!-- Terminal / Live Logs -->
-        <div class="glass-panel h-[400px] flex flex-col overflow-hidden">
+        <div class="glass-panel col-span-1 flex flex-col overflow-hidden max-h-[800px]">
             <div class="p-4 border-b border-gray-800 bg-gray-900/60 flex justify-between items-center">
                 <div class="flex items-center gap-2">
                     <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1084,7 +1084,9 @@
             const el = document.createElement('div');
 
             let colorClass = 'text-gray-400';
-            const msg = log.message || '';
+            const rawMsg = log.message || '';
+            // Strip ANSI codes
+            const msg = rawMsg.replace(/\x1B\[[0-9;]*[mK]/g, '');
 
             // Smart log coloring
             if (msg.includes('ERROR') || msg.includes('🚨') || msg.includes('❌') || msg.includes('🛑')) {
