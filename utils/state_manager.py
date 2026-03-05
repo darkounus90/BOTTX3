@@ -43,8 +43,7 @@ class StateManager:
 
             # Renombrar (atómico en la mayoría de sistemas)
             os.replace(tmp_file, self.state_file)
-
-            self.logger.info(f"💾 Estado guardado correctamente")
+            self.logger.debug(f"💾 Estado guardado en background")
 
         except Exception as e:
             self.logger.error(f"Error guardando estado: {e}")
