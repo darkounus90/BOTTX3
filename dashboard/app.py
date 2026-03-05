@@ -77,8 +77,9 @@ def update_dashboard_data(new_data: dict):
 def add_dashboard_log(message: str, level: str = "INFO"):
     """Agrega un log al dashboard"""
     global dashboard_data
+    from datetime import datetime
     log_entry = {
-        "timestamp": message.split("|")[0].strip() if "|" in message else "",
+        "timestamp": datetime.now().strftime("%H:%M:%S"),
         "message": message,
         "level": level,
     }
