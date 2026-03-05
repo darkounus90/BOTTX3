@@ -243,6 +243,14 @@ class TX3ProBot:
         win_rate = 0.0
         # Simplificación de win_rate visual (podrías guardarlo en un state si quisieras, aquí lo dejamos en 0.0 o aproximado si tuvieras history real)
 
+        # Calcular trades de hoy desde el historial (asumiendo que las fechas en timestamps concuerdan)
+        today_str = datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
+        recent_trades = self.journal.get_recent_trades(limit=50)
+        trades_hoy = len([t for t in recent_trades if t.get('timestamp', '').startswith(today_str)])
+        
+        # O usar el mayor entre el journal y el de memoria
+        total_trades_display = max(trades_hoy, self.position_manager.trades_today)
+
         data = {
             "status": "PAUSED" if self.is_paused else ("RUNNING" if self.running else "STOPPED"),
             "mode": bot_mode,
@@ -259,7 +267,7 @@ class TX3ProBot:
             "profitable_days": self.phase_tracker.profitable_days,
             "min_days": self.phase_tracker.min_trading_days,
             "consistency_met": self.phase_tracker.check_consistency_rule(),
-            "total_trades": self.position_manager.trades_today,
+            "total_trades": total_trades_display,
             "win_rate": 0.0, # Placeholder, actual logging occurs in journaling if implemented
             "sys_mt5": self.connector.is_connected(),
             "sys_oracle": self.oracle.system_ready if hasattr(self, 'oracle') else False,
