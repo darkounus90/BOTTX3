@@ -355,61 +355,41 @@ class TradeJournal:
                     reader = csv.DictReader(f)
                     for row in reader:
                         comment = row.get("comment", "")
-                        if comment.startswith("Pos #"):
+                        if comment.startswith("Pos #") or comment.startswith("Deal #"):
                             existing_signatures.add(comment)
-                        else:
-                            try:
-                                p = round(float(row.get("profit", "0")), 2)
-                                sig = f"{row.get('timestamp')}_{p}_{row.get('symbol')}"
-                                existing_signatures.add(sig)
-                            except: pass
+                        
+                        # Siempre guardar la firma basada en profit y tiempo porsiaca
+                        try:
+                            p = round(float(row.get("profit") or 0.0), 2)
+                            sig = f"{row.get('timestamp')}_{p}_{row.get('symbol')}"
+                            existing_signatures.add(sig)
+                        except: pass
         except Exception as e:
             self.logger.error(f"Error cargando firmas para sync: {e}")
 
-        # Agrupar deals por position_id para evitar fragmentación en el Dashboard
-        grouped_positions = {}
+        # Recorremos cada DEAL de cierre sin agrupar, para soportar Cierres Parciales perfectamente
         for deal in deals:
             # Solo queremos los cierres (donde está el profit real)
             # entry=1 (OUT), entry=2 (INOUT), entry=3 (OUT_BY)
             if deal.entry not in [1, 2, 3]: 
                 continue
                 
-            pid = deal.position_id
-            if pid not in grouped_positions:
-                grouped_positions[pid] = {
-                    "time": deal.time,
-                    "profit": float(deal.profit),
-                    "symbol": deal.symbol,
-                    "volume": float(deal.volume),
-                    "type": deal.type,
-                    "ticket": deal.ticket,
-                    "price": deal.price
-                }
-            else:
-                grouped_positions[pid]["profit"] += float(deal.profit)
-                grouped_positions[pid]["volume"] += float(deal.volume)
-                if deal.time > grouped_positions[pid]["time"]:
-                    grouped_positions[pid]["time"] = deal.time
-                    grouped_positions[pid]["ticket"] = deal.ticket
-                    grouped_positions[pid]["price"] = deal.price
-
-        for pid, pos_data in grouped_positions.items():
-            dt = datetime.fromtimestamp(pos_data["time"])
+            dt = datetime.fromtimestamp(deal.time)
             ts = dt.strftime("%Y-%m-%d %H:%M:%S")
-            profit = round(pos_data["profit"], 2)
-            symbol = pos_data["symbol"]
+            profit = round(float(deal.profit), 2)
+            symbol = deal.symbol
             
-            # Signature robusta: TS + PROFIT (rounded) + SYMBOL o el comentario de Posición
+            # Signature robusta: TS + PROFIT (rounded) + SYMBOL
             sig = f"{ts}_{profit}_{symbol}"
-            comment_sig = f"Pos #{pid}"
+            comment_sig = f"Deal #{deal.ticket}"
             
             if sig not in existing_signatures and comment_sig not in existing_signatures:
-                # No está en el journal, lo agregamos
-                trade_id = f"SYNC-{pos_data['ticket']}"
+                # No está en el journal, lo agregamos como un trade independiente (o parcial)
+                trade_id = f"SYNC-{deal.ticket}"
                 
                 # INVERTIR LA DIRECCIÓN: Un deal de cierre de tipo SELL(1) significa que la posición original era BUY.
                 # Un deal de cierre de tipo BUY(0) significa que la posición original era SELL.
-                pos_direction = "SELL" if pos_data["type"] == 0 else "BUY"
+                pos_direction = "SELL" if deal.type == 0 else "BUY"
                 
                 row = {
                     "timestamp": ts,
@@ -417,22 +397,22 @@ class TradeJournal:
                     "action": "CLOSE", # Lo tratamos como cierre para el dashboard
                     "type": pos_direction,
                     "symbol": symbol,
-                    "volume": round(pos_data["volume"], 2),
-                    "price": pos_data["price"],
+                    "volume": round(float(deal.volume), 2),
+                    "price": deal.price,
                     "sl": "",
                     "tp": "",
                     "sl_pips": "",
                     "tp_pips": "",
                     "rr_ratio": "",
                     "profit": profit,
-                    "profit_pips": 0, # Difícil calcular pips dinámicamente aquí
-                    "balance_after": 0, # Desconocido del deal directo
+                    "profit_pips": 0,
+                    "balance_after": 0,
                     "equity_after": 0,
                     "daily_dd_used": 0,
                     "overall_dd_used": 0,
                     "session": "N/A",
-                    "strategy": "EXTERNAL/MANUAL",
-                    "reason": "Sincronizado desde MT5",
+                    "strategy": "MT5_SYNC",
+                    "reason": f"Sincronizado (Pos #{deal.position_id})",
                     "duration": "N/A",
                     "phase": self.phase,
                     "comment": comment_sig,
