@@ -92,7 +92,14 @@ class PositionManager:
         # Límite duro absoluto para evitar locuras (cap al 3% de riesgo real de la cuenta)
         risk_pct = min(risk_pct, BotConfig.MAX_RISK_PER_TRADE_PCT * 3.0) 
         
-        risk_amount = acc.balance * (risk_pct / 100)
+        # Determinar el balance para el cálculo del riesgo
+        if getattr(BotConfig, "SIMULATE_50K_CHALLENGE", False):
+            # Si se simula 50K en una cuenta de 100K, forzar el cálculo de lotaje sobre 50K
+            usable_balance = ChallengeConfig.BALANCE_INICIAL
+        else:
+            usable_balance = acc.balance
+            
+        risk_amount = usable_balance * (risk_pct / 100)
 
         # ─── 4. CÁLCULO DE LOTAJE ───
         si = mt5.symbol_info(symbol)
