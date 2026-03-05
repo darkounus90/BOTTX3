@@ -302,8 +302,10 @@ class TradeJournal:
             "avg_loss": avg_loss,
             "expectancy": expectancy,
         }
-    def get_recent_trades(self, limit: int = 20) -> list:
-        """Obtiene los últimos N trades cerrados para el dashboard"""
+    def get_recent_trades(self, limit: int = 15) -> list:
+        """Obtiene los últimos N trades, agrupándolos por Position ID para que el
+        dashboard no muestre los cierres parciales de forma fragmentada."""
+        import re
         trades = []
         try:
             if not os.path.exists(self.csv_path):
@@ -313,25 +315,53 @@ class TradeJournal:
                 reader = csv.DictReader(f)
                 all_rows = list(reader)
                 
+                pid_map = {}
+                
                 # Buscamos los cierres (CLOSE) de atrás hacia adelante
                 for row in reversed(all_rows):
                     if row["action"] == "CLOSE":
-                        # Limpiar datos para el frontend
-                        trade = {
-                            "timestamp": row.get("timestamp", ""),
-                            "symbol": row.get("symbol", ""),
-                            "type": row.get("type", ""),
-                            "volume": row.get("volume", "0.00"),
-                            "profit": float(row.get("profit") or 0.0),
-                            "profit_pips": float(row.get("profit_pips") or 0.0),
-                            "duration": row.get("duration", ""),
-                            "strategy": row.get("strategy", ""),
-                            "reason": row.get("reason", "")
-                        }
-                        trades.append(trade)
-                    
-                    if len(trades) >= limit:
-                        break
+                        pid = None
+                        m = re.search(r'Pos #(\d+)', row.get('comment', ''))
+                        if not m:
+                            m = re.search(r'Pos #(\d+)', row.get('reason', ''))
+                        if m:
+                            pid = m.group(1)
+                        else:
+                            m = re.search(r'TRADE-(\d+)', row.get('trade_id', ''))
+                            if m:
+                                pid = m.group(1)
+                            else:
+                                pid = row.get('trade_id') # Fallback al id completo
+
+                        if pid in pid_map:
+                            # Sumar lotaje y profit al registro existente en memoria
+                            existing = pid_map[pid]
+                            existing['profit'] += float(row.get("profit") or 0.0)
+                            existing['volume'] += float(row.get("volume") or 0.0)
+                        else:
+                            if len(trades) >= limit:
+                                continue # Ya llenamos el dashboard, pero seguimos iterando por si existen parciales más viejos
+                                
+                            # Si es la primera vez que lo vemos (el más reciente), lo guardamos
+                            trade = {
+                                "timestamp": row.get("timestamp", ""),
+                                "symbol": row.get("symbol", ""),
+                                "type": row.get("type", ""),
+                                "volume": float(row.get("volume") or 0.0),
+                                "profit": float(row.get("profit") or 0.0),
+                                "profit_pips": float(row.get("profit_pips") or 0.0),
+                                "duration": row.get("duration", ""),
+                                "strategy": row.get("strategy", ""),
+                                "reason": row.get("reason", "")
+                            }
+                            pid_map[pid] = trade
+                            trades.append(trade)
+
+                # Formatear la salida matemática
+                for t in trades:
+                    t["volume"] = str(round(t["volume"], 2))
+                    t["profit"] = round(t["profit"], 2)
+
         except Exception as e:
             self.logger.error(f"Error leyendo trades recientes: {e}")
             
