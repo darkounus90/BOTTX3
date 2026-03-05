@@ -273,6 +273,15 @@ class TX3ProBot:
             "sys_oracle": self.oracle.system_ready if hasattr(self, 'oracle') else False,
             "sys_news": self.news_filter.enabled if hasattr(self, 'news_filter') else False,
             "simulate_50k": getattr(BotConfig, "SIMULATE_50K_CHALLENGE", False),
+            "session_info": self.session_filter.get_session_info() if hasattr(self, 'session_filter') else {},
+            "upcoming_news": [
+                {
+                    "title": e.get("title", ""),
+                    "currency": e.get("currency", ""),
+                    "time": e.get("time").strftime("%H:%M") if e.get("time") else ""
+                }
+                for e in (self.news_filter.get_upcoming_events(24) if hasattr(self, 'news_filter') else [])
+            ][:3],
             "open_positions": pos_list,
             "live_exposures": live_exposures,
             "recent_trades": self.journal.get_recent_trades(limit=15),
@@ -591,7 +600,17 @@ class TX3ProBot:
                     from datetime import timedelta
                     deals_sync = mt5.history_deals_get(start_today, today + timedelta(days=1))
                     if deals_sync:
-                        self.journal.sync_mt5_history(deals_sync)
+                        new_trades = self.journal.sync_mt5_history(deals_sync)
+                        if new_trades:
+                            for trade in new_trades:
+                                self.telegram.notify_trade_closed(
+                                    symbol=trade.get("symbol", "N/A"),
+                                    order_type=trade.get("type", "N/A"),
+                                    volume=trade.get("volume", 0.0),
+                                    profit=trade.get("profit", 0.0),
+                                    pips=trade.get("pips", 0.0),
+                                    duration="MT5 Sync"
+                                )
                 except Exception as e:
                     pass
 

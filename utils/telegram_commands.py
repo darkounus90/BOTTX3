@@ -598,7 +598,8 @@ class TelegramCommandHandler:
                 return
 
             # Sincronizar
-            new_trades = self.bot.journal.sync_mt5_history(deals)
+            new_trades_list = self.bot.journal.sync_mt5_history(deals)
+            new_trades = len(new_trades_list)
             
             # Obtener resumen actualizado
             stats = self.bot.journal.get_today_stats()

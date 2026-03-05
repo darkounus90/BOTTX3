@@ -366,16 +366,21 @@ class TradeJournal:
             self.logger.error(f"Error leyendo trades recientes: {e}")
             
         return trades
-    def sync_mt5_history(self, deals: tuple):
+    def sync_mt5_history(self, deals) -> list:
         """
-        Sincroniza el historial de MT5 con el Journal.
-        Agrupa los deals por position_id (igual que la vista 'Positions' de MT5).
-        Evita duplicados escaneando la firma única.
+        Sincroniza los trades cerrados externamente (MT5 app, TP/SL, etc.)
+        directamente al journal, evitando depender de la memoria de Python.
+        
+        Args:
+            deals: Tupla de deals desde mt5.history_deals_get()
+            
+        Returns:
+            list: Lista de diccionarios con la información de los trades nuevos sincronizados.
         """
         if not deals:
-            return 0
+            return []
             
-        sync_count = 0
+        newly_synced = []
         existing_signatures = set()
         
         # Cargar firmas existentes para evitar duplicados
@@ -451,9 +456,13 @@ class TradeJournal:
                 self._write_csv_row(row)
                 existing_signatures.add(sig)
                 existing_signatures.add(comment_sig)
-                sync_count += 1
                 
+                # Para validación y telegram
+                row["pips"] = profit_pips if 'profit_pips' in locals() and profit_pips != 0 else 0.0 # En MT5 profit points es dificil sin precio de apertura
+                newly_synced.append(row)
+                
+        sync_count = len(newly_synced)
         if sync_count > 0:
             self.logger.success(f"📓 Sincronizadas {sync_count} posiciones externas al journal.")
             
-        return sync_count
+        return newly_synced
