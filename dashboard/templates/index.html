@@ -28,13 +28,14 @@
                         mono: ['JetBrains Mono', 'monospace'],
                     },
                     colors: {
-                        txbase: '#0B0F19',
-                        txpanel: 'rgba(17, 24, 39, 0.7)',
-                        txborder: 'rgba(55, 65, 81, 0.4)',
-                        txaccent: '#3B82F6',
-                        txdanger: '#EF4444',
-                        txsuccess: '#10B981',
-                        txwarning: '#F59E0B'
+                        txbase: '#0A0612',      // Deep premium plum-black
+                        txpanel: 'rgba(23, 15, 36, 0.75)', // Rich dark violet glass
+                        txborder: 'rgba(107, 70, 193, 0.3)', // Violet border
+                        txaccent: '#D4AF37',   // Classic Gold 
+                        txaccentHover: '#F3E5AB', // Light Gold/Vanilla
+                        txdanger: '#F43F5E',   // Rose red
+                        txsuccess: '#10B981',  // Emerald
+                        txwarning: '#F59E0B'   // Amber
                     },
                     animation: {
                         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
@@ -53,11 +54,13 @@
 
     <style>
         body {
-            background-color: #0B0F19;
+            background-color: #0A0612;
             color: #E2E8F0;
             background-image:
-                radial-gradient(circle at 15% 50%, rgba(29, 78, 216, 0.15), transparent 25%),
-                radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.15), transparent 25%);
+                radial-gradient(circle at 10% 40%, rgba(212, 175, 55, 0.08), transparent 30%),
+                /* Gold glow */
+                radial-gradient(circle at 90% 20%, rgba(139, 92, 246, 0.12), transparent 35%);
+            /* Purple glow */
             background-attachment: fixed;
             overflow-x: hidden;
         }
