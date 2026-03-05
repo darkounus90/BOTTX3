@@ -446,8 +446,8 @@
                             <tr>
                                 <th class="px-4 py-3 font-medium">TICKET</th>
                                 <th class="px-4 py-3 font-medium">ASSET</th>
-                                <th class="px-4 py-3 font-medium">DIRECTION</th>
-                                <th class="px-4 py-3 font-medium">LOTS</th>
+                                <th class="px-4 py-3 font-medium">INFO / STRATEGY</th>
+                                <th class="px-4 py-3 font-medium">LOTS & RISK</th>
                                 <th class="px-4 py-3 font-medium">ENTRY</th>
                                 <th class="px-4 py-3 font-medium text-right">PROFIT</th>
                             </tr>
@@ -481,7 +481,7 @@
                             <tr>
                                 <th class="px-4 py-3 font-medium">TIME</th>
                                 <th class="px-4 py-3 font-medium">ASSET</th>
-                                <th class="px-4 py-3 font-medium">TYPE</th>
+                                <th class="px-4 py-3 font-medium">INFO</th>
                                 <th class="px-4 py-3 font-medium">LOTS</th>
                                 <th class="px-4 py-3 font-medium">STRATEGY</th>
                                 <th class="px-4 py-3 font-medium text-right">PROFIT ($)</th>
@@ -759,12 +759,17 @@
                         row.innerHTML = `
                             <td class="px-4 py-3 text-gray-400">#${pos.ticket}</td>
                             <td class="px-4 py-3 font-bold text-white group-hover:text-blue-400 transition-colors">${pos.symbol}</td>
-                            <td class="px-4 py-3">
-                                <span class="px-2 py-1 rounded text-[0.7rem] font-bold ${isBuy ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-orange-500/10 text-orange-400 border border-orange-500/20'}">
+                            <td class="px-4 py-3 pr-2">
+                                <span class="px-2 py-0.5 mt-1 block w-fit rounded text-[0.65rem] font-bold ${isBuy ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-orange-500/10 text-orange-400 border border-orange-500/20'}">
                                     ${pos.type}
                                 </span>
+                                <span class="text-[0.6rem] text-gray-500 uppercase tracking-wider block mt-1">${pos.trade_intent || 'APERTURA'}</span>
+                                <span class="text-[0.6rem] text-purple-400 font-bold tracking-wider uppercase block mt-0.5">${pos.strategy_id || 'DEFAULT'}</span>
                             </td>
-                            <td class="px-4 py-3 text-gray-300">${pos.volume.toFixed(2)}</td>
+                            <td class="px-4 py-3">
+                                <span class="text-gray-300 block font-bold">${pos.volume.toFixed(2)} Lots</span>
+                                <span class="text-[0.65rem] text-rose-400 block mt-1">Risk: ${pos.risk_pct_trade ? pos.risk_pct_trade.toFixed(2) + '%' : 'N/A'}</span>
+                            </td>
                             <td class="px-4 py-3 text-gray-400">${pos.price_open}</td>
                             <td class="px-4 py-3 text-right font-bold ${isProfitable ? 'text-emerald-400' : 'text-rose-400'}">
                                 ${isProfitable ? '+' : ''}${formatCurrency(pos.profit)}
@@ -798,7 +803,8 @@
                             <td class="px-4 py-2 text-gray-500 text-[0.65rem]">${timeOnly}</td>
                             <td class="px-4 py-2 font-bold text-gray-300">${trade.symbol}</td>
                             <td class="px-4 py-2">
-                                 <span class="text-[0.6rem] font-bold ${trade.type === 'BUY' ? 'text-blue-400' : 'text-orange-400'}">${trade.type}</span>
+                                 <span class="px-1.5 py-0.5 rounded text-[0.65rem] font-bold ${trade.type === 'BUY' ? 'bg-blue-500/10 text-blue-400' : 'bg-orange-500/10 text-orange-400'}">${trade.type}</span>
+                                 <span class="text-[0.6rem] text-gray-500 block mt-1 uppercase">${trade.trade_intent || 'CIERRE'}</span>
                             </td>
                             <td class="px-4 py-2 text-gray-400">${parseFloat(trade.volume).toFixed(2)}</td>
                             <td class="px-4 py-2">

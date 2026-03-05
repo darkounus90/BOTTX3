@@ -209,13 +209,23 @@ class TX3ProBot:
             
             risk_pct_session += risk_pct_trade
             
-            # Extraer strategy_id de comment (por ej: "Breakout_P1")
-            strat_id = p.comment.split("_P")[0] if p.comment else "Unknown"
+            # Extraer strategy_id de comment (por ej: "Breakout_P1") -> "Breakout"
+            strat_id = p.comment.split("_P")[0] if p.comment else "Automated"
+            
+            # Determinar "Intent" basado en el comentario (puede ampliarse)
+            intent = "Apertura"
+            if p.comment:
+                c_low = p.comment.lower()
+                if "sca" in c_low or "_s" in c_low:
+                    intent = "Escala"
+                elif "hedg" in c_low or "_h" in c_low:
+                    intent = "Cobertura"
 
             pos_list.append({
                 "ticket": p.ticket,
                 "symbol": p.symbol,
                 "strategy_id": strat_id,
+                "trade_intent": intent,
                 "risk_pct_trade": round(risk_pct_trade, 3),
                 "type": "BUY" if p.type == mt5.ORDER_TYPE_BUY else "SELL",
                 "volume": p.volume,
@@ -252,7 +262,7 @@ class TX3ProBot:
             "sys_news": self.news_filter.enabled if hasattr(self, 'news_filter') else False,
             "simulate_50k": getattr(BotConfig, "SIMULATE_50K_CHALLENGE", False),
             "open_positions": pos_list,
-            "recent_trades": self.journal.get_recent_trades(limit=10),
+            "recent_trades": self.journal.get_recent_trades(limit=15),
             "last_update": datetime.now(ZoneInfo("America/New_York")).strftime("%H:%M:%S")
         }
         update_dashboard_data(data)

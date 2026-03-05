@@ -322,8 +322,8 @@ class TradeJournal:
                             "symbol": row.get("symbol", ""),
                             "type": row.get("type", ""),
                             "volume": row.get("volume", "0.00"),
-                            "profit": float(row.get("profit", 0)),
-                            "profit_pips": float(row.get("profit_pips", 0)),
+                            "profit": float(row.get("profit") or 0.0),
+                            "profit_pips": float(row.get("profit_pips") or 0.0),
                             "duration": row.get("duration", ""),
                             "strategy": row.get("strategy", ""),
                             "reason": row.get("reason", "")
