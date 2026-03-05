@@ -149,7 +149,7 @@ class DashboardConfig:
 class SessionConfig:
     """Configuración de sesiones de trading (EST)"""
 
-    RESTRICT_TO_LONDON_NY = True         # Solo opera London y mañana de NY (Ignora Asia)
+    RESTRICT_TO_LONDON_NY = False         # Permitir TODAS las sesiones (LND, NY, ASIA y PACS)
     FRIDAY_FLAT_HOUR = 12                # Hora EST para cerrar todo los viernes (12 PM Mediodía)
 
     LONDON_START_HOUR = 3
