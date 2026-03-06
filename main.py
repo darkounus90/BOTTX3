@@ -794,6 +794,7 @@ class TX3ProBot:
                                             signal['probability'] = oracle_resp.get('confidence', 50.0)
                                             # Taguea IA
                                             signal['strategy_tag'] = f"Gemini_{strategy.get_name()}"
+                                            self.logger.success(f"✅ 🧠 ORÁCULO APROBÓ EL TRADE: {oracle_resp.get('reason')}")
                                         
                                     if self.dry_run:
                                         self.logger.info(f"🔍 DRY RUN SIGNAL: {signal['signal']} {symbol}")
