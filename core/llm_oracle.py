@@ -97,7 +97,10 @@ class GeminiOracle:
             # Prioridad extrema para versiones Pro/Ultra
             def _sort_key(m_name):
                 base = 0
-                if "pro" in m_name or "ultra" in m_name: base += 1000
+                # Prioridad Máxima: Modelos Flash (Robusta Cuota de 1500 RPD)
+                if "flash" in m_name: base += 2000
+                elif "pro" in m_name: base += 1000
+                
                 if "3.1" in m_name: base += 310
                 elif "3.0" in m_name or "-3-" in m_name: base += 300
                 elif "2.5" in m_name: base += 250
