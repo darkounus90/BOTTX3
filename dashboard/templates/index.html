@@ -662,7 +662,7 @@
                         <thead class="text-xs text-gray-500 font-mono tracking-wider border-b border-gray-800/50">
                             <tr>
                                 <th class="px-4 py-3 font-medium">TICKET</th>
-                                <th class="px-4 py-3 font-medium">HORA (ET)</th>
+                                <th class="px-4 py-3 font-medium">FECHA / HORA (ET)</th>
                                 <th class="px-4 py-3 font-medium">ACTIVO</th>
                                 <th class="px-4 py-3 font-medium">INFO</th>
                                 <th class="px-4 py-3 font-medium">LOTES</th>
@@ -1057,7 +1057,17 @@
                     data.recent_trades.forEach(trade => {
                         const row = document.createElement('tr');
                         const isProfitable = trade.profit >= 0;
-                        const timeOnly = trade.timestamp.includes(' ') ? trade.timestamp.split(' ')[1] : trade.timestamp;
+                        let datePart = '';
+                        let timePart = trade.timestamp;
+                        if (trade.timestamp.includes(' ')) {
+                            const parts = trade.timestamp.split(' ');
+                            datePart = parts[0]; // 2026-03-06
+                            timePart = parts[1]; // 14:30:22
+                            // Formato corto: Mar 06
+                            const dp = datePart.split('-');
+                            const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                            datePart = months[parseInt(dp[1]) - 1] + ' ' + dp[2];
+                        }
 
                         // Extraer ticket legible del trade_id o comment
                         let ticketDisplay = '';
@@ -1074,7 +1084,7 @@
                         row.className = 'border-b border-gray-800/20 hover:bg-gray-800/20 transition-colors';
                         row.innerHTML = `
                             <td class="px-4 py-2"><span class="text-xs text-gray-500 bg-gray-800/80 px-2 py-0.5 rounded border border-gray-700" title="${ticketTooltip}">${ticketDisplay}</span></td>
-                            <td class="px-4 py-2 text-gray-500 text-[0.65rem]">${timeOnly}</td>
+                            <td class="px-4 py-2"><div class="flex flex-col"><span class="text-gray-600 text-[0.55rem]">${datePart}</span><span class="text-gray-400 text-[0.65rem]">${timePart}</span></div></td>
                             <td class="px-4 py-2 font-bold text-gray-300">${trade.symbol}</td>
                             <td class="px-4 py-2">
                                  <span class="px-1.5 py-0.5 rounded text-[0.65rem] font-bold ${trade.type === 'BUY' ? 'bg-blue-500/10 text-blue-400' : 'bg-orange-500/10 text-orange-400'}">${trade.type}</span>
