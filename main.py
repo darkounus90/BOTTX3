@@ -678,7 +678,7 @@ class TX3ProBot:
                                             self.logger.success(f"🤖🧠 ORÁCULO ORDENA CIERRE ANTICIPADO: Ticket #{p.ticket} | Razón: {decision.get('reason')}")
                                             self.position_manager.close_position(p.ticket)
                                             if hasattr(self.telegram, 'chat_id'):
-                                                self.telegram._send_message(self.telegram.chat_id, f"🤖🧠 *CIA (Salida Inteligente)*\nCierre Anticipado en {p.symbol} (+{pips_profit:.1f} pips)\nRazón: {decision.get('reason')}")
+                                                self.telegram._send(f"🤖🧠 *CIA (Salida Inteligente)*\nCierre Anticipado en {p.symbol} (+{pips_profit:.1f} pips)\nRazón: {decision.get('reason')}")
 
                 # ─── C. Verificar Riesgo (Emergencia) ──────────────
                 if hasattr(self.risk_manager, 'check_and_hedge_crashing_positions'):
