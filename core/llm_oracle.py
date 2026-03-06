@@ -85,8 +85,8 @@ class GeminiOracle:
             # 1. Armar la cascada de modelos inteligentes
             cands = []
             for m in available_models:
-                # Omitir incompatibles, versiones obsoletas, modelos beta y experimentales
-                if any(x in m.lower() for x in ["vision", "embedding", "text-bison", "tts", "robotics", "preview", "experimental", "customtools"]):
+                # Omitir incompatibles, versiones obsoletas, modelos beta, experimentales y lentos (PRO/ULTRA)
+                if any(x in m.lower() for x in ["vision", "embedding", "text-bison", "tts", "robotics", "preview", "experimental", "customtools", "pro", "ultra"]):
                     continue
                 # Evitamos poner a Gemma o Lite en la cima principal de la cascada
                 if "lite" in m or "gemma" in m:
@@ -94,10 +94,9 @@ class GeminiOracle:
                 cands.append(m)
             
             # Ordenar: Queremos que las versiones "3" vayan primero, luego "2.5", luego "flash-latest"
-            # Prioridad extrema para versiones Pro/Ultra
+            # Prioridad para modelos Flash rápidos
             def _sort_key(m_name):
                 base = 0
-                if "pro" in m_name or "ultra" in m_name: base += 1000
                 
                 if "3.1" in m_name: base += 310
                 elif "3.0" in m_name or "-3-" in m_name: base += 300
