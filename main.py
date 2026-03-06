@@ -705,7 +705,20 @@ class TX3ProBot:
                         
                     self.logger.critical(f"🚨 CIERRE DE EMERGENCIA ({dd_type})")
                     self.telegram.notify_drawdown_emergency(dd_type, loss, limit)
-                    self.risk_manager.emergency_close_all()
+                    closed = self.risk_manager.emergency_close_all()
+                    
+                    # Verificar que TODO se cerró correctamente
+                    remaining = self.position_manager.get_open_positions_count()
+                    if remaining > 0:
+                        self.telegram._send(
+                            f"🚨🚨 *ALERTA CRÍTICA* 🚨🚨\n"
+                            f"⚠️ Quedan *{remaining} posiciones abiertas* después del cierre de emergencia.\n"
+                            f"‼️ *CIERRA MANUALMENTE EN MT5 AHORA*"
+                        )
+                        self.logger.critical(f"🚨 QUEDAN {remaining} POSICIONES SIN CERRAR — INTERVENCIÓN MANUAL REQUERIDA")
+                    else:
+                        self.telegram._send(f"✅ Cierre de emergencia exitoso. {closed} posiciones cerradas. Bot detenido.")
+                    
                     self.running = False
                     break
 

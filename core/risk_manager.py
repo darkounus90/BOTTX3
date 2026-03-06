@@ -310,6 +310,7 @@ class RiskManager:
     def emergency_close_all(self) -> int:
         """
         Cierra TODAS las posiciones abiertas de emergencia.
+        BLINDADO: Reintenta hasta 3 veces con slippage creciente.
         Returns: número de posiciones cerradas.
         """
         self.logger.critical("🚨🚨🚨 CIERRE DE EMERGENCIA ACTIVADO 🚨🚨🚨")
@@ -319,47 +320,72 @@ class RiskManager:
             self.logger.info("No hay posiciones abiertas para cerrar")
             return 0
 
+        bot_positions = [p for p in positions if p.magic == BotConfig.MAGIC_NUMBER]
+        if not bot_positions:
+            self.logger.info("No hay posiciones del bot para cerrar")
+            return 0
+
         closed_count = 0
-        for pos in positions:
-            # Solo cerrar posiciones del bot
-            if pos.magic != BotConfig.MAGIC_NUMBER:
-                continue
+        failed_tickets = []
 
-            # Determinar tipo de cierre
-            if pos.type == mt5.ORDER_TYPE_BUY:
-                close_type = mt5.ORDER_TYPE_SELL
-                price = mt5.symbol_info_tick(pos.symbol).bid
-            else:
-                close_type = mt5.ORDER_TYPE_BUY
-                price = mt5.symbol_info_tick(pos.symbol).ask
+        for pos in bot_positions:
+            closed = False
+            # 3 intentos con desviación creciente (20, 50, 100 puntos)
+            for attempt, deviation in enumerate([20, 50, 100], 1):
+                try:
+                    tick = mt5.symbol_info_tick(pos.symbol)
+                    if not tick:
+                        continue
 
-            request = {
-                "action": mt5.TRADE_ACTION_DEAL,
-                "symbol": pos.symbol,
-                "volume": pos.volume,
-                "type": close_type,
-                "position": pos.ticket,
-                "price": price,
-                "deviation": BotConfig.DEVIATION,
-                "magic": BotConfig.MAGIC_NUMBER,
-                "comment": "EMERGENCY_CLOSE",
-                "type_time": mt5.ORDER_TIME_GTC,
-                "type_filling": mt5.ORDER_FILLING_IOC,
-            }
+                    if pos.type == mt5.ORDER_TYPE_BUY:
+                        close_type = mt5.ORDER_TYPE_SELL
+                        price = tick.bid
+                    else:
+                        close_type = mt5.ORDER_TYPE_BUY
+                        price = tick.ask
 
-            result = mt5.order_send(request)
-            if result is not None and result.retcode == mt5.TRADE_RETCODE_DONE:
-                self.logger.success(
-                    f"Posición {pos.ticket} ({pos.symbol}) cerrada de emergencia"
-                )
-                closed_count += 1
-            else:
-                error_msg = result.comment if result else "Unknown error"
-                self.logger.error(
-                    f"Error cerrando posición {pos.ticket}: {error_msg}"
-                )
+                    request = {
+                        "action": mt5.TRADE_ACTION_DEAL,
+                        "symbol": pos.symbol,
+                        "volume": pos.volume,
+                        "type": close_type,
+                        "position": pos.ticket,
+                        "price": price,
+                        "deviation": deviation,
+                        "magic": BotConfig.MAGIC_NUMBER,
+                        "comment": "EMERGENCY_CLOSE",
+                        "type_time": mt5.ORDER_TIME_GTC,
+                        "type_filling": mt5.ORDER_FILLING_IOC,
+                    }
 
-        self.logger.critical(f"Cerradas {closed_count}/{len(positions)} posiciones")
+                    result = mt5.order_send(request)
+                    if result is not None and result.retcode == mt5.TRADE_RETCODE_DONE:
+                        self.logger.success(
+                            f"✅ Posición {pos.ticket} ({pos.symbol}) cerrada de emergencia"
+                        )
+                        closed_count += 1
+                        closed = True
+                        break
+                    else:
+                        error_msg = result.comment if result else "Unknown"
+                        self.logger.warning(
+                            f"⚠️ Intento {attempt}/3 fallido para {pos.ticket}: {error_msg} (dev={deviation})"
+                        )
+                        import time as _time
+                        _time.sleep(0.5)  # Esperar medio segundo antes de reintentar
+
+                except Exception as e:
+                    self.logger.error(f"Error en intento {attempt}/3 para {pos.ticket}: {e}")
+
+            if not closed:
+                failed_tickets.append(pos.ticket)
+                self.logger.critical(f"❌ NO SE PUDO CERRAR posición {pos.ticket} después de 3 intentos")
+
+        self.logger.critical(f"Cerradas {closed_count}/{len(bot_positions)} posiciones")
+
+        if failed_tickets:
+            self.logger.critical(f"🚨 TICKETS SIN CERRAR: {failed_tickets} — REQUIERE INTERVENCIÓN MANUAL")
+
         return closed_count
 
     # ─── Reset Diario ─────────────────────────────────────────────────
