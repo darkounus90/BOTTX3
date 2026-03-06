@@ -85,8 +85,8 @@ class GeminiOracle:
             # 1. Armar la cascada de modelos inteligentes
             cands = []
             for m in available_models:
-                # Omitir incompatibles, versiones obsoletas y modelos de voz/pro
-                if any(x in m for x in ["vision", "embedding", "text-bison", "tts", "robotics"]):
+                # Omitir incompatibles, versiones obsoletas, modelos beta y experimentales
+                if any(x in m.lower() for x in ["vision", "embedding", "text-bison", "tts", "robotics", "preview", "experimental", "customtools"]):
                     continue
                 # Evitamos poner a Gemma o Lite en la cima principal de la cascada
                 if "lite" in m or "gemma" in m:
