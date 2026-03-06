@@ -801,19 +801,38 @@
                 const badge = document.getElementById('session-badge');
                 if (data.session_info.session === 'OVERLAP') {
                     badge.textContent = '🔥 OVERLAP (LON/NY)';
-                    badge.className = 'text-[0.65rem] px-2 py-0.5 rounded-md font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30 shadow-[0_0_10px_rgba(249,115,22,0.2)]';
+                    badge.className = 'text-[0.65rem] px-2 py-0.5 rounded-md font-bold bg-orange-500/30 text-orange-400 border border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.4)] transition-all';
                 } else if (data.session_info.session === 'ACTIVE') {
                     badge.textContent = 'MERCADO ABIERTO';
-                    badge.className = 'text-[0.65rem] px-2 py-0.5 rounded-md font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                    badge.className = 'text-[0.65rem] px-2 py-0.5 rounded-md font-bold bg-emerald-500/30 text-emerald-400 border border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)] transition-all';
                 } else {
                     badge.textContent = 'MERCADO CERRADO';
                     badge.className = 'text-[0.65rem] px-2 py-0.5 rounded-md font-bold bg-gray-500/20 text-gray-400 border border-gray-500/30';
                 }
 
-                document.getElementById('sess-ny').className = data.session_info.in_ny ? "flex flex-col items-center justify-center bg-blue-500/10 border border-blue-500/30 rounded-lg py-2 px-1 flex-1 transition-all shadow-inner" : "flex flex-col items-center justify-center bg-gray-900/40 border border-gray-800 rounded-lg py-2 px-1 flex-1 opacity-50 grayscale transition-all";
-                document.getElementById('sess-lon').className = data.session_info.in_london ? "flex flex-col items-center justify-center bg-orange-500/10 border border-orange-500/30 rounded-lg py-2 px-1 flex-1 transition-all shadow-inner" : "flex flex-col items-center justify-center bg-gray-900/40 border border-gray-800 rounded-lg py-2 px-1 flex-1 opacity-50 grayscale transition-all";
-                document.getElementById('sess-tok').className = data.session_info.in_tokyo ? "flex flex-col items-center justify-center bg-red-500/10 border border-red-500/30 rounded-lg py-2 px-1 flex-1 transition-all shadow-inner" : "flex flex-col items-center justify-center bg-gray-900/40 border border-gray-800 rounded-lg py-2 px-1 flex-1 opacity-50 grayscale transition-all";
-                document.getElementById('sess-syd').className = data.session_info.in_sydney ? "flex flex-col items-center justify-center bg-emerald-500/10 border border-emerald-500/30 rounded-lg py-2 px-1 flex-1 transition-all shadow-inner" : "flex flex-col items-center justify-center bg-gray-900/40 border border-gray-800 rounded-lg py-2 px-1 flex-1 opacity-50 grayscale transition-all";
+                // Actualizar Reloj del Sistema
+                if (data.session_info.time) {
+                    const timeEl = document.getElementById('last-update-time');
+                    if (timeEl) timeEl.innerHTML = `SYSTIME: <span class="text-white font-bold font-mono">${data.session_info.time}</span> <span class="text-[0.6rem] opacity-60">ET</span>`;
+                }
+
+                // Helper para clases de sesiones reales
+                const setSessClass = (id, isActive, colorClass, shadowColor) => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    if (isActive) {
+                        el.className = `flex flex-col items-center justify-center bg-${colorClass}-500/20 border border-${colorClass}-500/60 rounded-lg py-2 px-1 flex-1 transition-all shadow-[0_0_15px_${shadowColor}] scale-[1.02] z-10`;
+                        el.querySelectorAll('div')[0].className = `w-2 h-2 rounded-full bg-${colorClass}-500 mb-1 shadow-[0_0_10px_${shadowColor}] animate-pulse`;
+                    } else {
+                        el.className = "flex flex-col items-center justify-center bg-gray-900/40 border border-gray-800 rounded-lg py-2 px-1 flex-1 opacity-30 grayscale transition-all";
+                        el.querySelectorAll('div')[0].className = "w-2 h-2 rounded-full bg-gray-600 mb-1";
+                    }
+                };
+
+                setSessClass('sess-ny', data.session_info.in_ny, 'blue', 'rgba(59,130,246,0.6)');
+                setSessClass('sess-lon', data.session_info.in_london, 'orange', 'rgba(249,115,22,0.6)');
+                setSessClass('sess-tok', data.session_info.in_tokyo, 'red', 'rgba(239,68,68,0.6)');
+                setSessClass('sess-syd', data.session_info.in_sydney, 'emerald', 'rgba(16,185,129,0.6)');
             }
 
             // NLP News Radar Parsing
