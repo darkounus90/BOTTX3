@@ -661,7 +661,8 @@
                     <table class="w-full text-sm text-left align-middle">
                         <thead class="text-xs text-gray-500 font-mono tracking-wider border-b border-gray-800/50">
                             <tr>
-                                <th class="px-4 py-3 font-medium">HORA</th>
+                                <th class="px-4 py-3 font-medium">TICKET</th>
+                                <th class="px-4 py-3 font-medium">HORA (ET)</th>
                                 <th class="px-4 py-3 font-medium">ACTIVO</th>
                                 <th class="px-4 py-3 font-medium">INFO</th>
                                 <th class="px-4 py-3 font-medium">LOTES</th>
@@ -671,7 +672,7 @@
                         </thead>
                         <tbody id="history-table" class="font-mono text-xs">
                             <tr>
-                                <td colspan="6" class="text-center py-8 text-gray-600 italic">Historial vacío...
+                                <td colspan="7" class="text-center py-8 text-gray-600 italic">Historial vacío...
                                 </td>
                             </tr>
                         </tbody>
@@ -1058,8 +1059,21 @@
                         const isProfitable = trade.profit >= 0;
                         const timeOnly = trade.timestamp.includes(' ') ? trade.timestamp.split(' ')[1] : trade.timestamp;
 
+                        // Extraer ticket legible del trade_id o comment
+                        let ticketDisplay = '';
+                        if (trade.trade_id) {
+                            if (trade.trade_id.startsWith('SYNC-')) {
+                                ticketDisplay = '#' + trade.trade_id.replace('SYNC-', '');
+                            } else {
+                                ticketDisplay = trade.trade_id;
+                            }
+                        }
+                        // Si hay comment con Deal #, usarlo como tooltip
+                        let ticketTooltip = trade.comment || '';
+
                         row.className = 'border-b border-gray-800/20 hover:bg-gray-800/20 transition-colors';
                         row.innerHTML = `
+                            <td class="px-4 py-2"><span class="text-xs text-gray-500 bg-gray-800/80 px-2 py-0.5 rounded border border-gray-700" title="${ticketTooltip}">${ticketDisplay}</span></td>
                             <td class="px-4 py-2 text-gray-500 text-[0.65rem]">${timeOnly}</td>
                             <td class="px-4 py-2 font-bold text-gray-300">${trade.symbol}</td>
                             <td class="px-4 py-2">

@@ -9,8 +9,12 @@ import csv
 import json
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from config.settings import BotConfig
 from utils.logger import BotLogger
+
+# Zona horaria estándar para TODOS los timestamps del bot
+_ET = ZoneInfo("America/New_York")
 
 
 class TradeJournal:
@@ -108,7 +112,7 @@ class TradeJournal:
             trade_id para referencia futura
         """
         trade_id = self._next_trade_id()
-        now = datetime.now()
+        now = datetime.now(_ET)
 
         row = {
             "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
@@ -160,7 +164,7 @@ class TradeJournal:
         close_reason: str = "",
     ):
         """Registra el cierre de un trade"""
-        now = datetime.now()
+        now = datetime.now(_ET)
 
         row = {
             "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
@@ -219,8 +223,8 @@ class TradeJournal:
             self.logger.error(f"Error escribiendo JSON detallado: {e}")
 
     def get_today_stats(self) -> dict:
-        """Obtiene las estadísticas del día"""
-        today = datetime.now().strftime("%Y-%m-%d")
+        """Obtiene las estadísticas del día (hora ET)"""
+        today = datetime.now(_ET).strftime("%Y-%m-%d")
         trades = []
         wins = 0
         losses = 0
@@ -344,6 +348,7 @@ class TradeJournal:
                                 
                             # Si es la primera vez que lo vemos (el más reciente), lo guardamos
                             trade = {
+                                "trade_id": row.get("trade_id", ""),
                                 "timestamp": row.get("timestamp", ""),
                                 "symbol": row.get("symbol", ""),
                                 "type": row.get("type", ""),
@@ -352,7 +357,8 @@ class TradeJournal:
                                 "profit_pips": float(row.get("profit_pips") or 0.0),
                                 "duration": row.get("duration", ""),
                                 "strategy": row.get("strategy", ""),
-                                "reason": row.get("reason", "")
+                                "reason": row.get("reason", ""),
+                                "comment": row.get("comment", "")
                             }
                             pid_map[pid] = trade
                             trades.append(trade)
@@ -409,7 +415,8 @@ class TradeJournal:
             if deal.entry not in [1, 2, 3]: 
                 continue
                 
-            dt = datetime.fromtimestamp(deal.time)
+            # Convertir timestamp del broker a hora ET para consistencia
+            dt = datetime.fromtimestamp(deal.time, tz=_ET)
             ts = dt.strftime("%Y-%m-%d %H:%M:%S")
             profit = round(float(deal.profit), 2)
             symbol = deal.symbol
