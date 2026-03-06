@@ -563,6 +563,12 @@ class TX3ProBot:
         except Exception as e:
             self.logger.warning(f"No se pudo sincronizar historial inicial: {e}")
 
+        # 📅 RECALCULAR DÍAS RENTABLES del historial real de MT5
+        try:
+            self.phase_tracker.recalculate_profitable_days_from_mt5()
+        except Exception as e:
+            self.logger.warning(f"No se pudieron recalcular días rentables: {e}")
+
         self.telegram.notify_bot_started(
             phase=self.phase,
             dry_run=self.dry_run,

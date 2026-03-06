@@ -43,6 +43,67 @@ class PhaseTracker:
             f"Target: ${self.profit_target:,.0f} ({self.profit_target_pct}%)"
         )
 
+    def recalculate_profitable_days_from_mt5(self):
+        """
+        Recalcula los días rentables directamente del historial real de MT5.
+        Esto garantiza que el conteo sea correcto incluso si el bot se reinicia
+        o el archivo de estado se pierde.
+        """
+        from datetime import datetime, timedelta
+        from zoneinfo import ZoneInfo
+        from collections import defaultdict
+
+        _ET = ZoneInfo("America/New_York")
+
+        try:
+            # Obtener historial completo (últimos 60 días cubre cualquier challenge)
+            now = datetime.now(_ET)
+            start = now - timedelta(days=60)
+            deals = mt5.history_deals_get(start, now + timedelta(hours=1))
+
+            if not deals:
+                self.logger.warning("📅 Sin historial de MT5 para calcular días rentables")
+                return
+
+            # Agrupar profit por día calendario (en ET)
+            daily_map = defaultdict(float)
+            for deal in deals:
+                if deal.entry not in [1, 2, 3]:  # Solo salidas (OUT)
+                    continue
+                dt = datetime.fromtimestamp(deal.time, tz=_ET)
+                day_key = dt.strftime("%Y-%m-%d")
+                daily_map[day_key] += deal.profit
+
+            # Contar días rentables (>= $250 mínimo)
+            profitable = 0
+            recalc_daily_profits = []
+            for day_key in sorted(daily_map.keys()):
+                day_profit = round(daily_map[day_key], 2)
+                recalc_daily_profits.append(day_profit)
+                if day_profit >= self.min_profit_per_day:
+                    profitable += 1
+
+            # Solo actualizar si el recálculo da un valor mayor (nunca reducir)
+            if profitable > self.profitable_days:
+                old = self.profitable_days
+                self.profitable_days = profitable
+                self.daily_profits = recalc_daily_profits
+                self.total_trading_days = len(recalc_daily_profits)
+                self.logger.success(
+                    f"📅 Días rentables recalculados de MT5: {old} → {profitable} "
+                    f"(de {len(daily_map)} días con operaciones)"
+                )
+            elif profitable == self.profitable_days and profitable > 0:
+                self.logger.info(f"📅 Días rentables confirmados: {profitable}")
+            else:
+                self.logger.info(
+                    f"📅 Recálculo MT5: {profitable} días rentables "
+                    f"(estado guardado: {self.profitable_days})"
+                )
+
+        except Exception as e:
+            self.logger.error(f"Error recalculando días rentables: {e}")
+
     def get_current_profit(self) -> float:
         """Obtiene el profit actual (incluye flotante) desde el balance inicial"""
         account_info = mt5.account_info()
