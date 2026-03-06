@@ -6,7 +6,8 @@ Se ejecuta en un thread separado desde main.py.
 """
 
 import threading
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request, session, redirect, url_for, flash
+from functools import wraps
 from flask_socketio import SocketIO
 from config.settings import DashboardConfig
 from utils.logger import BotLogger
@@ -44,6 +45,15 @@ else:
 app.config["SECRET_KEY"] = DashboardConfig.SECRET_KEY
 socketio = SocketIO(app, cors_allowed_origins="*")
 logger = None
+
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get("logged_in"):
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated_function
 
 
 @socketio.on("connect")
@@ -92,12 +102,33 @@ def add_dashboard_log(message: str, level: str = "INFO"):
     socketio.emit("log", log_entry)
 
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        user = request.form.get("username")
+        password = request.form.get("password")
+        if user == DashboardConfig.USERNAME and password == DashboardConfig.PASSWORD:
+            session["logged_in"] = True
+            return redirect(url_for("index"))
+        else:
+            flash("Credenciales incorrectas", "error")
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout():
+    session.pop("logged_in", None)
+    return redirect(url_for("login"))
+
+
 @app.route("/")
+@login_required
 def index():
     return render_template("index.html")
 
 
 @app.route("/api/status")
+@login_required
 def get_status():
     return jsonify(dashboard_data)
 
