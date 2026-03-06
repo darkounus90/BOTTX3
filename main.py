@@ -725,10 +725,26 @@ class TX3ProBot:
                 # ─── C.1 Cierre Obligatorio de Fin de Semana ───────
                 if self.session_filter.is_friday_forced_close_time():
                     # Evitar ejecutar cierre 2 veces si ya cerró
-                    if self.position_manager.get_open_positions_count() > 0:
-                        self.logger.critical("⏱️ CIERRE DE VIERNES (Evitando Weekend Hold)")
-                        self.telegram.notify_error("⏱️ CIERRE OBLIGATORIO DE VIERNES EJECUTADO")
-                        self.risk_manager.emergency_close_all() # Reutilizamos la función de emergencia para cerrar todo
+                    open_count = self.position_manager.get_open_positions_count()
+                    if open_count > 0:
+                        self.logger.critical("⏱️ CIERRE DE VIERNES (Evitando Weekend Gap)")
+                        self.telegram._send(
+                            f"⏱️ *CIERRE OBLIGATORIO DE VIERNES*\n"
+                            f"Cerrando {open_count} posiciones para evitar gap de fin de semana..."
+                        )
+                        closed = self.risk_manager.emergency_close_all()
+                        
+                        # Verificar que todo se cerró
+                        remaining = self.position_manager.get_open_positions_count()
+                        if remaining > 0:
+                            self.telegram._send(
+                                f"🚨🚨 *PELIGRO FIN DE SEMANA* 🚨🚨\n"
+                                f"⚠️ Quedan *{remaining} posiciones abiertas*\n"
+                                f"‼️ *CIERRA MANUALMENTE EN MT5 ANTES DEL CIERRE DEL MERCADO*"
+                            )
+                            self.logger.critical(f"🚨 QUEDAN {remaining} POSICIONES ABIERTAS ENTRANDO AL FIN DE SEMANA")
+                        else:
+                            self.telegram._send(f"✅ Viernes: {closed} posiciones cerradas. Sin riesgo de gap.")
                     
                     # No operamos por el resto del día de todos modos
                     sleep_module.sleep(BotConfig.LOOP_INTERVAL_SECONDS)
