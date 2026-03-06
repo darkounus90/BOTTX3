@@ -107,12 +107,12 @@ class GeminiOracle:
                 return base
                 
             cands.sort(key=_sort_key, reverse=True)
-            self.cascade_models = cands[:4] # Top 4 mejores de IA pesada
+            self.cascade_models = cands # Usar TODOS los modelos principales disponibles en lugar de solo 4
 
             # Anexamos todos los Lite disponibles como Fallback Intermedio (Ej: 3.1-lite, 2.5-lite)
             lite_cands = [m for m in available_models if "lite" in m and "tts" not in m]
             lite_cands.sort(reverse=True)
-            for lc in lite_cands[:3]: # Añadir hasta 3 lites a la cascada
+            for lc in lite_cands: # Añadir absolutamente todos los lites a la cascada
                 if lc not in self.cascade_models:
                     self.cascade_models.append(lc)
 
@@ -224,13 +224,16 @@ class GeminiOracle:
                         self.api_key = self.api_keys[self.current_key_idx]
                         genai.configure(api_key=self.api_key)
                         
-                    # Si ya dio la vuelta a todas las claves (attempt == 1 y/o no hay más)
-                    if "retry in" in err_str or attempt >= 1:
-                        # Marcar el modelo como Agotado para no volver a intentar hoy
-                        if model_name in self.buckets:
-                            self.buckets[model_name]["rpd_count"] = self.buckets[model_name]["rpd_limit"] 
-                        self.logger.warning(f"⏩ Quota completamente agotada en {model.model_name}. Saltando de modelo...")
+                    if "retry in" in err_str and len(self.api_keys) <= 1:
+                        # Error de RPM largo y no hay otra clave, saltamos directamente de modelo
+                        self.logger.warning(f"⏩ Quota excedida en {model.model_name}. Saltando de modelo...")
                         break
+                    
+                    if attempt >= 1:
+                         # Si ya intentamos con las claves disponibles esta vez, salimos para probar otro modelo
+                         self.logger.warning(f"⏩ {model.model_name} saturado. Saltando de modelo temporalmente...")
+                         break
+                         
                     time.sleep(3 * (attempt + 1))
                     continue
                 self.logger.error(f"AI Error en {model.model_name}: {e}")
