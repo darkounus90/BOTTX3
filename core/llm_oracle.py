@@ -97,9 +97,7 @@ class GeminiOracle:
             # Prioridad extrema para versiones Pro/Ultra
             def _sort_key(m_name):
                 base = 0
-                # Prioridad Máxima: Modelos Flash (Robusta Cuota de 1500 RPD)
-                if "flash" in m_name: base += 2000
-                elif "pro" in m_name: base += 1000
+                if "pro" in m_name or "ultra" in m_name: base += 1000
                 
                 if "3.1" in m_name: base += 310
                 elif "3.0" in m_name or "-3-" in m_name: base += 300
@@ -226,9 +224,12 @@ class GeminiOracle:
                         self.api_key = self.api_keys[self.current_key_idx]
                         genai.configure(api_key=self.api_key)
                         
-                    if "retry in" in err_str and len(self.api_keys) <= 1:
-                        # Error de RPM largo y no hay otra clave, saltamos directamente de modelo
-                        self.logger.warning(f"⏩ Quota excedida en {model.model_name}. Saltando de modelo...")
+                    # Si ya dio la vuelta a todas las claves (attempt == 1 y/o no hay más)
+                    if "retry in" in err_str or attempt >= 1:
+                        # Marcar el modelo como Agotado para no volver a intentar hoy
+                        if model_name in self.buckets:
+                            self.buckets[model_name]["rpd_count"] = self.buckets[model_name]["rpd_limit"] 
+                        self.logger.warning(f"⏩ Quota completamente agotada en {model.model_name}. Saltando de modelo...")
                         break
                     time.sleep(3 * (attempt + 1))
                     continue
