@@ -350,12 +350,36 @@ class TX3ProBot:
         """Ciclo de vida del Dr. Quant: Revisa la telemetría periódicamente y alerta preventivamente."""
         import time
         from datetime import datetime, timedelta
+        from zoneinfo import ZoneInfo
+        
+        _ET = ZoneInfo("America/New_York")
         
         # Esperar 5 minutos al iniciar antes de hacer el primer chequeo
         time.sleep(300)
         
         while self.running:
             try:
+                now_et = datetime.now(_ET)
+                weekday = now_et.weekday()  # 0=Lun, 4=Vie, 5=Sáb, 6=Dom
+                
+                # ─── SKIP FIN DE SEMANA ─────────────────────────
+                # No alertar: Viernes después de 5 PM, Sábado, Domingo,
+                # ni Lunes antes de 10 AM (el mercado aún no tiene actividad real)
+                is_market_closed = False
+                if weekday == 4 and now_et.hour >= 17:  # Viernes >= 5 PM
+                    is_market_closed = True
+                elif weekday in (5, 6):  # Sábado o Domingo
+                    is_market_closed = True
+                elif weekday == 0 and now_et.hour < 10:  # Lunes antes de 10 AM
+                    is_market_closed = True
+                
+                if is_market_closed:
+                    # Dormir y saltar — no tiene sentido alertar con mercado cerrado
+                    for _ in range(21600):
+                        if not self.running: break
+                        time.sleep(1)
+                    continue
+                
                 # Recopilar métricas
                 uptime_str = "Desconocido"
                 if hasattr(self.telegram_commands, "_start_time"):
@@ -385,9 +409,11 @@ class TX3ProBot:
                 is_emergency = False
                 trigger_reason = ""
                 
-                if hours_diff > 24:
+                # Solo alertar inactividad si llevamos >48h sin trades en día hábil
+                # (24h era demasiado sensible, saltaba cada fin de semana)
+                if hours_diff > 48:
                     is_emergency = True
-                    trigger_reason = "⚠️ Inactividad Prolongada (>24h sin trades)"
+                    trigger_reason = "⚠️ Inactividad Prolongada (>48h sin trades en día hábil)"
                 elif overall_dd > (ChallengeConfig.MAX_OVERALL_DRAWDOWN * 0.5):
                     is_emergency = True
                     trigger_reason = "📉 Drawdown Crítico Acumulado"
