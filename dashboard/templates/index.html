@@ -277,6 +277,13 @@
             </div>
         </div>
 
+        <!-- Spread Monitor Row -->
+        <div id="spread-monitor" class="flex flex-wrap gap-3 text-xs font-mono mb-4">
+            <span class="text-gray-600 self-center mr-1">📊 SPREADS:</span>
+            <div id="spread-items" class="flex flex-wrap gap-2"></div>
+            <span id="spread-max" class="text-gray-700 self-center ml-auto">Máx: --</span>
+        </div>
+
         <!-- KPI Dashboard Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 
@@ -980,6 +987,31 @@
             if (data.sys_oracle !== undefined) updateHealth('health-oracle', data.sys_oracle);
             if (data.sys_news !== undefined) updateHealth('health-nlp', data.sys_news);
             if (data.simulate_50k !== undefined) updateHealth('health-sim50k', data.simulate_50k, true);
+
+            // Update Spread Monitor
+            if (data.spreads) {
+                const spreadContainer = document.getElementById('spread-items');
+                const spreadMax = document.getElementById('spread-max');
+                if (spreadContainer) {
+                    spreadContainer.innerHTML = '';
+                    for (const [sym, info] of Object.entries(data.spreads)) {
+                        const shortSym = sym.replace('USD', '').replace('EUR', 'EU').replace('GBP', 'GB').replace('JPY', 'JP');
+                        const isOk = info.ok;
+                        const isBorderline = info.spread >= (data.max_spread * 0.8) && info.spread <= data.max_spread;
+                        let colorClass = isOk
+                            ? (isBorderline ? 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30')
+                            : 'bg-rose-500/15 text-rose-400 border-rose-500/30';
+                        const dot = isOk ? '🟢' : '🔴';
+                        const el = document.createElement('span');
+                        el.className = `px-2.5 py-1 rounded-md border ${colorClass} transition-all`;
+                        el.innerHTML = `${dot} ${sym} <b>${info.spread}p</b>`;
+                        spreadContainer.appendChild(el);
+                    }
+                }
+                if (spreadMax) {
+                    spreadMax.textContent = `Máx: ${data.max_spread}p`;
+                }
+            }
 
             // Update Equity Chart
             if (equityChart && data.equity_history && data.equity_history.length > 0) {

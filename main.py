@@ -287,6 +287,42 @@ class TX3ProBot:
             "recent_trades": self.journal.get_recent_trades(limit=15),
             "last_update": datetime.now(ZoneInfo("America/New_York")).strftime("%H:%M:%S")
         }
+        
+        # ─── Spreads en Tiempo Real ─────────────────────────
+        spreads_data = {}
+        for sym in BotConfig.WATCHLIST:
+            try:
+                si = mt5.symbol_info(sym)
+                if si:
+                    sp = si.spread * (10 if si.digits == 3 or si.digits == 5 else 1) / 10.0
+                    spreads_data[sym] = {
+                        "spread": round(sp, 1),
+                        "ok": sp <= BotConfig.MAX_SPREAD_PIPS
+                    }
+            except Exception:
+                pass
+        data["spreads"] = spreads_data
+        data["max_spread"] = BotConfig.MAX_SPREAD_PIPS
+        
+        # ─── Log de Resumen al Dashboard (cada 60s) ────────
+        if not hasattr(self, '_last_dash_summary') or (datetime.now() - self._last_dash_summary).total_seconds() >= 60:
+            self._last_dash_summary = datetime.now()
+            session_info = self.session_filter.get_session_info() if hasattr(self, 'session_filter') else {}
+            session_name = session_info.get('name', 'Desconocida')
+            open_pos = self.position_manager.get_open_positions_count()
+            
+            spread_parts = []
+            for sym, sd in spreads_data.items():
+                icon = "✅" if sd["ok"] else "❌"
+                spread_parts.append(f"{sym}: {sd['spread']}p {icon}")
+            spread_str = " | ".join(spread_parts)
+            
+            add_dashboard_log(
+                f"📡 Sesión: {session_name} | Spreads: {spread_str} | "
+                f"Posiciones: {open_pos}/{BotConfig.MAX_OPEN_POSITIONS} | "
+                f"Trades hoy: {total_trades_display}"
+            )
+        
         update_dashboard_data(data)
 
     def _check_daily_reset(self):
