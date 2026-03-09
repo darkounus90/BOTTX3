@@ -445,11 +445,20 @@ class TX3ProBot:
                 is_emergency = False
                 trigger_reason = ""
                 
-                # Solo alertar inactividad si llevamos >48h sin trades en día hábil
-                # (24h era demasiado sensible, saltaba cada fin de semana)
-                if hours_diff > 48:
-                    is_emergency = True
-                    trigger_reason = "⚠️ Inactividad Prolongada (>48h sin trades en día hábil)"
+                # Inactividad: Solo alertar si hay historial de trades previos
+                # (no alertar en cuentas nuevas sin trades) y descontar fines de semana
+                if hours_diff > 48 and hours_since_last != "Desconocido":
+                    # Descontar horas de fin de semana (~48h por cada weekend)
+                    weekends_in_period = hours_diff // 168  # semanas completas
+                    weekend_hours = weekends_in_period * 48
+                    # Si estamos cerca de un lunes, el gap incluye el último fin de semana
+                    if now_et.weekday() <= 1:  # Lunes o Martes
+                        weekend_hours += 48
+                    trading_hours = hours_diff - weekend_hours
+                    
+                    if trading_hours > 48:
+                        is_emergency = True
+                        trigger_reason = f"⚠️ Inactividad Prolongada ({trading_hours:.0f}h hábiles sin trades)"
                 elif overall_dd > (ChallengeConfig.MAX_OVERALL_DRAWDOWN * 0.5):
                     is_emergency = True
                     trigger_reason = "📉 Drawdown Crítico Acumulado"
