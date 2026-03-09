@@ -424,17 +424,22 @@ class TX3ProBot:
                     minutes, _ = divmod(remainder, 60)
                     uptime_str = f"{hours}h {minutes}m"
                     
-                hours_since_last = "Desconocido"
+                hours_since_last = "Sin trades del bot"
                 hours_diff = 0
+                bot_has_traded = False
                 try:
                     import MetaTrader5 as mt5
                     now = datetime.now()
-                    back = now - timedelta(days=7)
+                    back = now - timedelta(days=30)
                     deals = mt5.history_deals_get(back, now)
                     if deals and len(deals) > 0:
-                        last_deal_time = datetime.fromtimestamp(deals[-1].time)
-                        hours_diff = (now - last_deal_time).total_seconds() / 3600
-                        hours_since_last = f"{hours_diff:.1f}"
+                        # Solo contar trades del BOT (filtrar por MAGIC_NUMBER)
+                        bot_deals = [d for d in deals if d.magic == BotConfig.MAGIC_NUMBER]
+                        if bot_deals:
+                            bot_has_traded = True
+                            last_deal_time = datetime.fromtimestamp(bot_deals[-1].time)
+                            hours_diff = (now - last_deal_time).total_seconds() / 3600
+                            hours_since_last = f"{hours_diff:.1f}h"
                 except Exception:
                     pass
                     
@@ -445,20 +450,19 @@ class TX3ProBot:
                 is_emergency = False
                 trigger_reason = ""
                 
-                # Inactividad: Solo alertar si hay historial de trades previos
-                # (no alertar en cuentas nuevas sin trades) y descontar fines de semana
-                if hours_diff > 48 and hours_since_last != "Desconocido":
+                # Inactividad: Solo alertar si el BOT ha operado antes
+                # (no alertar si el bot nunca ha hecho un trade — es cuenta nueva)
+                if bot_has_traded and hours_diff > 48:
                     # Descontar horas de fin de semana (~48h por cada weekend)
-                    weekends_in_period = hours_diff // 168  # semanas completas
+                    weekends_in_period = hours_diff // 168
                     weekend_hours = weekends_in_period * 48
-                    # Si estamos cerca de un lunes, el gap incluye el último fin de semana
-                    if now_et.weekday() <= 1:  # Lunes o Martes
+                    if now_et.weekday() <= 1:
                         weekend_hours += 48
                     trading_hours = hours_diff - weekend_hours
                     
                     if trading_hours > 48:
                         is_emergency = True
-                        trigger_reason = f"⚠️ Inactividad Prolongada ({trading_hours:.0f}h hábiles sin trades)"
+                        trigger_reason = f"⚠️ Inactividad Prolongada ({trading_hours:.0f}h hábiles sin trades del bot)"
                 elif overall_dd > (ChallengeConfig.MAX_OVERALL_DRAWDOWN * 0.5):
                     is_emergency = True
                     trigger_reason = "📉 Drawdown Crítico Acumulado"
