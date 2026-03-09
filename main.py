@@ -308,7 +308,7 @@ class TX3ProBot:
         if not hasattr(self, '_last_dash_summary') or (datetime.now() - self._last_dash_summary).total_seconds() >= 60:
             self._last_dash_summary = datetime.now()
             session_info = self.session_filter.get_session_info() if hasattr(self, 'session_filter') else {}
-            session_name = session_info.get('name', 'Desconocida')
+            session_name = session_info.get('session', 'Desconocida')
             open_pos = self.position_manager.get_open_positions_count()
             
             spread_parts = []
