@@ -89,10 +89,8 @@ class SessionFilter:
         current_time = now.time()
         current_day = now.weekday()  # 0=Monday, 6=Sunday
 
-        # Verificar día de la semana
-        # Domingo después de 5 PM EST = mercado abierto (sesión asiática)
-        is_sunday_open = (current_day == 6 and now.hour >= 17)
-        if current_day not in self.trading_days and not is_sunday_open:
+        # Verificar día de la semana (solo Lunes a Viernes)
+        if current_day not in self.trading_days:
             return self.CLOSED
 
         # Verificar overlap (el mejor momento)
