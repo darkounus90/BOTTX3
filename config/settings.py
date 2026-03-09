@@ -73,7 +73,7 @@ class BotConfig:
 
     # ─── STRATEGY ─────────────────────────────────────────────────────
     ORACLE_ENABLED = True                # Habilita o deshabilita la conciencia del CIO Gemini
-    SIMULATE_50K_CHALLENGE = True        # Fuerza límites de DD y loteajes asumiendo cuenta de 50k
+    SIMULATE_50K_CHALLENGE = False       # Ya es cuenta real de $50K — no necesita simulación
     
     # ─── NEXT-GEN INSTITUTIONAL ARMORY ─────────────────────────────────
     SMC_ENABLED = True                   # Detector de Liquidez (Ahora actúa como 'Asesor Visual', no bloquea trades)
