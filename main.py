@@ -1031,6 +1031,28 @@ class TX3ProBot:
         self.connector.disconnect()
         self.logger.info("Bot apagado correctamente. Bye! 👋")
 
+    def _run_watchdog_loop(self):
+        """
+        Hilo secundario que vigila si el loop principal está 'vivo'.
+        Si el loop principal se congela por más de 30 min, envía alerta.
+        """
+        self.logger.info("🛡️ Watchdog System activo (Vigilancia 24/7)")
+        while self.running:
+            sleep_module.sleep(300) # Chequear cada 5 min
+            
+            inactivity_seconds = sleep_module.time() - self._last_loop_timestamp
+            
+            # Si han pasado más de 30 min sin actividad en el loop
+            if inactivity_seconds > 1800:
+                if not self._watchdog_notified:
+                    msg = "🚨 ALERTA CRÍTICA: El loop principal del bot no responde desde hace +30 min. Posible congelamiento detectado."
+                    self.logger.critical(msg)
+                    self.telegram.notify_error(msg)
+                    self._watchdog_notified = True
+            else:
+                # Resetear notificación si el loop volvió a la vida
+                self._watchdog_notified = False
+
 
 def main():
     import traceback
@@ -1060,29 +1082,6 @@ def main():
                 bot.telegram.notify_bot_stopped("Cierre Inesperado/Forzado de la terminal", 0, 0)
         except:
             pass
-
-
-    def _run_watchdog_loop(self):
-        """
-        Hilo secundario que vigila si el loop principal está 'vivo'.
-        Si el loop principal se congela por más de 30 min, envía alerta.
-        """
-        self.logger.info("🛡️ Watchdog System activo (Vigilancia 24/7)")
-        while self.running:
-            sleep_module.sleep(300) # Chequear cada 5 min
-            
-            inactivity_seconds = sleep_module.time() - self._last_loop_timestamp
-            
-            # Si han pasado más de 30 min sin actividad en el loop
-            if inactivity_seconds > 1800:
-                if not self._watchdog_notified:
-                    msg = "🚨 ALERTA CRÍTICA: El loop principal del bot no responde desde hace +30 min. Posible congelamiento detectado."
-                    self.logger.critical(msg)
-                    self.telegram.notify_error(msg)
-                    self._watchdog_notified = True
-            else:
-                # Resetear notificación si el loop volvió a la vida
-                self._watchdog_notified = False
 
 if __name__ == "__main__":
     main()
