@@ -503,12 +503,17 @@ class TX3ProBot:
         }
 
         try:
-            # 1. Verificar MT5
+            # 1. Verificar MT5 y AutoTrading
             if self.connector.is_connected():
                 acc = mt5.account_info()
                 if acc:
                     self.logger.success(f"🔹 MT5: Conectado a Cuenta {acc.login} ({acc.company})")
                     checklist["Conexión MT5"] = True
+                
+                ti = mt5.terminal_info()
+                if ti and not ti.trade_allowed:
+                    self.logger.warning("⚠️ MT5 ALGO TRADING APAGADO: El botón 'Algo Trading' en MT5 está en rojo. El bot no podrá colocar órdenes.")
+                    self.telegram.notify_error("⚠️ Atención: El botón 'Algo Trading' en MT5 está apagado. Actívalo para no perder señales.")
             
             # 2. Verificar Símbolos
             missing_symbols = []

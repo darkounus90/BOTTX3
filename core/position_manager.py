@@ -244,7 +244,10 @@ class PositionManager:
             return None
 
         if result.retcode != mt5.TRADE_RETCODE_DONE:
-            self.logger.error(f"Error en orden: {result.comment} (code: {result.retcode})")
+            if result.retcode == 10027:
+                self.logger.error(f"❌ El botón 'Algo Trading' de MT5 está apagado (code: 10027). Re-actívalo urgentemente para no perder más señales.")
+            else:
+                self.logger.error(f"Error en orden: {result.comment} (code: {result.retcode})")
             return None
 
         # ─── Éxito ───────────────────────────────────────────────────
