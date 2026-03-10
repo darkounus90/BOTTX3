@@ -14,9 +14,9 @@ class ChallengeConfig:
     # ─── INFORMACIÓN DE LA CUENTA ─────────────────────────────────────
     BALANCE_INICIAL = 50_000
 
-    # ─── FASE 1 - Evaluación ──────────────────────────────────────────
-    FASE1_PROFIT_TARGET = 4_000          # AJUSTADO: Add-on 8% Profit Target activo
-    FASE1_PROFIT_TARGET_PCT = 8.0
+    # ─── FASE 1 - Evaluación (FTMO ESTÁNDAR) ──────────────────────────
+    FASE1_PROFIT_TARGET = 5_000          # FTMO: 10% Profit Target
+    FASE1_PROFIT_TARGET_PCT = 10.0
 
     # ─── FASE 2 - Evaluación ──────────────────────────────────────────
     FASE2_PROFIT_TARGET = 2_500          # 5% de 50k
@@ -26,15 +26,15 @@ class ChallengeConfig:
     MAX_DAILY_DRAWDOWN = 2_500           # 5% de 50k
     MAX_DAILY_DRAWDOWN_PCT = 5.0
 
-    MAX_OVERALL_DRAWDOWN = 4_000         # AJUSTADO: Add-on 8% Max Loss activo
-    MAX_OVERALL_DRAWDOWN_PCT = 8.0
+    MAX_OVERALL_DRAWDOWN = 5_000         # FTMO: 10% Max Overall Loss
+    MAX_OVERALL_DRAWDOWN_PCT = 10.0
 
     # ─── DÍAS MÍNIMOS ─────────────────────────────────────────────────
-    MIN_TRADING_DAYS = 0                 # AJUSTADO: Add-on 'No Minimum Trading Days' activo
-    MIN_PROFIT_PER_DAY = 250             # (Solo aplica si hubiera mínimo de días)
+    MIN_TRADING_DAYS = 4                 # FTMO: 4 Días Mínimos Requeridos
+    MIN_PROFIT_PER_DAY = 250             # 0.5% mínimo por día contable
 
     # ─── FUNDED ACCOUNT ───────────────────────────────────────────────
-    PROFIT_SPLIT = 90                    # AJUSTADO: Add-on '90/10 Profit Split' activo
+    PROFIT_SPLIT = 80                    # FTMO: Base es 80/20
     MIN_PAYOUT = 1_000
     CONSISTENCY_RULE_PCT = 40            # Máx 40% en un solo día
 
@@ -58,11 +58,11 @@ class ChallengeConfig:
 class BotConfig:
     """Configuración de comportamiento del bot"""
 
-    # ─── RISK MANAGEMENT ──────────────────────────────────────────────
-    MAX_RISK_PER_TRADE_PCT = 1.0                 # 1.0% = $500 base. Modo Agresivo de Pruebas.
-    STRICT_CONSISTENCY_MODE = True       # Si es True: Anula las variaciones de lotaje por IA o Supervivencia para prop-firms estrictas
-    KELLY_FRACTION = 0.5                 # Kelly agresivo: IA puede apalancar más si está muy segura.
-    MAX_TRADES_PER_DAY = 10              # Más disparos permitidos por día.
+    # ─── RISK MANAGEMENT (FTMO COMPLIANCE) ────────────────────────────
+    MAX_RISK_PER_TRADE_PCT = 1.0                 # 1.0% = $500 base.
+    STRICT_CONSISTENCY_MODE = True       # FTMO exige que no haya "one-sided bets".
+    KELLY_FRACTION = 0.0                 # Cero para evitar sobreapalancamiento prohibido por FTMO.
+    MAX_TRADES_PER_DAY = 10              # Control para no exceder las 2000 peticiones al servidor.
     MAX_OPEN_POSITIONS = 3               # Permite hasta 3 posiciones simultáneas.
 
     # ─── EMERGENCY THRESHOLDS ─────────────────────────────────────────
@@ -74,7 +74,7 @@ class BotConfig:
     # ─── STRATEGY ─────────────────────────────────────────────────────
     ORACLE_ENABLED = True                # Habilita o deshabilita la conciencia del CIO Gemini
     SIMULATE_50K_CHALLENGE = False       # Ya es cuenta real de $50K — no necesita simulación
-    SIGNAL_MODE_ENABLED = True           # Si es True: Envía señales por Telegram y evita ejecutar órdenes en MT5 (Bypass de restricción EA)
+    SIGNAL_MODE_ENABLED = False          # FTMO permite EAs, así que el bot puede operar directamente en MT5.
     
     # ─── NEXT-GEN INSTITUTIONAL ARMORY ─────────────────────────────────
     SMC_ENABLED = True                   # Detector de Liquidez (Ahora actúa como 'Asesor Visual', no bloquea trades)
@@ -155,8 +155,8 @@ class SessionConfig:
     """Configuración de sesiones de trading (EST)"""
 
     RESTRICT_TO_LONDON_NY = False         # Permitir TODAS las sesiones (LND, NY, ASIA y PACS)
-    FRIDAY_FLAT_HOUR = 24                # AJUSTADO: Add-on Weekend Trading activo (No cerrar los viernes)
-
+    FRIDAY_FLAT_HOUR = 15                # FTMO: Prohibido Gap Trading. Se cierran operaciones 2 horas antes (15:00 EST).
+    
     LONDON_START_HOUR = 3
     LONDON_START_MINUTE = 0
     LONDON_END_HOUR = 12
