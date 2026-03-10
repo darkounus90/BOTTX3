@@ -65,6 +65,8 @@ class TX3ProBot:
         self.running = False
         self.daily_reset_done = False
         self.is_paused = False
+        self._last_loop_timestamp = sleep_module.time()
+        self._watchdog_notified = False
 
         # ─── Inicializar componentes ─────────────────────────────────
         self.logger = BotLogger(name="TX3Bot")
@@ -656,12 +658,18 @@ class TX3ProBot:
         self._notified_disconnect = False
         reconnect_attempts = 0
         
+        # Iniciar Watchdog Thread (Independiente del loop principal)
+        watchdog_thread = threading.Thread(target=self._run_watchdog_loop, daemon=True)
+        watchdog_thread.start()
+        
         last_heartbeat = datetime.now()
         
         while self.running:
             try:
                 # ─── Heartbeat (Evitar silencios largos) ─────────
                 now = datetime.now()
+                self._last_loop_timestamp = sleep_module.time() # Actualizar Watchdog
+                
                 if (now - last_heartbeat).total_seconds() >= 900: # Cada 15 min
                     self.logger.info("💓 Heartbeat: Loop principal activo y monitoreando mercado...")
                     last_heartbeat = now
@@ -852,6 +860,13 @@ class TX3ProBot:
 
                 # ─── E. Loop por Símbolo (Diversificación) ─────────
                 for symbol in BotConfig.WATCHLIST:
+                    # Log de escaneo periódico (cada 5 min por símbolo para visibilidad)
+                    now_ts = sleep_module.time()
+                    if not hasattr(self, '_last_scan_log'): self._last_scan_log = {}
+                    if now_ts - self._last_scan_log.get(symbol, 0) > 300:
+                        self.logger.info(f"🔍 Escaneando {symbol} (M5) | Esperando setup técnico...")
+                        self._last_scan_log[symbol] = now_ts
+                    
                     try:
                         # b. Verificar Conexión con Símbolo
                         if not self.connector.ensure_symbol_available(symbol):
@@ -1046,6 +1061,28 @@ def main():
         except:
             pass
 
+
+    def _run_watchdog_loop(self):
+        """
+        Hilo secundario que vigila si el loop principal está 'vivo'.
+        Si el loop principal se congela por más de 30 min, envía alerta.
+        """
+        self.logger.info("🛡️ Watchdog System activo (Vigilancia 24/7)")
+        while self.running:
+            sleep_module.sleep(300) # Chequear cada 5 min
+            
+            inactivity_seconds = sleep_module.time() - self._last_loop_timestamp
+            
+            # Si han pasado más de 30 min sin actividad en el loop
+            if inactivity_seconds > 1800:
+                if not self._watchdog_notified:
+                    msg = "🚨 ALERTA CRÍTICA: El loop principal del bot no responde desde hace +30 min. Posible congelamiento detectado."
+                    self.logger.critical(msg)
+                    self.telegram.notify_error(msg)
+                    self._watchdog_notified = True
+            else:
+                # Resetear notificación si el loop volvió a la vida
+                self._watchdog_notified = False
 
 if __name__ == "__main__":
     main()
