@@ -213,7 +213,8 @@ class GeminiOracle:
                     genai.configure(api_key=self.api_key)
 
                 # Gemma-3 requiere prompts más directos, limpiamos posibles instrucciones conflictivas
-                response = model.generate_content(prompt)
+                # Generar contenido con timeout de seguridad (30s)
+                response = model.generate_content(prompt, request_options={"timeout": 30.0})
                 if response and response.text:
                     txt = response.text.strip()
                     # Si no es JSON (es narrativo), guardamos para el dashboard

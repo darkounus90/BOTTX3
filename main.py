@@ -656,8 +656,16 @@ class TX3ProBot:
         self._notified_disconnect = False
         reconnect_attempts = 0
         
+        last_heartbeat = datetime.now()
+        
         while self.running:
             try:
+                # ─── Heartbeat (Evitar silencios largos) ─────────
+                now = datetime.now()
+                if (now - last_heartbeat).total_seconds() >= 900: # Cada 15 min
+                    self.logger.info("💓 Heartbeat: Loop principal activo y monitoreando mercado...")
+                    last_heartbeat = now
+
                 # ─── A. Monitoreo y Mantenimiento ──────────────────
                 if not self.connector.is_connected():
                     if not self._notified_disconnect:

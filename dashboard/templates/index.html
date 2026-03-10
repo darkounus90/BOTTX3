@@ -737,17 +737,40 @@
             </div>
         </div>
 
-        <!-- Footer -->
-        <footer class="flex justify-between items-center text-xs font-mono text-gray-500 pt-4 px-2">
+        <!-- Main System Telemetry Footer -->
+        <footer
+            class="flex flex-col md:flex-row justify-between items-center gap-6 pt-10 pb-16 border-t border-gray-800/40 mt-12 px-4 transition-all animate-fade-in-up">
+            <!-- Left: NY Server Clock -->
+            <div id="server-time-display"
+                class="flex flex-col items-start gap-1 bg-blue-500/5 px-6 py-3 rounded-2xl border border-blue-500/10 shadow-lg group hover:bg-blue-500/10 transition-all duration-300">
+                <span class="text-[0.6rem] text-blue-400 font-bold uppercase tracking-[0.2em] mb-1">NY Market
+                    Clock</span>
+                <div class="flex items-baseline gap-2">
+                    <span id="ny-server-time"
+                        class="text-2xl font-mono font-black text-white tracking-widest leading-none">--:--:--</span>
+                    <span class="text-[0.65rem] text-blue-500 opacity-60 font-bold">ET</span>
+                </div>
+            </div>
+
+            <!-- Center: Heartbeat & Dev -->
+            <div class="flex flex-col items-center gap-2">
+                <div id="last-update-time"
+                    class="text-[0.6rem] font-mono text-gray-500 uppercase tracking-[0.3em] opacity-40 hover:opacity-100 transition-opacity">
+                    HEARTBEAT: SYNCING...</div>
+                <div class="tracking-widest opacity-60 text-[0.6rem] uppercase font-bold text-gray-600">
+                    Prop Bot Architecture ⚙️ <span class="text-blue-500/80">TX3 EDITION</span>
+                </div>
+            </div>
+
+            <!-- Right: Real-time Connection -->
             <div id="connection-status"
-                class="flex items-center gap-3 bg-gray-900/50 px-3 py-1.5 rounded-full border border-gray-800">
-                <span class="inline-block w-2.5 h-2.5 rounded-full bg-gray-600"></span>
-                <span>SISTEMA FUERA DE LÍNEA</span>
+                class="flex items-center gap-4 bg-gray-900/60 px-5 py-2.5 rounded-full border border-gray-800 transition-all hover:border-gray-700">
+                <div class="flex items-center gap-2 text-rose-500 font-black text-[0.65rem] uppercase tracking-wider">
+                    <span
+                        class="inline-block w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.4)]"></span>
+                    OFFLINE (BOOTING)
+                </div>
             </div>
-            <div class="tracking-widest opacity-80 text-[0.65rem] uppercase">
-                ⚙️ Desarrollado por <span class="text-blue-400 font-bold">Clar.Os9</span>
-            </div>
-            <div id="last-update-time" class="tracking-widest opacity-60">SYNC: --:--:--</div>
         </footer>
 
     </div>
@@ -856,10 +879,10 @@
                     badge.className = 'text-[0.65rem] px-2 py-0.5 rounded-md font-bold bg-gray-500/20 text-gray-400 border border-gray-500/30';
                 }
 
-                // Actualizar Reloj del Sistema
+                // Actualizar Reloj del Sistema NY (Server Time)
                 if (data.session_info.time) {
-                    const timeEl = document.getElementById('last-update-time');
-                    if (timeEl) timeEl.innerHTML = `SYSTIME: <span class="text-white font-bold font-mono">${data.session_info.time}</span> <span class="text-[0.6rem] opacity-60">ET</span>`;
+                    const timeEl = document.getElementById('ny-server-time');
+                    if (timeEl) timeEl.textContent = data.session_info.time;
                 }
 
                 // Helper para clases de sesiones reales
@@ -910,8 +933,9 @@
                 }
             }
 
-            // Sync Time
-            document.getElementById('last-update-time').textContent = `SYNC: ${data.last_update || new Date().toLocaleTimeString()}`;
+            // Sync Time (Heartbeat)
+            const syncEl = document.getElementById('last-update-time');
+            if (syncEl) syncEl.textContent = `LAST SYNC: ${data.last_update || '...'}`;
 
             // Phase, Mode and Status
             const phaseBadge = document.getElementById('phase-badge');

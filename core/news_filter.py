@@ -165,15 +165,18 @@ class NewsFilter:
         """
         today = datetime.now().strftime("%Y-%m-%d")
 
-        # Usar cache si es del mismo día
-        if self._cache_date == today and self._cached_events:
+        # Usar cache si es del mismo día (incluso si la lista está vacía)
+        if self._cache_date == today:
             return self._cached_events
 
         try:
             events = self._fetch_events_from_api()
             self._cached_events = events
             self._cache_date = today
-            self.logger.info(f"📰 {len(events)} eventos económicos detectados hoy")
+            if events:
+                self.logger.info(f"📰 {len(events)} eventos económicos detectados hoy")
+            else:
+                self.logger.info("📰 Sin noticias de alto impacto programadas para hoy")
             return events
 
         except Exception as e:
