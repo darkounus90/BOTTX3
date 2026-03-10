@@ -509,10 +509,14 @@ class TX3ProBot:
                 if acc:
                     self.logger.success(f"🔹 MT5: Conectado a Cuenta {acc.login} ({acc.company})")
                     checklist["Conexión MT5"] = True
+                    
+                    if not acc.trade_allowed:
+                        self.logger.error("❌ EL BROKER BLOQUEÓ EL ALGO TRADING (code 10026). Tu cuenta no tiene permisos del servidor para usar bots.")
+                        self.telegram.notify_error("❌ Error de Broker: El servidor tiene bloqueado el Auto Trading en tu cuenta. Escribe al soporte técnico de tu Prop Firm para que te lo activen.")
                 
                 ti = mt5.terminal_info()
                 if ti and not ti.trade_allowed:
-                    self.logger.warning("⚠️ MT5 ALGO TRADING APAGADO: El botón 'Algo Trading' en MT5 está en rojo. El bot no podrá colocar órdenes.")
+                    self.logger.warning("⚠️ MT5 ALGO TRADING APAGADO: El botón 'Algo Trading' (arriba en MT5) está en rojo. El bot no podrá colocar órdenes.")
                     self.telegram.notify_error("⚠️ Atención: El botón 'Algo Trading' en MT5 está apagado. Actívalo para no perder señales.")
             
             # 2. Verificar Símbolos

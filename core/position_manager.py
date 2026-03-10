@@ -246,6 +246,8 @@ class PositionManager:
         if result.retcode != mt5.TRADE_RETCODE_DONE:
             if result.retcode == 10027:
                 self.logger.error(f"❌ El botón 'Algo Trading' de MT5 está apagado (code: 10027). Re-actívalo urgentemente para no perder más señales.")
+            elif result.retcode == 10026:
+                self.logger.error(f"❌ BROKER BLOQUEÓ EL ALGO TRADING (code: 10026). Tu botón está verde, pero el servidor del Broker (o tu Prop Firm) bloqueó el uso de bots a tu cuenta. Contacta a su soporte técnico.")
             else:
                 self.logger.error(f"Error en orden: {result.comment} (code: {result.retcode})")
             return None
