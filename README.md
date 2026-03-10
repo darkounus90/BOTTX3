@@ -29,18 +29,18 @@
 
 El bot está diseñado con un enfoque modular e institucional, separando la lógica para mayor mantenibilidad:
 
-- `main.py`: Punto de entrada principal. Orquesta los ciclos de trading, hilos de ejecución secundaria, mutación genética y dashboard en tiempo real.
-- `config/settings.py`: Archivo maestro de configuración. Aquí se centralizan los parámetros de riesgo (`KELLY_FRACTION`), filtros institucionales, llaves secretas y metas de negocio. Ningún número está _hardcodeado_ en los scripts.
-- `core/`: Cerebro operativo avanzado. Contiene:
-  - `risk_manager.py` (Gestión estricta de límites de Prop Firms).
-  - `position_manager.py` (Cálculo dinámico matemático usando Kelly Criterion).
-  - `smc_scanner.py` (Detector de Order Blocks y FVG - Liquidez bancaria).
-  - `llm_oracle.py` (Conciencia AI actuando como CIO analizando MTF vía Gemini).
-  - `portfolio_manager.py` (Rebalanceo dinámico de riesgo por volatilidad relativa).
-- `strategy/`: Estrategias de trading. Contiene matemática (`ema_cross.py`) y Reinforcement Learning (`q_learning_agent.py` para optimización autónoma).
-- `dashboard/`: Sistema web con Flask y WebSockets para monitorear el PnL.
-- `utils/`: Herramientas auxiliares (`telegram_commands.py` para control remoto, logs de sistema, conector MT5).
-
+- `main.py`: Punto de entrada principal. Orquesta los ciclos de trading, hilos de ejecución secundaria, mutación genética y el dashboard.
+- `config/`: Configuración maestra y parámetros de riesgo (`settings.py`).
+- `core/`: Cerebro operativo (Riesgo, Posiciones, SMC, Oráculo AI, Session).
+- `strategy/`: Lógica de trading (EMA Cross, Bollinger) y Machine Learning (Q-Learning).
+- `dashboard/`: Interfaz web en tiempo real.
+- `docs/`: Documentación detallada, reportes y manuales operativos.
+- `tools/`: Scripts de prueba (Gemini, MT5, Logs), simuladores y launchers secundarios.
+- `scripts/`: Tareas de entrenamiento de modelos IA y optimización genética.
+- `utils/`: Herramientas auxiliares (Logger, Telegram, MT5 Connector).
+- `logs/`: Historial de ejecuciones y errores.
+- `analytics/`: Análisis de performance y métricas de cuenta.
+- `data/`: Almacén de modelos (.pkl) y bases de datos locales.
 ---
 
 ## 2️⃣ Instalación y Arranque Rápido (1-Click)

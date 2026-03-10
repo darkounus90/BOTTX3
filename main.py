@@ -285,6 +285,7 @@ class TX3ProBot:
             "open_positions": pos_list,
             "live_exposures": live_exposures,
             "recent_trades": self.journal.get_recent_trades(limit=15),
+            "last_oracle_narration": self.oracle.last_narration if hasattr(self, 'oracle') else "No disponible",
             "last_update": datetime.now(ZoneInfo("America/New_York")).strftime("%H:%M:%S")
         }
         

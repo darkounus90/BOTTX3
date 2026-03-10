@@ -62,9 +62,11 @@ class GeminiOracle:
         
         # Caché de señales para evitar duplicar llamadas en la misma vela M5
         self._signal_cache = {}
+        self.last_narration = "Esperando diagnóstico inicial..."
 
         if self.enabled:
             self._setup_system()
+
 
     def _setup_system(self):
         """Inicializa modelos en cascada y configura sus buckets"""
@@ -212,7 +214,13 @@ class GeminiOracle:
 
                 # Gemma-3 requiere prompts más directos, limpiamos posibles instrucciones conflictivas
                 response = model.generate_content(prompt)
-                return response.text.strip()
+                if response and response.text:
+                    txt = response.text.strip()
+                    # Si no es JSON (es narrativo), guardamos para el dashboard
+                    if not txt.startswith("{"):
+                        self.last_narration = txt
+                    return txt
+                return None
             except Exception as e:
                 err_str = str(e).lower()
                 last_error = str(e)
