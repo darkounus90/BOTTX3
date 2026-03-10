@@ -375,9 +375,9 @@
                     AI ANALYSIS</span>
             </div>
             <div class="relative z-10 bg-black/20 rounded-xl p-5 border border-white/5 min-h-[80px]">
-                <p id="oracle-insight" class="text-gray-300 font-mono text-sm leading-relaxed italic">
+                <div id="oracle-insight" class="text-gray-300 font-mono text-sm leading-relaxed italic">
                     Analizando flujos institucionales y métricas de riesgo...
-                </p>
+                </div>
             </div>
             <!-- Dynamic advice footer -->
             <div class="mt-4 flex items-center gap-2 text-[0.65rem] text-indigo-400/60 font-mono relative z-10">
@@ -1045,10 +1045,65 @@
                 else badge.classList.add('hidden');
             }
 
-            // AI Narration
+            // AI Narration Parser
             const oracleInsight = document.getElementById('oracle-insight');
             if (oracleInsight && data.last_oracle_narration) {
-                oracleInsight.textContent = data.last_oracle_narration;
+                let narration = data.last_oracle_narration.trim();
+
+                // Limpiar posibles bloques markdown json del LLM
+                if (narration.startsWith('```json')) {
+                    narration = narration.replace(/```json/g, '').replace(/```/g, '').trim();
+                }
+
+                try {
+                    // Intenta decodificar el JSON de la decisión
+                    const parsed = JSON.parse(narration);
+                    if (parsed.decision && parsed.reason) {
+                        const isApproved = parsed.decision.toUpperCase() === 'APPROVED';
+                        const colorClass = isApproved ? 'text-emerald-400' : 'text-rose-400';
+                        const bgClass = isApproved ? 'bg-emerald-500/10' : 'bg-rose-500/10';
+                        const borderClass = isApproved ? 'border-emerald-500/20' : 'border-rose-500/20';
+                        const icon = isApproved ? '✅' : '🚫';
+
+                        let confHtml = '';
+                        if (parsed.confidence) {
+                            let confColor = parsed.confidence >= 80 ? 'bg-indigo-500' : (parsed.confidence >= 60 ? 'bg-yellow-500' : 'bg-rose-500');
+                            let tooltipColor = parsed.confidence >= 80 ? 'text-indigo-400' : (parsed.confidence >= 60 ? 'text-yellow-400' : 'text-rose-400');
+
+                            confHtml = `
+                            <div class="mt-4 flex flex-col gap-1.5 border-t border-white/5 pt-3">
+                                <div class="flex justify-between items-center text-xs">
+                                    <span class="text-gray-500 uppercase tracking-widest font-bold">Confianza Algorítmica</span>
+                                    <span class="font-mono font-bold ${tooltipColor}">${parsed.confidence}%</span>
+                                </div>
+                                <div class="w-full bg-gray-900/80 rounded-full h-1.5 border border-gray-700/50">
+                                  <div class="${confColor} h-1.5 rounded-full transition-all duration-1000 shadow-[0_0_8px_currentColor]" style="width: ${parsed.confidence}%"></div>
+                                </div>
+                            </div>`;
+                        }
+
+                        oracleInsight.innerHTML = `
+                            <div class="flex flex-col">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="px-2.5 py-1 rounded-md text-[0.7rem] font-bold tracking-widest ${colorClass} ${bgClass} border ${borderClass} shadow-sm backdrop-blur-sm">
+                                        ${icon} DECISIÓN: ${parsed.decision.toUpperCase()}
+                                    </span>
+                                </div>
+                                <div class="text-gray-300 font-sans text-sm leading-relaxed border-l-2 border-indigo-500/30 pl-3">
+                                    ${parsed.reason}
+                                </div>
+                                ${confHtml}
+                            </div>
+                        `;
+                        oracleInsight.classList.remove("italic", "font-mono"); // Quitar estilos por defecto
+                    } else {
+                        throw new Error("No es JSON");
+                    }
+                } catch (e) {
+                    // Fallback a texto plano si no es JSON o si da error
+                    oracleInsight.textContent = data.last_oracle_narration;
+                    oracleInsight.classList.add("italic", "font-mono");
+                }
             }
 
             // Update Spread Monitor
