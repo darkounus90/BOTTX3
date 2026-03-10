@@ -74,6 +74,7 @@ class BotConfig:
     # ─── STRATEGY ─────────────────────────────────────────────────────
     ORACLE_ENABLED = True                # Habilita o deshabilita la conciencia del CIO Gemini
     SIMULATE_50K_CHALLENGE = False       # Ya es cuenta real de $50K — no necesita simulación
+    SIGNAL_MODE_ENABLED = True           # Si es True: Envía señales por Telegram y evita ejecutar órdenes en MT5 (Bypass de restricción EA)
     
     # ─── NEXT-GEN INSTITUTIONAL ARMORY ─────────────────────────────────
     SMC_ENABLED = True                   # Detector de Liquidez (Ahora actúa como 'Asesor Visual', no bloquea trades)

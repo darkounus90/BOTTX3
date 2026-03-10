@@ -221,6 +221,29 @@ class PositionManager:
         safe_tag = strategy_tag.replace(" ", "_")[:25]
         order_comment = f"{safe_tag}_P{self.phase}"
         
+        # ─── MODO SEÑALES (EVITAR RESTRICCIÓN EA DEL BROKER) ───────
+        if getattr(BotConfig, "SIGNAL_MODE_ENABLED", False):
+            self.logger.warning(f"🔔 MODO SEÑALES: Broker restringe EA. Por favor, ejecuta esta operación tú mismo (o en tu celular).")
+            
+            from utils.telegram_notifier import TelegramNotifier
+            telegram = TelegramNotifier(self.logger)
+            
+            msg = (
+                f"🚨 <b>EJECUCIÓN MANUAL REQUERIDA</b> 🚨\n\n"
+                f"🏦 <i>Tu Prop Firm tiene prohibido el uso de EAs. Ejecuta esta orden manualmente AHORA MISMO en tu MetaTrader 5 (Escritorio o Celular)</i>:\n\n"
+                f"🪙 <b>Par:</b> {symbol}\n"
+                f"📈 <b>Orden:</b> {order_type_str}\n"
+                f"💵 <b>Precio Actual:</b> aprox. {price:.5f}\n"
+                f"📉 <b>Stop Loss (SL):</b> {sl:.5f} ({stop_loss_pips} pips)\n"
+                f"💰 <b>Take Profit (TP):</b> {tp:.5f} ({take_profit_pips} pips)\n"
+                f"⚖️ <b>Lotaje Calculado:</b> {volume} lotes\n\n"
+                f"<i>Una vez abierta en tu MT5, el bot detectará la orden.</i>"
+            )
+            telegram._send(msg)
+            
+            # Devolvemos None para que el sistema detenga el flujo de ejecución automático de esta señal
+            return None
+
         # ─── Crear y enviar request ──────────────────────────────────
         request = {
             "action": mt5.TRADE_ACTION_DEAL,
