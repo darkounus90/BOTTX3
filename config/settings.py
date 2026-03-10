@@ -34,7 +34,7 @@ class ChallengeConfig:
     MIN_PROFIT_PER_DAY = 250             # 0.5% mínimo por día contable
 
     # ─── FUNDED ACCOUNT ───────────────────────────────────────────────
-    PROFIT_SPLIT = 80                    # FTMO: Base es 80/20
+    PROFIT_SPLIT = 90                    # FTMO: Scale Plan permite hasta 90/10
     MIN_PAYOUT = 1_000
     CONSISTENCY_RULE_PCT = 40            # Máx 40% en un solo día
 
