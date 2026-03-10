@@ -30,11 +30,11 @@ class ChallengeConfig:
     MAX_OVERALL_DRAWDOWN_PCT = 8.0
 
     # ─── DÍAS MÍNIMOS ─────────────────────────────────────────────────
-    MIN_TRADING_DAYS = 4
-    MIN_PROFIT_PER_DAY = 250             # 0.5% mínimo por día contable
+    MIN_TRADING_DAYS = 0                 # AJUSTADO: Add-on 'No Minimum Trading Days' activo
+    MIN_PROFIT_PER_DAY = 250             # (Solo aplica si hubiera mínimo de días)
 
     # ─── FUNDED ACCOUNT ───────────────────────────────────────────────
-    PROFIT_SPLIT = 80                    # 80% (90% con add-on)
+    PROFIT_SPLIT = 90                    # AJUSTADO: Add-on '90/10 Profit Split' activo
     MIN_PAYOUT = 1_000
     CONSISTENCY_RULE_PCT = 40            # Máx 40% en un solo día
 
