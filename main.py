@@ -997,6 +997,18 @@ class TX3ProBot:
                                             # Si ya abrimos exitosamente un trade gracias a una estrategia con este par,
                                             # salimos del loop de estrategias interno para no saturar 2 trades en el mismo lugar al mismo instante.
                                             break
+                                        else:
+                                            import json
+                                            if self.oracle.enabled:
+                                                # El broker lo rechazó, actualizar dashboard
+                                                try:
+                                                    self.oracle.last_narration = json.dumps({
+                                                        "decision": "BLOCKED (BROKER)",
+                                                        "reason": f"La IA APROBÓ el trade en {signal['symbol']}, pero el Sistema de Riesgo Automático de MT5 lo rechazó (Spread superior a lo permitido). Protegiendo tu balance de ejecuciones peligrosas.",
+                                                        "confidence": probability if probability else 0
+                                                    })
+                                                except Exception:
+                                                    pass
                     except Exception as e:
                         import traceback
                         self.logger.error(f"Error procesando {symbol}: {e}\n{traceback.format_exc()}")
