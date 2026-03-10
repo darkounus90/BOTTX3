@@ -107,9 +107,19 @@ def login():
     if request.method == "POST":
         user = request.form.get("username")
         password = request.form.get("password")
+        
+        # 1. Validar Admin
         if user == DashboardConfig.USERNAME and password == DashboardConfig.PASSWORD:
             session["logged_in"] = True
+            session["is_guest"] = False
             return redirect(url_for("index"))
+            
+        # 2. Validar Invitado
+        elif user == DashboardConfig.GUEST_USERNAME and password == DashboardConfig.GUEST_PASSWORD:
+            session["logged_in"] = True
+            session["is_guest"] = True
+            return redirect(url_for("index"))
+            
         else:
             flash("Credenciales incorrectas", "error")
     return render_template("login.html")

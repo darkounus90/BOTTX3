@@ -146,6 +146,8 @@ class DashboardConfig:
     UPDATE_INTERVAL_MS = 5000            # Actualizar cada 5 segundos
     USERNAME = os.environ.get("DASHBOARD_USER", "dark90")
     PASSWORD = os.environ.get("DASHBOARD_PASS", "971124")
+    GUEST_USERNAME = os.environ.get("DASHBOARD_GUEST_USER", "invitado")
+    GUEST_PASSWORD = os.environ.get("DASHBOARD_GUEST_PASS", "1234")
 
 
 class SessionConfig:
