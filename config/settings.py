@@ -15,8 +15,8 @@ class ChallengeConfig:
     BALANCE_INICIAL = 50_000
 
     # ─── FASE 1 - Evaluación ──────────────────────────────────────────
-    FASE1_PROFIT_TARGET = 5_000          # 10% de 50k
-    FASE1_PROFIT_TARGET_PCT = 10.0
+    FASE1_PROFIT_TARGET = 4_000          # AJUSTADO: Add-on 8% Profit Target activo
+    FASE1_PROFIT_TARGET_PCT = 8.0
 
     # ─── FASE 2 - Evaluación ──────────────────────────────────────────
     FASE2_PROFIT_TARGET = 2_500          # 5% de 50k
@@ -26,8 +26,8 @@ class ChallengeConfig:
     MAX_DAILY_DRAWDOWN = 2_500           # 5% de 50k
     MAX_DAILY_DRAWDOWN_PCT = 5.0
 
-    MAX_OVERALL_DRAWDOWN = 5_000         # 10% de 50k (ESTÁTICO, no trailing)
-    MAX_OVERALL_DRAWDOWN_PCT = 10.0
+    MAX_OVERALL_DRAWDOWN = 4_000         # AJUSTADO: Add-on 8% Max Loss activo
+    MAX_OVERALL_DRAWDOWN_PCT = 8.0
 
     # ─── DÍAS MÍNIMOS ─────────────────────────────────────────────────
     MIN_TRADING_DAYS = 4
@@ -66,10 +66,10 @@ class BotConfig:
     MAX_OPEN_POSITIONS = 3               # Permite hasta 3 posiciones simultáneas.
 
     # ─── EMERGENCY THRESHOLDS ─────────────────────────────────────────
-    DAILY_DD_WARNING_PCT = 70            # Alerta al 70% ($1,750)
-    DAILY_DD_EMERGENCY_PCT = 85          # Cierre al 85% ($2,125)
-    OVERALL_DD_WARNING_PCT = 70          # Alerta al 70% ($3,500)
-    OVERALL_DD_EMERGENCY_PCT = 85        # Cierre al 85% ($4,250)
+    DAILY_DD_WARNING_PCT = 80            # Alerta al 80% del límite diario
+    DAILY_DD_EMERGENCY_PCT = 95          # Cierre al 95% del límite diario (Seguridad máxima)
+    OVERALL_DD_WARNING_PCT = 80          # Alerta al 80% del límite total ($3,200)
+    OVERALL_DD_EMERGENCY_PCT = 95        # Cierre al 95% del límite total ($3,800)
 
     # ─── STRATEGY ─────────────────────────────────────────────────────
     ORACLE_ENABLED = True                # Habilita o deshabilita la conciencia del CIO Gemini
@@ -152,7 +152,7 @@ class SessionConfig:
     """Configuración de sesiones de trading (EST)"""
 
     RESTRICT_TO_LONDON_NY = False         # Permitir TODAS las sesiones (LND, NY, ASIA y PACS)
-    FRIDAY_FLAT_HOUR = 12                # Hora EST para cerrar todo los viernes (12 PM Mediodía)
+    FRIDAY_FLAT_HOUR = 24                # AJUSTADO: Add-on Weekend Trading activo (No cerrar los viernes)
 
     LONDON_START_HOUR = 3
     LONDON_START_MINUTE = 0
