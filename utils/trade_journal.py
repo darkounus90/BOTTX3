@@ -8,8 +8,12 @@ Incluye toda la información relevante para auditoría.
 import csv
 import json
 import os
-from datetime import datetime
+import MetaTrader5 as mt5
+import time as time_module
+import re
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+from collections import defaultdict
 from config.settings import BotConfig
 from utils.logger import BotLogger
 
@@ -69,7 +73,21 @@ class TradeJournal:
                 writer.writerow(self.CSV_HEADERS)
             self.logger.info(f"📓 Trade Journal creado: {self.csv_path}")
         else:
-            self.logger.info(f"📓 Trade Journal existente: {self.csv_path}")
+            # Validar si el header tiene 'action' (v4 compatibility)
+            try:
+                with open(self.csv_path, "r", encoding="utf-8") as f:
+                    header = f.readline().strip()
+                    if "action" not in header:
+                        self.logger.warning("📓 Journal CSV desactualizado (falta columna 'action'). Recreando...")
+                        f.close()
+                        os.rename(self.csv_path, self.csv_path + ".old")
+                        with open(self.csv_path, "w", newline="", encoding="utf-8") as nf:
+                            writer = csv.writer(nf)
+                            writer.writerow(self.CSV_HEADERS)
+                    else:
+                        self.logger.info(f"📓 Trade Journal existente: {self.csv_path}")
+            except Exception:
+                self.logger.info(f"📓 Trade Journal existente: {self.csv_path}")
 
         self.trade_count = self._get_trade_count()
         self._broker_offset = None  # Offset dinámico detectado entre MT5 y UTC
@@ -235,6 +253,8 @@ class TradeJournal:
             with open(self.csv_path, "r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 for row in reader:
+                    if not row.get("timestamp") or not row.get("action"):
+                        continue
                     if row["timestamp"].startswith(today) and row["action"] == "CLOSE":
                         trades.append(row)
                         profit = float(row.get("profit", 0))
@@ -310,7 +330,6 @@ class TradeJournal:
     def get_recent_trades(self, limit: int = 15) -> list:
         """Obtiene los últimos N trades, agrupándolos por Position ID para que el
         dashboard no muestre los cierres parciales de forma fragmentada."""
-        import re
         trades = []
         try:
             if not os.path.exists(self.csv_path):
@@ -324,7 +343,7 @@ class TradeJournal:
                 
                 # Buscamos los cierres (CLOSE) de atrás hacia adelante
                 for row in reversed(all_rows):
-                    if row["action"] == "CLOSE":
+                    if row.get("action") == "CLOSE":
                         pid = None
                         m = re.search(r'Pos #(\d+)', row.get('comment', ''))
                         if not m:
@@ -387,8 +406,10 @@ class TradeJournal:
         if not deals:
             return []
             
+        newly_synced = []
+        existing_signatures = set()
+        
         # ─── DETECTAR OFFSET DEL BROKER DINÁMICAMENTE ───
-        import time as time_module
         if self._broker_offset is None:
             try:
                 # Intentamos obtener el tick de un par mayor para ver la hora del servidor
