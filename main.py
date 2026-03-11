@@ -1110,10 +1110,10 @@ class TX3ProBot:
             
             inactivity_seconds = sleep_module.time() - self._last_loop_timestamp
             
-            # Si han pasado más de 30 min sin actividad en el loop
-            if inactivity_seconds > 1800:
+            # Si han pasado más de 10 min sin actividad en el loop
+            if inactivity_seconds > 600:
                 if not self._watchdog_notified:
-                    msg = "🚨 ALERTA CRÍTICA: El loop principal del bot no responde desde hace +30 min. Posible congelamiento detectado."
+                    msg = "🚨 ALERTA CRÍTICA: El loop principal del bot no responde desde hace +10 min. Posible congelamiento detectado."
                     self.logger.critical(msg)
                     self.telegram.notify_error(msg)
                     self._watchdog_notified = True
