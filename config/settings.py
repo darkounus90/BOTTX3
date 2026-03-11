@@ -64,6 +64,7 @@ class BotConfig:
     KELLY_FRACTION = 0.0                 # Cero para evitar sobreapalancamiento prohibido por FTMO.
     MAX_TRADES_PER_DAY = 10              # Control para no exceder las 2000 peticiones al servidor.
     MAX_OPEN_POSITIONS = 3               # Permite hasta 3 posiciones simultáneas.
+    REVENGE_COOLDOWN_MINUTES = 30        # Minutos de bloqueo tras cerrar un trade (Protege contra ruido/spike en M5)
 
     # ─── EMERGENCY THRESHOLDS ─────────────────────────────────────────
     DAILY_DD_WARNING_PCT = 80            # Alerta al 80% del límite diario
