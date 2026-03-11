@@ -66,12 +66,24 @@ class PhaseTracker:
                 self.logger.warning("📅 Sin historial de MT5 para calcular días rentables")
                 return
 
-            # Agrupar profit por día calendario (en ET)
+            # ─── DETECTAR OFFSET DEL BROKER DINÁMICAMENTE ───
+            import time as time_module
+            broker_offset = 0
+            try:
+                tick = mt5.symbol_info_tick("EURUSD")
+                if tick:
+                    broker_offset = tick.time - int(time_module.time())
+            except: pass
+
+            # Agrupar profit por día calendario (en ET corregido)
             daily_map = defaultdict(float)
             for deal in deals:
                 if deal.entry not in [1, 2, 3]:  # Solo salidas (OUT)
                     continue
-                dt = datetime.fromtimestamp(deal.time, tz=_TZ)
+                
+                # Convertir a UTC real y luego a nuestra TZ
+                utc_timestamp = deal.time - broker_offset
+                dt = datetime.fromtimestamp(utc_timestamp, tz=_TZ)
                 day_key = dt.strftime("%Y-%m-%d")
                 # Profit Neto = Beneficio Bruto + Comisión (que viene en negativo)
                 net_profit = deal.profit + deal.commission

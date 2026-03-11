@@ -72,6 +72,7 @@ class TradeJournal:
             self.logger.info(f"📓 Trade Journal existente: {self.csv_path}")
 
         self.trade_count = self._get_trade_count()
+        self._broker_offset = None  # Offset dinámico detectado entre MT5 y UTC
 
     def _get_trade_count(self) -> int:
         """Cuenta el número de trades registrados"""
@@ -386,6 +387,22 @@ class TradeJournal:
         if not deals:
             return []
             
+        # ─── DETECTAR OFFSET DEL BROKER DINÁMICAMENTE ───
+        import time as time_module
+        if self._broker_offset is None:
+            try:
+                # Intentamos obtener el tick de un par mayor para ver la hora del servidor
+                tick = mt5.symbol_info_tick("EURUSD")
+                if tick:
+                    server_time = tick.time
+                    utc_now = int(time_module.time())
+                    # Offset en segundos (Ej: GMT+2 = +7200)
+                    self._broker_offset = server_time - utc_now
+                    self.logger.info(f"🕒 Broker Offset detectado: {self._broker_offset}s (GMT {self._broker_offset/3600:+.1f})")
+            except Exception as e:
+                self.logger.warning(f"No se pudo detectar offset del broker: {e}")
+                self._broker_offset = 0  # Fallback a asuncion de UTC
+            
         newly_synced = []
         existing_signatures = set()
         
@@ -415,8 +432,9 @@ class TradeJournal:
             if deal.entry not in [1, 2, 3]: 
                 continue
                 
-            # Convertir timestamp del broker a hora ET para consistencia
-            dt = datetime.fromtimestamp(deal.time, tz=_ET)
+            # Convertir timestamp del broker a UTC real y luego a nuestra ET
+            utc_timestamp = deal.time - (self._broker_offset or 0)
+            dt = datetime.fromtimestamp(utc_timestamp, tz=_ET)
             ts = dt.strftime("%Y-%m-%d %H:%M:%S")
             # Profit Neto = Beneficio Bruto + Comisión
             profit = round(float(deal.profit + deal.commission), 2)
