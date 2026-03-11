@@ -84,7 +84,7 @@ class BotConfig:
     NEWS_KILLZONES_ENABLED = True        # Radar Alta Frecuencia (Cierre agresivo antes de NFP/CPI)
     PORTFOLIO_REBALANCING = True         # Mapa de Calor Volumétrico (Asignación dinámica entre divisas)
     Q_LEARNING_ENABLED = False           # APAGADO: La IA en pañales frena los trades ("HOLD" por miedo a lo desconocido)
-    HEDGING_ENABLED = False              # Cobertura Silenciosa para trades perdedores al 80% del SL
+    HEDGING_ENABLED = False              # APAGADO: La cobertura de trades perdedores congela el margen, prohibido o peligroso en Prop Firms
     
     MODE_FILTERS = "STRICT"              # "STRICT" para máxima precisión institucional
     DEFAULT_SYMBOL = "EURUSD"
