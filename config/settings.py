@@ -12,26 +12,26 @@ class ChallengeConfig:
     """Configuración del 2 Phase Pro Challenge de $50,000"""
 
     # ─── INFORMACIÓN DE LA CUENTA ─────────────────────────────────────
-    BALANCE_INICIAL = 50_000
+    BALANCE_INICIAL = 50_000             # 💡 CAMBIA ESTO A 100_000 SI COMPRAS LA DE 100K
 
     # ─── FASE 1 - Evaluación (FTMO ESTÁNDAR) ──────────────────────────
-    FASE1_PROFIT_TARGET = 5_000          # FTMO: 10% Profit Target
     FASE1_PROFIT_TARGET_PCT = 10.0
+    FASE1_PROFIT_TARGET = BALANCE_INICIAL * (FASE1_PROFIT_TARGET_PCT / 100.0)
 
     # ─── FASE 2 - Evaluación ──────────────────────────────────────────
-    FASE2_PROFIT_TARGET = 2_500          # 5% de 50k
     FASE2_PROFIT_TARGET_PCT = 5.0
+    FASE2_PROFIT_TARGET = BALANCE_INICIAL * (FASE2_PROFIT_TARGET_PCT / 100.0)
 
     # ─── DRAWDOWN LIMITS ──────────────────────────────────────────────
-    MAX_DAILY_DRAWDOWN = 2_500           # 5% de 50k
     MAX_DAILY_DRAWDOWN_PCT = 5.0
+    MAX_DAILY_DRAWDOWN = BALANCE_INICIAL * (MAX_DAILY_DRAWDOWN_PCT / 100.0)
 
-    MAX_OVERALL_DRAWDOWN = 5_000         # FTMO: 10% Max Overall Loss
     MAX_OVERALL_DRAWDOWN_PCT = 10.0
+    MAX_OVERALL_DRAWDOWN = BALANCE_INICIAL * (MAX_OVERALL_DRAWDOWN_PCT / 100.0)
 
     # ─── DÍAS MÍNIMOS ─────────────────────────────────────────────────
     MIN_TRADING_DAYS = 4                 # FTMO: 4 Días Mínimos Requeridos
-    MIN_PROFIT_PER_DAY = 250             # 0.5% mínimo por día contable
+    MIN_PROFIT_PER_DAY = BALANCE_INICIAL * 0.005 # 0.5% mínimo de profit por día contable
 
     # ─── FUNDED ACCOUNT ───────────────────────────────────────────────
     PROFIT_SPLIT = 90                    # FTMO: Scale Plan permite hasta 90/10
