@@ -90,8 +90,8 @@ class TX3ProBot:
         
         # Pro Features
         self.news_filter = NewsFilter(logger=self.logger)
-        self.trailing_stop = TrailingStopManager(logger=self.logger)
-        self.oracle = GeminiOracle(logger=self.logger)
+        self.oracle = GeminiOracle(logger=self.logger) # Oráculo primero
+        self.trailing_stop = TrailingStopManager(logger=self.logger, oracle=self.oracle) # Se inyecta al Trailing
         
         # Next-Gen Institutional features
         self.smc_scanner = SMCScanner(logger=self.logger)

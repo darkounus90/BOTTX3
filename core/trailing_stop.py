@@ -12,7 +12,7 @@ Lógica:
 import MetaTrader5 as mt5
 from config.settings import BotConfig
 from utils.logger import BotLogger
-from core.llm_oracle import LLMOracle  # Inyectando Inteligencia Institucional al Riesgo
+from core.llm_oracle import GeminiOracle  # Inyectando Inteligencia Institucional al Riesgo
 
 
 class TrailingStopManager:
@@ -23,7 +23,7 @@ class TrailingStopManager:
     correcto estructuralmente para mover el precio a Break Even o T-Stop.
     """
 
-    def __init__(self, logger: BotLogger, oracle: LLMOracle = None):
+    def __init__(self, logger: BotLogger, oracle: GeminiOracle = None):
         self.logger = logger
         self.oracle = oracle  # Referencia al CIO de Riesgo AI
         self.enabled = BotConfig.TRAILING_STOP_ENABLED
@@ -127,9 +127,9 @@ class TrailingStopManager:
                     # para ahogar la posición (Casi Take Profit dinámico)
                     self.logger.warning(f"🧠 CIO ALERTA en {position.symbol}: {ai_reason}. Asfixiando Trade (Max Protection).")
                     if position.type == mt5.ORDER_TYPE_BUY:
-                        new_sl = current_price - (1.0 * pip_in_points) # Aprieta a tan solo 1 pip de distancia
+                        new_sl = current_price - (1.5 * pip_in_points) # Aprieta a 1.5 pips de distancia para evitar MT5 Error 10016
                     else:
-                        new_sl = current_price + (1.0 * pip_in_points)
+                        new_sl = current_price + (1.5 * pip_in_points)
                         
                 elif decision == "HOLD":
                     # La IA dice "El Trade está sano, déjalo respirar. El trend H1 nos protege".
