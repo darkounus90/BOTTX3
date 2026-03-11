@@ -370,17 +370,11 @@ class GeminiOracle:
             f"RESPONDE SOLO JSON: {{'decision':'CLOSE|HOLD', 'reason':'breve motivo'}}"
         )
 
-        models_to_try = [m for m in self.cascade_models if m in self.buckets and self.buckets[m]["rpd_count"] < self.buckets[m]["rpd_limit"]]
-        models_to_try.append(self.target_light)
-
-        resp_text = None
-        for m_name in models_to_try:
-            resp_text = self._call_model(m_name, prompt, urgent=False)
-            if resp_text and not resp_text.startswith("ERROR_"):
-                break
+        # En lugar de usar la Cascada pesada (Gemini), utilizamos a GEMMA-3 directamente para evaluar salidas (Ahorro de API).
+        resp_text = self._call_model(self.target_light, prompt, urgent=False)
 
         if not resp_text or resp_text.startswith("ERROR_"):
-            return {"decision": "HOLD", "reason": "Oráculo cansado (Limites), mantenemos regla técnica"}
+            return {"decision": "HOLD", "reason": "Oráculo Gemma cansado, mantenemos regla técnica"}
 
         try:
             clean_text = resp_text.replace("```json", "").replace("```", "").strip()
