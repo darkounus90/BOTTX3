@@ -12,16 +12,20 @@ Lógica:
 import MetaTrader5 as mt5
 from config.settings import BotConfig
 from utils.logger import BotLogger
+from core.llm_oracle import LLMOracle  # Inyectando Inteligencia Institucional al Riesgo
 
 
 class TrailingStopManager:
     """
     Gestiona trailing stops para posiciones abiertas.
     Solo modifica posiciones del bot (filtrado por magic number).
+    Ahora utiliza la IA (Gemini) para validar si es el momento
+    correcto estructuralmente para mover el precio a Break Even o T-Stop.
     """
 
-    def __init__(self, logger: BotLogger):
+    def __init__(self, logger: BotLogger, oracle: LLMOracle = None):
         self.logger = logger
+        self.oracle = oracle  # Referencia al CIO de Riesgo AI
         self.enabled = BotConfig.TRAILING_STOP_ENABLED
         self.activation_pips = BotConfig.TRAILING_ACTIVATION_PIPS
         self.step_pips = BotConfig.TRAILING_STEP_PIPS
@@ -88,27 +92,64 @@ class TrailingStopManager:
             return
 
         # ─── Calcular ganancia actual en pips ────────────────────────
+        profit_pips = 0.0
+        current_price = 0.0
+        order_type_str = ""
+
         if position.type == mt5.ORDER_TYPE_BUY:
             current_price = tick.bid
             profit_pips = (current_price - position.price_open) / pip_in_points
-            # Nuevo SL: precio actual - step_pips
-            new_sl = current_price - (self.step_pips * pip_in_points)
-
-            # Solo mover si:
-            # 1. La ganancia supera el umbral de activación
-            # 2. El nuevo SL es mejor (más alto) que el actual
-            if profit_pips >= self.activation_pips and new_sl > position.sl:
-                self._modify_sl(position, new_sl, profit_pips)
-
+            order_type_str = "BUY"
+            new_math_sl = current_price - (self.step_pips * pip_in_points)
         elif position.type == mt5.ORDER_TYPE_SELL:
             current_price = tick.ask
             profit_pips = (position.price_open - current_price) / pip_in_points
-            # Nuevo SL: precio actual + step_pips
-            new_sl = current_price + (self.step_pips * pip_in_points)
+            order_type_str = "SELL"
+            new_math_sl = current_price + (self.step_pips * pip_in_points)
 
-            # Solo mover si ganancia suficiente y SL es menor (mejor)
-            if profit_pips >= self.activation_pips and new_sl < position.sl:
-                self._modify_sl(position, new_sl, profit_pips)
+        # ─── 🧠 MODO IA: CONSULTA ESTRUCTURAL AL ORÁCULO ─────────────
+        if profit_pips >= self.activation_pips:
+            # Por defecto, la matemática básica aprueba mover el SL
+            ai_approved = True 
+            ai_reason = "Trailing Matemático Básico"
+            new_sl = new_math_sl
+            
+            # Si el Oráculo está vivo, le preguntamos si es conveniente proteger ahora
+            # basado en la estructura institucional (ej. no asfixiar el trade si hay inercia)
+            if self.oracle and self.oracle.enabled:
+                eval_result = self.oracle.evaluate_exit(position.symbol, profit_pips, order_type_str)
+                decision = eval_result.get("decision", "HOLD")
+                ai_reason = eval_result.get("reason", "Fallback IA")
+                
+                if decision == "CLOSE":
+                    # La IA ve peligro inminente (Soporte/Resistencia Fuerte)
+                    # En lugar de cerrar todo el trade bruscamente, ajustamos el Trailing Stop al máximo
+                    # para ahogar la posición (Casi Take Profit dinámico)
+                    self.logger.warning(f"🧠 CIO ALERTA en {position.symbol}: {ai_reason}. Asfixiando Trade (Max Protection).")
+                    if position.type == mt5.ORDER_TYPE_BUY:
+                        new_sl = current_price - (1.0 * pip_in_points) # Aprieta a tan solo 1 pip de distancia
+                    else:
+                        new_sl = current_price + (1.0 * pip_in_points)
+                        
+                elif decision == "HOLD":
+                    # La IA dice "El Trade está sano, déjalo respirar. El trend H1 nos protege".
+                    # Solo ponemos BREAK EVEN (Precio de Entrada), pero NO subimos más el trailing para no ahogarlo prematuramente.
+                    if position.sl < position.price_open and position.type == mt5.ORDER_TYPE_BUY:
+                         new_sl = position.price_open # BREAK EVEN EXACTO
+                         self.logger.info(f"🧠 CIO RELAX en {position.symbol}: {ai_reason}. Fijando solo Break Even (Safe Zone).")
+                    elif position.sl > position.price_open and position.type == mt5.ORDER_TYPE_SELL:
+                         new_sl = position.price_open # BREAK EVEN EXACTO
+                         self.logger.info(f"🧠 CIO RELAX en {position.symbol}: {ai_reason}. Fijando solo Break Even (Safe Zone).")
+                    else:
+                         ai_approved = False # Ya estamos en B.E o mejor, dejamos respirar.
+
+            # ─── EJECUTAR LA MODIFICACIÓN TÁCTICA ────────────────────
+            if ai_approved:
+                if position.type == mt5.ORDER_TYPE_BUY and new_sl > position.sl:
+                    self._modify_sl(position, new_sl, profit_pips)
+                elif position.type == mt5.ORDER_TYPE_SELL and new_sl < position.sl:
+                    if position.sl == 0.0 or new_sl < position.sl: # Manejo especial por si venía sin SL
+                         self._modify_sl(position, new_sl, profit_pips)
 
     def _execute_partial_close(self, position, tick):
         """Cierra el 50% de la posición e intenta poner Breakeven"""
