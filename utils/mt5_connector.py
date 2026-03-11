@@ -22,7 +22,7 @@ class MT5Connector:
         """
         self.logger.info("Conectando a MetaTrader 5...")
 
-        if not mt5.initialize():
+        if not mt5.initialize(path=r"C:\Program Files\MetaTrader 5\terminal64.exe"):
             error = mt5.last_error()
             self.logger.error(f"Error al inicializar MT5: {error}")
             self.logger.error(

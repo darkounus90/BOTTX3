@@ -133,9 +133,11 @@ rechazos_oraculo_smc = total_raw - filtered_signals
 # Asumimos winrate del 65% con la estrategia de 1:2 Beneficio
 wins = int(filtered_signals * 0.65)
 losses = filtered_signals - wins
-# Riesgo Base: 1% de 50,000 = $500 
-# Modificado a tu default Conservador (0.5% = $250 por Trade) 
-risk_usd = 250
+
+# ----- DINERO REAL: SIMULACIÓN DE BALANCE DINÁMICO -----
+dynamic_balance = 1000.0  # Balance de la cuenta real simulado
+risk_percent = 1.0        # Porcentaje de riesgo
+risk_usd = dynamic_balance * (risk_percent / 100) # $10 en este ejemplo
 reward_usd = risk_usd * 2.0 # TP = RR 1:2
 
 profit = (wins * reward_usd) - (losses * risk_usd)
@@ -146,12 +148,13 @@ print(f"🔫 Gatillos Crudos Encontrados (Bollinger+RSI): {total_raw} (Buys: {bu
 print(f"🛡️ Descartados por Filtros SMC / Oráculo Gemini: {rechazos_oraculo_smc} (Aprox 60%)")
 print(f"🎯 Operaciones Netas Filtradas: {filtered_signals}")
 print(f"")
-print(f"Simulando Ratio Riesgo:Beneficio (RR 1:2) a $250 / $500 por trade:")
+print(f"Simulando Cuenta Real de ${dynamic_balance:,.2f} @ {risk_percent}% Riesgo (RR 1:2):")
+print(f"   Riesgo por Trade: ${risk_usd:,.2f} | Beneficio Esperado: ${reward_usd:,.2f}")
 print(f"   🏆 Operaciones Exitosas (Hits): {wins} (+${wins * reward_usd:,.2f})")
 print(f"   ❌ Operaciones Fallidas (Stops): {losses} (-${losses * risk_usd:,.2f})")
 print(f"==========================================================")
-print(f"💵 BENEFICIO NETO RE-ESTIMADO SEMANAL: +${profit:,.2f} USD")
-print(f"   (Representa un {profit/50000*100:.2f}% de avance en la Fase 1)")
+print(f"💵 BENEFICIO NETO ESTIMADO SEMANAL: +${profit:,.2f} USD")
+print(f"   (Representa un crecimiento del {(profit/dynamic_balance)*100:.2f}% de la cuenta real)")
 print("==========================================================")
 print("\n📝 Últimos 3 GATILLOS ENCONTRADOS en el mercado real:")
 for t in trades_log[-3:]:

@@ -25,10 +25,15 @@ class RiskManager:
         self.logger = logger
 
         # Inicializa base, pero los límites se calcularán dinámicamente con las properties
-        self._balance_inicial = ChallengeConfig.BALANCE_INICIAL
-
-        # Umbral del día: se actualiza al resetear (5 PM EST)
-        self.equity_inicio_dia = ChallengeConfig.BALANCE_INICIAL
+        # Inicializa con el balance real del broker para cuentas con dinero real o variables
+        account_info = mt5.account_info()
+        if account_info:
+            self._balance_inicial = account_info.balance
+            self.equity_inicio_dia = max(account_info.balance, account_info.equity)
+        else:
+            self.logger.warning("No se pudo obtener info de cuenta en inicio de RiskManager. Usando default de config.")
+            self._balance_inicial = ChallengeConfig.BALANCE_INICIAL
+            self.equity_inicio_dia = ChallengeConfig.BALANCE_INICIAL
 
         # Estado
         self.is_daily_warning = False
@@ -36,7 +41,7 @@ class RiskManager:
         self.is_overall_warning = False
         self.is_overall_emergency = False
 
-        self.logger.risk("Risk Manager inicializado (Modo de Cálculo Dinámico).")
+        self.logger.risk(f"Risk Manager inicializado. Balance Base: ${self._balance_inicial:,.2f} | Equidad Día: ${self.equity_inicio_dia:,.2f}")
 
     @property
     def balance_inicial(self):
