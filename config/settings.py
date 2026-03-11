@@ -155,7 +155,7 @@ class DashboardConfig:
 class SessionConfig:
     """Configuración de sesiones de trading (EST)"""
 
-    RESTRICT_TO_LONDON_NY = False         # Permitir TODAS las sesiones (LND, NY, ASIA y PACS)
+    RESTRICT_TO_LONDON_NY = True         # Solo operar en sesiones densas (Londres y New York)
     FRIDAY_FLAT_HOUR = 15                # FTMO: Prohibido Gap Trading. Se cierran operaciones 2 horas antes (15:00 EST).
     
     LONDON_START_HOUR = 3
