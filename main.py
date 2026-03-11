@@ -902,6 +902,30 @@ class TX3ProBot:
                                     # d. Verificar Escudo Anti-Correlación (Evitar pares múltiples muy atados)
                                     if not self.position_manager.check_correlation_shield(symbol):
                                         continue
+                                        
+                                    # e. Filtro ANTI-REVENGE (Protección contra reinicios manuales)
+                                    # Si reiniciaste el bot, la memoria (variables) se borra, pero los servidores de MT5 jamas olvidan.
+                                    # Consultamos directo al Broker si este símbolo tuvo alguna transacción (Apertura o Cierre por SL) hace menos de 15 minutos.
+                                    from datetime import timedelta
+                                    from_date = datetime.now() - timedelta(minutes=15)
+                                    deals = mt5.history_deals_get(from_date, datetime.now())
+                                    in_cooldown = False
+                                    if deals:
+                                        for d in deals:
+                                            # Descartar depósitos o cosas raras, solo deals del Bot
+                                            if d.symbol == symbol and d.magic == BotConfig.MAGIC_NUMBER:
+                                                in_cooldown = True
+                                                break
+                                                
+                                    if in_cooldown:
+                                        # Log silencioso cada cierto tiempo para no llenar la consola si el signal persiste
+                                        now_ts_cd = sleep_module.time()
+                                        if not hasattr(self, '_last_cd_log') or now_ts_cd - self._last_cd_log.get(symbol, 0) > 60:
+                                            self.logger.warning(f"⏳ COOLDOWN ACTIVO: {symbol} bloqueado por Revenge Trading. Recién cerraste/estuviste en este trade. Espera 15 min.")
+                                            if not hasattr(self, '_last_cd_log'): self._last_cd_log = {}
+                                            self._last_cd_log[symbol] = now_ts_cd
+                                        continue
+                                    
                                     
                                     # SMC Detector (Order Blocks y Liquidez como Asesor Visual, no como Bloqueo)
                                     if getattr(BotConfig, "SMC_ENABLED", False):
