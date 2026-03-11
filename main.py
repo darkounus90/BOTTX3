@@ -67,6 +67,8 @@ class TX3ProBot:
         self.is_paused = False
         self._last_loop_timestamp = sleep_module.time()
         self._watchdog_notified = False
+        self._last_signal_found_timestamp = sleep_module.time() # Seguir rastro de última señal detectada
+        self._in_hibernation = False # Modo ahorro de energía/logs
 
         # ─── Inicializar componentes ─────────────────────────────────
         self.logger = BotLogger(name="TX3Bot")
@@ -873,8 +875,23 @@ class TX3ProBot:
                     now_ts = sleep_module.time()
                     if not hasattr(self, '_last_scan_log'): self._last_scan_log = {}
                     if now_ts - self._last_scan_log.get(symbol, 0) > 300:
-                        self.logger.info(f"🔍 Escaneando {symbol} (M5) | Esperando setup técnico...")
+                        if not self._in_hibernation:
+                            self.logger.info(f"🔍 Escaneando {symbol} (M5) | Esperando setup técnico...")
                         self._last_scan_log[symbol] = now_ts
+                    
+                    # ─── MODO HIBERNACIÓN (10 MIN) ───────────────────────
+                    # Si no se detectan señales en 10 min, el bot se "congela" lógicamente
+                    # refrescando cada 10 min en lugar de cada 2 seg para no saturar.
+                    if now_ts - self._last_signal_found_timestamp > 600: # 10 minutos
+                        if not self._in_hibernation:
+                            self.logger.info("💤 MODO HIBERNACIÓN: No se han detectado señales en 10 min. El bot se congela lógicamente. Despertará al encontrar un cambio estructural.")
+                            self._in_hibernation = True
+                        
+                        # Cada 10 min permitimos un escaneo real, de lo contrario saltamos
+                        if now_ts - self._last_scan_log.get(symbol, 0) < 600:
+                            continue
+                    else:
+                        self._in_hibernation = False
                     
                     try:
                         # b. Verificar Conexión con Símbolo
@@ -891,6 +908,12 @@ class TX3ProBot:
                                 signal = strategy.generate_signal()
                                 
                                 if signal:
+                                    # Resetear cronómetro de hibernación al ver una señal
+                                    self._last_signal_found_timestamp = sleep_module.time()
+                                    if self._in_hibernation:
+                                        self.logger.success("⏰ DESPERTANDO: Señal detectada. Volviendo a modo de alta frecuencia.")
+                                        self._in_hibernation = False
+
                                     # c.1 Guardar el nombre de la estrategia que detonó el signal para logging visual
                                     signal['reason'] = f"[{strategy.get_name()}] " + signal.get('reason', '')
                                     
