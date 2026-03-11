@@ -82,8 +82,10 @@ class RiskManager:
     def check_daily_drawdown(self) -> dict:
         """
         Verifica el drawdown diario.
-        El límite se calcula desde el mayor valor entre balance y equity
-        al inicio del día (se resetea a las 5 PM EST).
+        CALCULA DESDE EL HISTORIAL REAL DE MT5:
+        - Suma las pérdidas/ganancias cerradas del día (deals)
+        - Suma el P&L flotante de posiciones abiertas
+        - Compara contra el límite diario
 
         Returns:
             dict con keys: safe, loss, limit, remaining, level
@@ -101,7 +103,35 @@ class RiskManager:
             }
 
         current_equity = account_info.equity
-        daily_loss = max(0, self.equity_inicio_dia - current_equity)
+        
+        # ─── MÉTODO REAL: Calcular desde historial de MT5 ─────────
+        # El equity_inicio_dia puede ser incorrecto si el bot se reinició.
+        # Usamos el historial real de deals de hoy como fuente de verdad.
+        from datetime import datetime, timedelta
+        today = datetime.now()
+        start_today = datetime(today.year, today.month, today.day)
+        
+        closed_pnl_today = 0.0
+        try:
+            deals = mt5.history_deals_get(start_today, today + timedelta(hours=1))
+            if deals:
+                for d in deals:
+                    if d.entry in [1, 2, 3]:  # Solo cierres (OUT)
+                        closed_pnl_today += (d.profit + d.commission)
+        except Exception:
+            pass
+        
+        # P&L total del día = trades cerrados hoy + flotante actual
+        floating_pnl = account_info.profit  # Ganancia/pérdida no realizada actual
+        total_day_pnl = closed_pnl_today + floating_pnl
+        
+        # Si el día va en pérdida, daily_loss es positivo (cuánto hemos perdido)
+        daily_loss = max(0, -total_day_pnl)
+        
+        # También comparar con el método clásico y usar el MAYOR (más conservador)
+        classic_loss = max(0, self.equity_inicio_dia - current_equity)
+        daily_loss = max(daily_loss, classic_loss)
+        
         remaining = self.max_daily_loss - daily_loss
 
         # Determinar nivel
