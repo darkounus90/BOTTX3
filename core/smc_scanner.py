@@ -70,18 +70,22 @@ class SMCScanner:
         # Como optimización extrema y pasiva: si compramos dentro o sobre un inbalance de liquidez bajista 
         # masivo reciente (riesgo de trampa), penalizamos.
         
+        # Distancia mínima de proximidad a FVG (5 pips en la unidad correcta del par)
+        pip_size = 0.01 if "JPY" in symbol else 0.0001
+        proximity = 5.0 * pip_size  # 5 pips de proximidad
+
         if signal_direction == 'BUY':
             if len(bearish_fvg) > 0:
                 # Comprobar si el precio choca contra un FVG bajista muy cercano encima de nosotros
                 nearest_fvg_bottom = bearish_fvg[-1][1]
-                if current_price < nearest_fvg_bottom and (nearest_fvg_bottom - current_price) < 0.0005: 
-                    # A medio pip de chocar con resistencia de liquidez
+                if current_price < nearest_fvg_bottom and (nearest_fvg_bottom - current_price) < proximity: 
+                    # A menos de 5 pips de chocar con resistencia de liquidez
                     self.logger.warning(f"SMC VETO: {symbol} ignorado (BUY bloqueado por Bearish FVG encima)")
                     return False
         elif signal_direction == 'SELL':
             if len(bullish_fvg) > 0:
                 nearest_fvg_top = bullish_fvg[-1][0]
-                if current_price > nearest_fvg_top and (current_price - nearest_fvg_top) < 0.0005:
+                if current_price > nearest_fvg_top and (current_price - nearest_fvg_top) < proximity:
                     self.logger.warning(f"SMC VETO: {symbol} ignorado (SELL bloqueado por Bullish FVG debajo)")
                     return False
 

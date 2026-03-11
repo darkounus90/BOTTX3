@@ -96,7 +96,8 @@ class NYOpeningBreakoutStrategy(BaseStrategy):
         # Calcular el verdadero techo y piso de esas 4 horas
         current_range_high = lookback_df['high'].max()
         current_range_low = lookback_df['low'].min()
-        rango_pips = (current_range_high - current_range_low) * 10000 # asumiendo que no es JPY
+        pip_mult = 100 if "JPY" in self.symbol else 10000
+        rango_pips = (current_range_high - current_range_low) * pip_mult
 
         # Si ya operó un breakout hoy y ganó, no re-entramos
         if getattr(self, 'has_traded_today', False):
@@ -110,8 +111,9 @@ class NYOpeningBreakoutStrategy(BaseStrategy):
         # 2. La última vela CERRÓ agresivamente por encima/debajo de esa caja.
         # 3. La vela en sí misma debe ser grande, mostrando poder institucional (no mechas débiles).
         
-        cuerpo_size = abs(last_closed['close'] - last_closed['open']) * 10000
-        total_size = abs(last_closed['high'] - last_closed['low']) * 10000
+        pip_mult = 100 if "JPY" in self.symbol else 10000
+        cuerpo_size = abs(last_closed['close'] - last_closed['open']) * pip_mult
+        total_size = abs(last_closed['high'] - last_closed['low']) * pip_mult
         
         # Filtro de Calidad: El cuerpo debe representar al menos el 60% de la vela (sin mechas gigantes)
         decisive_move = (cuerpo_size / total_size) >= 0.6 if total_size > 0 else False

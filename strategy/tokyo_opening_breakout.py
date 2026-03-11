@@ -96,7 +96,8 @@ class TokyoOpeningBreakoutStrategy(BaseStrategy):
         # Calcular el verdadero techo y piso de esas 4 horas
         current_range_high = lookback_df['high'].max()
         current_range_low = lookback_df['low'].min()
-        rango_pips = (current_range_high - current_range_low) * 10000 # asumiendo que no es JPY
+        pip_mult = 100 if "JPY" in self.symbol else 10000
+        rango_pips = (current_range_high - current_range_low) * pip_mult
 
         # Si ya operó un breakout hoy y ganó, no re-entramos
         if getattr(self, 'has_traded_today', False):
@@ -110,11 +111,12 @@ class TokyoOpeningBreakoutStrategy(BaseStrategy):
         # 2. La última vela CERRÓ agresivamente por encima/debajo de esa caja.
         # 3. La vela en sí misma debe ser grande, mostrando poder institucional (no mechas débiles).
         
-        vela_size = abs(last_closed['close'] - last_closed['open']) * 10000
+        pip_mult = 100 if "JPY" in self.symbol else 10000
+        vela_size = abs(last_closed['close'] - last_closed['open']) * pip_mult
         
         # BREAKOUT ALCISTA (BUY)
         if last_closed['close'] > current_range_high and last_closed['open'] < current_range_high:
-            if vela_size > 3.0: # La vela de ruptura debe tener cuerpo sustancial (>3 pips puros)
+            if vela_size > 5.0: # La vela de ruptura debe tener cuerpo sustancial (>5 pips incluye spread)
                 signal_type = "BUY"
                 reason = "Tokyo Range Breakout Alcista (Momentum)"
 

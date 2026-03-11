@@ -276,7 +276,7 @@ class TX3ProBot:
             "sys_mt5": self.connector.is_connected(),
             "sys_oracle": self.oracle.system_ready if hasattr(self, 'oracle') else False,
             "sys_news": self.news_filter.enabled if hasattr(self, 'news_filter') else False,
-            "simulate_50k": getattr(BotConfig, "SIMULATE_50K_CHALLEGE", False),
+            "simulate_50k": getattr(BotConfig, "SIMULATE_50K_CHALLENGE", False),
             "session_info": self.session_filter.get_session_info() if hasattr(self, 'session_filter') else {},
             "upcoming_news": [
                 {
@@ -753,41 +753,12 @@ class TX3ProBot:
                 if hasattr(self, 'q_agent'):
                     self.q_agent.shadow_update_closed_trades()
 
-                # ─── B.1 AI Exit Engine (Salidas Inteligentes) ─────────
-                if self.oracle.enabled:
-                    current_min = datetime.now().minute
-                    for p in self.position_manager.get_open_positions():
-                        # Solo analiza si es ganadora (Ahorro estricto de cuota API)
-                        if p.profit > 0:
-                            si = mt5.symbol_info(p.symbol)
-                            pip_size = 0.01 if "JPY" in p.symbol else 0.0001
-                            tick = mt5.symbol_info_tick(p.symbol)
-                            
-                            pips_profit = 0.0
-                            if tick and si:
-                                if p.type == mt5.ORDER_TYPE_BUY:
-                                    pips_profit = (tick.bid - p.price_open) / pip_size
-                                else:
-                                    pips_profit = (p.price_open - tick.ask) / pip_size
-                                    
-                            # Empieza a evaluar solo si hay más de 5 pips de ganancia
-                            if pips_profit >= 5.0:
-                                t_type = "BUY" if p.type == mt5.ORDER_TYPE_BUY else "SELL"
-                                
-                                # Consultar solo en cierres de vela de 15 minutos (0, 15, 30, 45)
-                                if current_min % 15 == 0:
-                                    if not hasattr(self, "last_ai_exit_checks"):
-                                        self.last_ai_exit_checks = {}
-                                    
-                                    last_chk = self.last_ai_exit_checks.get(p.ticket, -1)
-                                    if last_chk != current_min:
-                                        self.last_ai_exit_checks[p.ticket] = current_min
-                                        decision = self.oracle.evaluate_exit(p.symbol, pips_profit, t_type)
-                                        if decision.get("decision") == "CLOSE":
-                                            self.logger.success(f"🤖🧠 ORÁCULO ORDENA CIERRE ANTICIPADO: Ticket #{p.ticket} | Razón: {decision.get('reason')}")
-                                            self.position_manager.close_position(p.ticket)
-                                            if hasattr(self.telegram, 'chat_id'):
-                                                self.telegram._send(f"🤖🧠 *CIA (Salida Inteligente)*\nCierre Anticipado en {p.symbol} (+{pips_profit:.1f} pips)\nRazón: {decision.get('reason')}")
+                # ─── B.1 AI Exit Engine ─────────────────────────────────
+                # DESACTIVADO: Este motor duplicaba la lógica de trailing_stop.py
+                # pero SIN las protecciones (gracia 5 min, filtro ruido, SL mínimo 5 pips).
+                # Causaba cierres a mercado instantáneos que perdían spread+comisión.
+                # La gestión de salidas IA ahora está CENTRALIZADA en trailing_stop.py.
+                pass
 
                 # ─── C. Verificar Riesgo (Emergencia) ──────────────
                 if hasattr(self.risk_manager, 'check_and_hedge_crashing_positions'):
@@ -935,8 +906,8 @@ class TX3ProBot:
                                     in_cooldown = False
                                     if deals:
                                         for d in deals:
-                                            # Descartar depósitos o cosas raras, solo deals del Bot
-                                            if d.symbol == symbol and d.magic == BotConfig.MAGIC_NUMBER:
+                                            # Solo contar CIERRES (entry=1 out, 2 reverse, 3 closeBy), NO aperturas (entry=0)
+                                            if d.symbol == symbol and d.magic == BotConfig.MAGIC_NUMBER and d.entry in [1, 2, 3]:
                                                 in_cooldown = True
                                                 break
                                                 
