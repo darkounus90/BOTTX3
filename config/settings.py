@@ -88,7 +88,7 @@ class BotConfig:
     WATCHLIST = ["EURUSD", "GBPUSD", "USDJPY"] # Diversificación: Euro, Libra, Yen
     DEFAULT_TIMEFRAME = "M5"             # M5 para entradas más rápidas
     EMA_FAST_PERIOD = 20
-    EMA_SLOW_PERIOD = 50
+    EMA_SLOW_PERIOD = 30
     DEFAULT_SL_PIPS = 20
     DEFAULT_TP_PIPS = 40
     MIN_RR_RATIO = 1.5
