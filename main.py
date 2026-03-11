@@ -276,7 +276,7 @@ class TX3ProBot:
             "sys_mt5": self.connector.is_connected(),
             "sys_oracle": self.oracle.system_ready if hasattr(self, 'oracle') else False,
             "sys_news": self.news_filter.enabled if hasattr(self, 'news_filter') else False,
-            "simulate_50k": getattr(BotConfig, "SIMULATE_50K_CHALLENGE", False),
+            "simulate_50k": getattr(BotConfig, "SIMULATE_50K_CHALLEGE", False),
             "session_info": self.session_filter.get_session_info() if hasattr(self, 'session_filter') else {},
             "upcoming_news": [
                 {
@@ -290,7 +290,7 @@ class TX3ProBot:
             "live_exposures": live_exposures,
             "recent_trades": self.journal.get_recent_trades(limit=15),
             "last_oracle_narration": self.oracle.last_narration if hasattr(self, 'oracle') else "No disponible",
-            "last_update": datetime.now(ZoneInfo("America/New_York")).strftime("%H:%M:%S")
+            "last_update": datetime.now(ZoneInfo("America/Bogota")).strftime("%H:%M:%S")
         }
         
         # ─── Spreads en Tiempo Real ─────────────────────────
@@ -393,7 +393,7 @@ class TX3ProBot:
         from datetime import datetime, timedelta
         from zoneinfo import ZoneInfo
         
-        _ET = ZoneInfo("America/New_York")
+        _ET = ZoneInfo("America/Bogota")
         
         # Esperar 5 minutos al iniciar antes de hacer el primer chequeo
         time.sleep(300)

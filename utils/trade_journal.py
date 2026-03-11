@@ -14,7 +14,7 @@ from config.settings import BotConfig
 from utils.logger import BotLogger
 
 # Zona horaria estándar para TODOS los timestamps del bot
-_ET = ZoneInfo("America/New_York")
+_ET = ZoneInfo("America/Bogota")
 
 
 class TradeJournal:
