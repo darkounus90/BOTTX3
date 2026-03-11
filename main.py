@@ -903,11 +903,11 @@ class TX3ProBot:
                                     if not self.position_manager.check_correlation_shield(symbol):
                                         continue
                                         
-                                    # e. Filtro ANTI-REVENGE (Protección contra reinicios manuales)
-                                    # Si reiniciaste el bot, la memoria (variables) se borra, pero los servidores de MT5 jamas olvidan.
-                                    # Consultamos directo al Broker si este símbolo tuvo alguna transacción (Apertura o Cierre por SL) hace menos de 15 minutos.
+                                    # e. Filtro ANTI-REVENGE (Protección del Cooldown)
+                                    # Consultamos directo al Broker si este símbolo tuvo alguna transacción (Apertura o Cierre) hace poco.
                                     from datetime import timedelta
-                                    from_date = datetime.now() - timedelta(minutes=15)
+                                    cooldown_mins = getattr(BotConfig, "REVENGE_COOLDOWN_MINUTES", 30)
+                                    from_date = datetime.now() - timedelta(minutes=cooldown_mins)
                                     deals = mt5.history_deals_get(from_date, datetime.now())
                                     in_cooldown = False
                                     if deals:
@@ -921,7 +921,7 @@ class TX3ProBot:
                                         # Log silencioso cada cierto tiempo para no llenar la consola si el signal persiste
                                         now_ts_cd = sleep_module.time()
                                         if not hasattr(self, '_last_cd_log') or now_ts_cd - self._last_cd_log.get(symbol, 0) > 60:
-                                            self.logger.warning(f"⏳ COOLDOWN ACTIVO: {symbol} bloqueado por Revenge Trading. Recién cerraste/estuviste en este trade. Espera 15 min.")
+                                            self.logger.warning(f"⏳ COOLDOWN ACTIVO: {symbol} bloqueado por Revenge Trading ({cooldown_mins} min). Esperando que el mercado se calme.")
                                             if not hasattr(self, '_last_cd_log'): self._last_cd_log = {}
                                             self._last_cd_log[symbol] = now_ts_cd
                                         continue

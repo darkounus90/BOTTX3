@@ -19,7 +19,7 @@ class QLearningAgent:
         self.alpha = 0.1 # Tasa de aprendizaje
         self.gamma = 0.9 # Descuento de recompensas futuras
         self.epsilon = 0.05 # Muy bajo (solo interviene raramente en decisiones reales)
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
         self.load_table()
         self.active_shadow_trades = {}
 
