@@ -163,7 +163,10 @@ class NewsFilter:
         Obtiene los eventos económicos del día.
         Usa cache para no hacer requests cada iteración.
         """
-        today = datetime.now().strftime("%Y-%m-%d")
+        from config.settings import BotConfig
+        from zoneinfo import ZoneInfo
+        now = datetime.now(ZoneInfo(BotConfig.TIMEZONE))
+        today = now.strftime("%Y-%m-%d")
 
         # Usar cache si es del mismo día (incluso si la lista está vacía)
         if self._cache_date == today:
@@ -200,7 +203,10 @@ class NewsFilter:
 
             data = response.json()
             events = []
-            today = datetime.now().strftime("%Y-%m-%d")
+            from config.settings import BotConfig
+            from zoneinfo import ZoneInfo
+            now = datetime.now(ZoneInfo(BotConfig.TIMEZONE))
+            today = now.strftime("%Y-%m-%d")
 
             for item in data:
                 event_date = item.get("date", "")
@@ -213,8 +219,10 @@ class NewsFilter:
 
                 try:
                     event_time = datetime.strptime(event_date, "%Y-%m-%dT%H:%M:%S%z")
-                    # Convertir a hora local real del servidor antes de quitarle el timezone
-                    event_time = event_time.astimezone().replace(tzinfo=None)
+                    from config.settings import BotConfig
+                    from zoneinfo import ZoneInfo
+                    # Convertir a hora de Colombia antes de quitarle el timezone para el objeto interno
+                    event_time = event_time.astimezone(ZoneInfo(BotConfig.TIMEZONE)).replace(tzinfo=None)
                 except (ValueError, TypeError):
                     continue
 
@@ -237,7 +245,9 @@ class NewsFilter:
         Schedule estático de noticias recurrentes importantes.
         Usado como fallback si la API no responde.
         """
-        now = datetime.now()
+        from config.settings import BotConfig
+        from zoneinfo import ZoneInfo
+        now = datetime.now(ZoneInfo(BotConfig.TIMEZONE))
         events = []
 
         # NFP: primer viernes de cada mes a las 8:30 AM EST

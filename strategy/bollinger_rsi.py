@@ -164,13 +164,13 @@ class BollingerRSIStrategy(BaseStrategy):
         # --- GESTIÓN DE RIESGO DINÁMICA ---
         point = symbol_info.point if symbol_info.point else 0.00001
         
-        # Multiplicador ATR (2.0x ATR para Stop Loss blindado, 2.5x ATR para Take Profit)
-        sl_pip_dist = (last_closed['atr'] * 2.0) / (point * 10)
-        tp_pip_dist = (last_closed['atr'] * 2.5) / (point * 10)
+        # Multiplicador ATR (1.5x ATR para Stop Loss ajustado, 2.0x ATR para Take Profit)
+        sl_pip_dist = (last_closed['atr'] * 1.5) / (point * 10)
+        tp_pip_dist = (last_closed['atr'] * 2.0) / (point * 10)
 
-        # Forzamos mínimos definidos en la configuración por si el mercado está muy muerto
-        sl_pips = max(round(sl_pip_dist, 1), BotConfig.DEFAULT_SL_PIPS)
-        tp_pips = max(round(tp_pip_dist, 1), BotConfig.DEFAULT_TP_PIPS)
+        # Forzamos mínimos pero más bajos (Sniper Mode: 8 pips SL / 15 pips TP mín para cubrir comisiones)
+        sl_pips = max(round(sl_pip_dist, 1), 8.0)
+        tp_pips = max(round(tp_pip_dist, 1), 15.0)
 
         ts_signal = {
             "signal": signal_type,

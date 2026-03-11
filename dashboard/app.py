@@ -89,8 +89,12 @@ def add_dashboard_log(message: str, level: str = "INFO"):
     """Agrega un log al dashboard"""
     global dashboard_data
     from datetime import datetime
+    from zoneinfo import ZoneInfo
+    from config.settings import BotConfig
+
+    tz = ZoneInfo(BotConfig.TIMEZONE)
     log_entry = {
-        "timestamp": datetime.now().strftime("%H:%M:%S"),
+        "timestamp": datetime.now(tz).strftime("%H:%M:%S"),
         "message": message,
         "level": level,
     }

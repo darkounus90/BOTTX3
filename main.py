@@ -247,8 +247,8 @@ class TX3ProBot:
         win_rate = 0.0
         # Simplificación de win_rate visual (podrías guardarlo en un state si quisieras, aquí lo dejamos en 0.0 o aproximado si tuvieras history real)
 
-        # Calcular trades de hoy desde el historial (asumiendo que las fechas en timestamps concuerdan)
-        today_str = datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
+        # Calcular trades de hoy desde el historial (usa la timezone del bot)
+        today_str = datetime.now(ZoneInfo(BotConfig.TIMEZONE)).strftime("%Y-%m-%d")
         recent_trades = self.journal.get_recent_trades(limit=50)
         trades_hoy = len([t for t in recent_trades if t.get('timestamp', '').startswith(today_str)])
         
@@ -290,7 +290,7 @@ class TX3ProBot:
             "live_exposures": live_exposures,
             "recent_trades": self.journal.get_recent_trades(limit=15),
             "last_oracle_narration": self.oracle.last_narration if hasattr(self, 'oracle') else "No disponible",
-            "last_update": datetime.now(ZoneInfo("America/Bogota")).strftime("%H:%M:%S")
+            "last_update": datetime.now(ZoneInfo(BotConfig.TIMEZONE)).strftime("%H:%M:%S")
         }
         
         # ─── Spreads en Tiempo Real ─────────────────────────
@@ -393,14 +393,14 @@ class TX3ProBot:
         from datetime import datetime, timedelta
         from zoneinfo import ZoneInfo
         
-        _ET = ZoneInfo("America/Bogota")
+        _TZ = ZoneInfo(BotConfig.TIMEZONE)
         
         # Esperar 5 minutos al iniciar antes de hacer el primer chequeo
         time.sleep(300)
         
         while self.running:
             try:
-                now_et = datetime.now(_ET)
+                now_et = datetime.now(_TZ)
                 weekday = now_et.weekday()  # 0=Lun, 4=Vie, 5=Sáb, 6=Dom
                 
                 # ─── SKIP FIN DE SEMANA ─────────────────────────

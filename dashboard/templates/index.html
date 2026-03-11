@@ -698,7 +698,7 @@
                         <thead class="text-xs text-gray-500 font-mono tracking-wider border-b border-gray-800/50">
                             <tr>
                                 <th class="px-4 py-3 font-medium">TICKET</th>
-                                <th class="px-4 py-3 font-medium">FECHA / HORA (ET)</th>
+                                <th class="px-4 py-3 font-medium">FECHA / HORA (COL)</th>
                                 <th class="px-4 py-3 font-medium">ACTIVO</th>
                                 <th class="px-4 py-3 font-medium">INFO</th>
                                 <th class="px-4 py-3 font-medium">LOTES</th>
@@ -743,12 +743,12 @@
             <!-- Left: NY Server Clock -->
             <div id="server-time-display"
                 class="flex flex-col items-start gap-1 bg-blue-500/5 px-6 py-3 rounded-2xl border border-blue-500/10 shadow-lg group hover:bg-blue-500/10 transition-all duration-300">
-                <span class="text-[0.6rem] text-blue-400 font-bold uppercase tracking-[0.2em] mb-1">NY Market
-                    Clock</span>
+                <span class="text-[0.6rem] text-blue-400 font-bold uppercase tracking-[0.2em] mb-1">Hora Local
+                    Bot (COL)</span>
                 <div class="flex items-baseline gap-2">
                     <span id="ny-server-time"
                         class="text-2xl font-mono font-black text-white tracking-widest leading-none">--:--:--</span>
-                    <span class="text-[0.65rem] text-blue-500 opacity-60 font-bold">ET</span>
+                    <span class="text-[0.65rem] text-blue-500 opacity-60 font-bold">COL</span>
                 </div>
             </div>
 
@@ -924,7 +924,7 @@
                                 <span class="text-xs px-2 py-0.5 rounded bg-gray-800 ${currColor}">${news.currency}</span>
                                 <span class="text-xs font-mono text-gray-300 truncate max-w-[150px] md:max-w-[200px]" title="${news.title}">${news.title}</span>
                             </div>
-                            <span class="text-xs font-mono text-amber-500 font-bold">${news.time} ET</span>
+                            <span class="text-xs font-mono text-amber-500 font-bold">${news.time} COL</span>
                         `;
                         nc.appendChild(item);
                     });

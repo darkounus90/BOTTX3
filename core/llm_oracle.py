@@ -273,7 +273,7 @@ class GeminiOracle:
             return {"decision": "APPROVED", "reason": "Oracle Bypass (Disabled)"}
 
         # 1. VERIFICAR CACHÉ
-        now_nyc = datetime.now(ZoneInfo("America/New_York"))
+        now_nyc = datetime.now(ZoneInfo(BotConfig.TIMEZONE))
         candle_key = now_nyc.strftime("%Y%m%d%H") + str(now_nyc.minute // 5)
         cache_id = f"{symbol}_{signal_type}"
         if cache_id in self._signal_cache:
@@ -341,7 +341,7 @@ class GeminiOracle:
             return {"decision": "HOLD", "reason": "Oracle Bypass"}
 
         # 1. VERIFICAR CACHÉ (Ahorro de cuota por vela de M15)
-        now_nyc = datetime.now(ZoneInfo("America/New_York"))
+        now_nyc = datetime.now(ZoneInfo(BotConfig.TIMEZONE))
         candle_key = now_nyc.strftime("%Y%m%d%H") + str(now_nyc.minute // 15)
         cache_id = f"EXIT_{symbol}_{order_type}"
         

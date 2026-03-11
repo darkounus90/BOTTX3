@@ -85,7 +85,8 @@ class SessionFilter:
             'ACTIVE'  - Sesión London o NY activa
             'CLOSED'  - Fuera de horario
         """
-        now = datetime.now(ZoneInfo("America/New_York"))
+        from config.settings import BotConfig
+        now = datetime.now(ZoneInfo(BotConfig.TIMEZONE))
         current_time = now.time()
         current_day = now.weekday()  # 0=Monday, 6=Sunday
 
@@ -141,7 +142,8 @@ class SessionFilter:
         """
         Retorna información detallada de la sesión actual.
         """
-        now = datetime.now(ZoneInfo("America/New_York"))
+        from config.settings import BotConfig
+        now = datetime.now(ZoneInfo(BotConfig.TIMEZONE))
         current_time = now.time()
         current_day = now.weekday()
 
@@ -208,7 +210,8 @@ class SessionFilter:
         y evitar operar durante el fin de semana (Regla de Prop Firms).
         Se ejecuta a la hora parametrizada en FRIDAY_FLAT_HOUR (Por defecto 12:00 PM EST).
         """
-        now = datetime.now(ZoneInfo("America/New_York"))
+        from config.settings import BotConfig
+        now = datetime.now(ZoneInfo(BotConfig.TIMEZONE))
         # 4 = Viernes en Python datetime.weekday()
         if now.weekday() == 4:
             if now.hour >= getattr(SessionConfig, "FRIDAY_FLAT_HOUR", 12):

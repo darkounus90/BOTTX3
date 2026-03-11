@@ -58,6 +58,8 @@ class ChallengeConfig:
 class BotConfig:
     """Configuración de comportamiento del bot"""
 
+    TIMEZONE = "America/Bogota"          # Zona horaria para dashboard, logs y resets
+
     # ─── RISK MANAGEMENT (FTMO COMPLIANCE) ────────────────────────────
     MAX_RISK_PER_TRADE_PCT = 0.2                 # 0.2% = $100 base para cuenta 50K. Tiro calibrado.
     STRICT_CONSISTENCY_MODE = True       # FTMO exige que no haya "one-sided bets".

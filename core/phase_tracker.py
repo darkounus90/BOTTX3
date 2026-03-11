@@ -53,11 +53,12 @@ class PhaseTracker:
         from zoneinfo import ZoneInfo
         from collections import defaultdict
 
-        _ET = ZoneInfo("America/New_York")
+        from config.settings import BotConfig
+        _TZ = ZoneInfo(BotConfig.TIMEZONE)
 
         try:
             # Obtener historial completo (últimos 60 días cubre cualquier challenge)
-            now = datetime.now(_ET)
+            now = datetime.now(_TZ)
             start = now - timedelta(days=60)
             deals = mt5.history_deals_get(start, now + timedelta(hours=1))
 
@@ -70,7 +71,7 @@ class PhaseTracker:
             for deal in deals:
                 if deal.entry not in [1, 2, 3]:  # Solo salidas (OUT)
                     continue
-                dt = datetime.fromtimestamp(deal.time, tz=_ET)
+                dt = datetime.fromtimestamp(deal.time, tz=_TZ)
                 day_key = dt.strftime("%Y-%m-%d")
                 # Profit Neto = Beneficio Bruto + Comisión (que viene en negativo)
                 net_profit = deal.profit + deal.commission
