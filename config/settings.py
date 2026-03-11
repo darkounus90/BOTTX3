@@ -190,6 +190,6 @@ class BacktestConfig:
 
     DEFAULT_PERIOD_DAYS = 90             # 3 meses por defecto
     INITIAL_BALANCE = 50_000
-    COMMISSION_PER_LOT = 7.0             # $7 por lote round-trip
+    COMMISSION_PER_LOT = 9.0             # $9 por lote (Ajustado por el broker)
     SPREAD_PIPS = 1.5                    # Spread simulado
     RESULTS_DIR = "data/backtest_results"

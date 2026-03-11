@@ -120,9 +120,9 @@ class PositionManager:
         # FTMO Cobra comisión por lote operado. Debemos restarla del riesgo permitido
         # para que Riesgo_Total = (Lotes * SL_Pips * Pip_Value) + (Lotes * Comisión_Por_Lote)
         
-        # Usamos la config de Backtest que tiene los $7.0 de comisión guardados, 
-        # o asumimos 6.0 USD (lo que cobra FTMO en cuenta normal por round-trip)
-        commission_per_lot = getattr(BotConfig, "COMMISSION_PER_LOT", 7.0) # $7 USD conservador
+        # Usamos la config de Backtest que tiene los $9.0 de comisión guardados, 
+        # o asumimos 9.0 USD (lo que cobra FTMO a tu tipo de cuenta)
+        commission_per_lot = getattr(BotConfig, "COMMISSION_PER_LOT", 9.0) # $9 USD conservador
         
         # Matemáticamente: Lotes = Riesgo_Amount / ((SL_Pips * Pip_Value) + Commission_Per_Lot)
         cost_per_lot_at_sl = (stop_loss_pips * pip_val_lot) + commission_per_lot
