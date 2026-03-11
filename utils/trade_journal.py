@@ -418,7 +418,8 @@ class TradeJournal:
             # Convertir timestamp del broker a hora ET para consistencia
             dt = datetime.fromtimestamp(deal.time, tz=_ET)
             ts = dt.strftime("%Y-%m-%d %H:%M:%S")
-            profit = round(float(deal.profit), 2)
+            # Profit Neto = Beneficio Bruto + Comisión
+            profit = round(float(deal.profit + deal.commission), 2)
             symbol = deal.symbol
             
             # Signature robusta: TS + PROFIT (rounded) + SYMBOL
