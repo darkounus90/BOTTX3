@@ -131,12 +131,14 @@ class PositionManager:
         lotes = round(lotes / si.volume_step) * si.volume_step
         lotes = max(si.volume_min, min(lotes, si.volume_max))
 
-        # ─── 5. LÍMITE DURO DE SEGURIDAD ───
+        # ─── 5. LÍMITE DURO DE SEGURIDAD (PROPORCIONAL AL BALANCE) ───
         # Límite máximo absoluto de lotes para evitar que un stop loss 
-        # extremadamente pequeño (ej. 2 pips) genere un lotaje destructivo de 20 lotes.
-        MAX_LOTS_ALLOWED = 2.0 
+        # extremadamente pequeño (ej. 2 pips) genere un lotaje destructivo.
+        # Regla Base FTMO Segura: Max 2.5 lotes por cada $50,000 de balance.
+        MAX_LOTS_ALLOWED = (usable_balance / 50000.0) * 2.5 
+        
         if lotes > MAX_LOTS_ALLOWED:
-             self.logger.warning(f"⚠️ HARD LIMIT ALCANZADO: Reduciendo lotes calculados de {lotes} a {MAX_LOTS_ALLOWED} por seguridad.")
+             self.logger.warning(f"⚠️ HARD LIMIT ALCANZADO: Reduciendo lotes calculados de {lotes:.2f} a {MAX_LOTS_ALLOWED:.2f} (Tope por balance de ${usable_balance:,.0f}).")
              lotes = MAX_LOTS_ALLOWED
 
         self.logger.risk(f"🛡️ MATH FORTRESS: {symbol} | Risk {risk_pct:.3f}% ($ {risk_amount:.2f}) | SL: {stop_loss_pips:.1f} | Lotes: {lotes} | Com. Est.: ${(lotes*commission_per_lot):.2f}")
