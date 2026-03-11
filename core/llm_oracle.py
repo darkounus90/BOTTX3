@@ -362,11 +362,15 @@ class GeminiOracle:
 
         prompt = (
             f"ERES CIO DE HEDGE FUND (SMC/ICT Professional).\n"
-            f"Tenemos una posición {order_type} viva en {symbol} con +{current_profit_pips:.1f} pips de ganancia flotante.\n"
-            f"Estructura M15/H1 actual: {context_data}\n\n"
-            f"REGLA DE GESTIÓN DE RIESGO:\n"
-            f"Decide si cerramos la operación para asegurar la ganancia anticipadamente (CLOSE) o si la tendencia sigue firme y tiene espacio para correr (HOLD).\n"
-            f"Si intuyes rechazo de liquidez, soporte o resistencia inminente en contra del trade, asegura.\n"
+            f"CONTEXTO CRÍTICO: Ya aprobamos una posición {order_type} en {symbol}. La entrada fue validada por análisis técnico y tendencia H1.\n"
+            f"P&L Flotante actual: {current_profit_pips:+.1f} pips.\n"
+            f"Estructura M15 actual: {context_data}\n\n"
+            f"REGLA DE ORO INSTITUCIONAL:\n"
+            f"- Tu trabajo NO es cuestionar la entrada (ya fue aprobada). Tu trabajo es detectar REVERSIONES ESTRUCTURALES.\n"
+            f"- Solo di CLOSE si ves una REVERSIÓN CLARA contra el trade (ej: un {order_type} y las velas M15 forman un patrón de reversa contrario).\n"
+            f"- Si la tendencia sigue en la MISMA dirección del trade, SIEMPRE di HOLD.\n"
+            f"- Si el trade tiene menos de +8 pips, PREFIERE HOLD (dale tiempo al trade de madurar).\n"
+            f"- Un '{order_type}' con 'Lower Lows' en tendencia bajista es CONSISTENTE, no es señal de cierre.\n"
             f"RESPONDE SOLO JSON: {{'decision':'CLOSE|HOLD', 'reason':'breve motivo'}}"
         )
 

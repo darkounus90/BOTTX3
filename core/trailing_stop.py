@@ -113,63 +113,92 @@ class TrailingStopManager:
         new_sl = new_math_sl if ai_approved else position.sl
         
         # ─── 🧠 MODO IA: ESCÁNER PREVENTIVO DEL ORÁCULO ─────────────
-        # La IA evalúa CUALQUIER operación viva cada 60 segundos, vaya ganando o perdiendo
+        # La IA evalúa operaciones vivas, pero con INTELIGENCIA INSTITUCIONAL:
+        # 1. PERÍODO DE GRACIA: No evaluar hasta que el trade tenga al menos 5 minutos de vida
+        # 2. UMBRAL DE RUIDO: Solo activar asfixia si el trade pierde más de 3 pips (no por spread/ruido)
+        # 3. PROTECCIÓN MÍNIMA: SL de asfixia a 5 pips (no 1.5, que garantiza pérdida por comisión)
         if self.oracle and self.oracle.enabled:
             import time
             now_ts = time.time()
-            last_ai_time = getattr(self, f"_last_ai_time_{position.symbol}", 0)
             
-            # Rate limit: 60 segundos por símbolo para no congelar el loop principal
-            if now_ts - last_ai_time > 60:
-                eval_result = self.oracle.evaluate_exit(position.symbol, profit_pips, order_type_str)
-                setattr(self, f"_last_ai_eval_{position.symbol}", eval_result)
-                setattr(self, f"_last_ai_time_{position.symbol}", now_ts)
-            else:
-                eval_result = getattr(self, f"_last_ai_eval_{position.symbol}", {"decision": "HOLD", "reason": "Enfriamiento IA"})
-
-            decision = eval_result.get("decision", "HOLD")
-            ai_reason = eval_result.get("reason", "Fallback IA")
+            # ─── PERÍODO DE GRACIA: 5 minutos después de abrir ─────────
+            # El trade necesita tiempo para respirar y desarrollar su tesis
+            trade_age_seconds = now_ts - position.time_setup
+            GRACE_PERIOD_SECONDS = 300  # 5 minutos
             
-            if decision == "CLOSE":
-                # La IA detectó peligro inminente estructural (Cuchillo cayendo)
-                # Asfixiamos el Trade poniendo el Stop Loss a 1.5 pips del precio actual para forzar cierre rápido
-                ai_approved = True  # Forzamos la aprobación de modificación de SL
-                
-                last_log_time = getattr(self, f"_last_log_time_{position.symbol}", 0)
-                if now_ts - last_log_time > 30:
-                    self.logger.warning(f"🧠 CIO ALERTA ROJA en {position.symbol}: {ai_reason}. Asfixiando Trade (Max Protection - Option B).")
-                    setattr(self, f"_last_log_time_{position.symbol}", now_ts)
-                    
-                if position.type == mt5.ORDER_TYPE_BUY:
-                    new_sl = current_price - (1.5 * pip_in_points)
-                    # Si el nuevo SL asfixiado es peor que el SL original (e.g., estamos muy en drawdown), mantener el original o cerrar a mercado.
-                    # Aquí lo usamos como un Take Profit dinámico/Corto Stop Loss. Si es < SL, lo dejamos en SL original.
-                    if position.sl != 0.0 and new_sl < position.sl:
-                        new_sl = position.sl
-                else:
-                    new_sl = current_price + (1.5 * pip_in_points)
-                    if position.sl != 0.0 and new_sl > position.sl:
-                        new_sl = position.sl
-                        
-            elif decision == "HOLD" and profit_pips >= self.activation_pips:
-                # Si la IA dice que mantenga y YA pasó la barrera de activación, solo ponemos Break Even para dejarlo respirar
-                if position.sl < position.price_open and position.type == mt5.ORDER_TYPE_BUY:
-                     new_sl = position.price_open # BREAK EVEN EXACTO
-                     last_log_time = getattr(self, f"_last_log_time_{position.symbol}", 0)
-                     if now_ts - last_log_time > 30:
-                         self.logger.info(f"🧠 CIO RELAX en {position.symbol}: {ai_reason}. Fijando solo Break Even (Safe Zone).")
-                         setattr(self, f"_last_log_time_{position.symbol}", now_ts)
-                elif position.sl > position.price_open and position.type == mt5.ORDER_TYPE_SELL:
-                     new_sl = position.price_open # BREAK EVEN EXACTO
-                     last_log_time = getattr(self, f"_last_log_time_{position.symbol}", 0)
-                     if now_ts - last_log_time > 30:
-                         self.logger.info(f"🧠 CIO RELAX en {position.symbol}: {ai_reason}. Fijando solo Break Even (Safe Zone).")
-                         setattr(self, f"_last_log_time_{position.symbol}", now_ts)
-                else:
-                     ai_approved = False # Ya estamos en B.E o mejor, dejamos respirar, no movemos más el SL por el momento.
-            elif decision == "HOLD":
-                # La IA no dice que se cruce, pero tampoco pasamos la barrera de pips, no hacemos nada.
+            if trade_age_seconds < GRACE_PERIOD_SECONDS:
+                # Trade demasiado joven para que la IA intervenga
+                # Solo logueamos una vez para transparencia
+                grace_log_key = f"_grace_logged_{position.ticket}"
+                if not getattr(self, grace_log_key, False):
+                    remaining = int((GRACE_PERIOD_SECONDS - trade_age_seconds) / 60)
+                    self.logger.info(f"⏳ Gracia IA: {position.symbol} Ticket #{position.ticket} | {remaining} min restantes antes de evaluar salida.")
+                    setattr(self, grace_log_key, True)
+                # No tocar nada, dejar que el trade se desarrolle
                 ai_approved = False
+            else:
+                # Trade maduro — ahora sí evaluamos con la IA
+                last_ai_time = getattr(self, f"_last_ai_time_{position.symbol}", 0)
+                
+                # Rate limit: 120 segundos por símbolo (más tiempo para pensar, menos spam)
+                if now_ts - last_ai_time > 120:
+                    eval_result = self.oracle.evaluate_exit(position.symbol, profit_pips, order_type_str)
+                    setattr(self, f"_last_ai_eval_{position.symbol}", eval_result)
+                    setattr(self, f"_last_ai_time_{position.symbol}", now_ts)
+                else:
+                    eval_result = getattr(self, f"_last_ai_eval_{position.symbol}", {"decision": "HOLD", "reason": "Enfriamiento IA"})
+
+                decision = eval_result.get("decision", "HOLD")
+                ai_reason = eval_result.get("reason", "Fallback IA")
+                
+                if decision == "CLOSE":
+                    # Solo activar asfixia si el trade está en pérdida real (> 3 pips)
+                    # o en ganancia significativa (> 8 pips) que se está devolviendo  
+                    # NO activar por ruido/spread en los primeros pips
+                    if profit_pips < -3.0 or profit_pips >= 8.0:
+                        ai_approved = True
+                        
+                        last_log_time = getattr(self, f"_last_log_time_{position.symbol}", 0)
+                        if now_ts - last_log_time > 30:
+                            self.logger.warning(f"🧠 CIO ALERTA ROJA en {position.symbol}: {ai_reason}. Protegiendo Trade (Option B).")
+                            setattr(self, f"_last_log_time_{position.symbol}", now_ts)
+                        
+                        # SL de protección a 5 pips (institucional, cubre spread + comisión)
+                        if position.type == mt5.ORDER_TYPE_BUY:
+                            new_sl = current_price - (5.0 * pip_in_points)
+                            if position.sl != 0.0 and new_sl < position.sl:
+                                new_sl = position.sl
+                        else:
+                            new_sl = current_price + (5.0 * pip_in_points)
+                            if position.sl != 0.0 and new_sl > position.sl:
+                                new_sl = position.sl
+                    else:
+                        # La IA dice CLOSE pero el trade está en zona de ruido (-3 a +8 pips)
+                        # No hacemos nada, dejamos que el SL/TP originales trabajen
+                        ai_approved = False
+                        last_log_time = getattr(self, f"_last_log_time_{position.symbol}", 0)
+                        if now_ts - last_log_time > 60:
+                            self.logger.info(f"🧠 CIO Nota en {position.symbol}: IA sugiere precaución ({ai_reason}), pero P&L en zona neutral ({profit_pips:+.1f} pips). Dejando respirar.")
+                            setattr(self, f"_last_log_time_{position.symbol}", now_ts)
+                            
+                elif decision == "HOLD" and profit_pips >= self.activation_pips:
+                    # Si la IA dice que mantenga y YA pasó la barrera de activación, solo ponemos Break Even para dejarlo respirar
+                    if position.sl < position.price_open and position.type == mt5.ORDER_TYPE_BUY:
+                         new_sl = position.price_open # BREAK EVEN EXACTO
+                         last_log_time = getattr(self, f"_last_log_time_{position.symbol}", 0)
+                         if now_ts - last_log_time > 30:
+                             self.logger.info(f"🧠 CIO RELAX en {position.symbol}: {ai_reason}. Fijando solo Break Even (Safe Zone).")
+                             setattr(self, f"_last_log_time_{position.symbol}", now_ts)
+                    elif position.sl > position.price_open and position.type == mt5.ORDER_TYPE_SELL:
+                         new_sl = position.price_open # BREAK EVEN EXACTO
+                         last_log_time = getattr(self, f"_last_log_time_{position.symbol}", 0)
+                         if now_ts - last_log_time > 30:
+                             self.logger.info(f"🧠 CIO RELAX en {position.symbol}: {ai_reason}. Fijando solo Break Even (Safe Zone).")
+                             setattr(self, f"_last_log_time_{position.symbol}", now_ts)
+                    else:
+                         ai_approved = False # Ya estamos en B.E o mejor, dejamos respirar
+                elif decision == "HOLD":
+                    ai_approved = False
 
             # ─── EJECUTAR LA MODIFICACIÓN TÁCTICA ────────────────────
             if ai_approved:
