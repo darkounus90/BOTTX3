@@ -117,15 +117,31 @@ class TrailingStopManager:
             # Si el Oráculo está vivo, le preguntamos si es conveniente proteger ahora
             # basado en la estructura institucional (ej. no asfixiar el trade si hay inercia)
             if self.oracle and self.oracle.enabled:
-                eval_result = self.oracle.evaluate_exit(position.symbol, profit_pips, order_type_str)
+                import time
+                now_ts = time.time()
+                last_ai_time = getattr(self, f"_last_ai_time_{position.symbol}", 0)
+                
+                # Rate limit: Solo le preguntamos a la IA cada 60 segundos por símbolo para evitar congelar el loop
+                if now_ts - last_ai_time > 60:
+                    eval_result = self.oracle.evaluate_exit(position.symbol, profit_pips, order_type_str)
+                    setattr(self, f"_last_ai_eval_{position.symbol}", eval_result)
+                    setattr(self, f"_last_ai_time_{position.symbol}", now_ts)
+                else:
+                    eval_result = getattr(self, f"_last_ai_eval_{position.symbol}", {"decision": "HOLD", "reason": "Enfriamiento IA"})
+
                 decision = eval_result.get("decision", "HOLD")
                 ai_reason = eval_result.get("reason", "Fallback IA")
                 
                 if decision == "CLOSE":
                     # La IA ve peligro inminente (Soporte/Resistencia Fuerte)
                     # En lugar de cerrar todo el trade bruscamente, ajustamos el Trailing Stop al máximo
-                    # para ahogar la posición (Casi Take Profit dinámico)
-                    self.logger.warning(f"🧠 CIO ALERTA en {position.symbol}: {ai_reason}. Asfixiando Trade (Max Protection).")
+                    
+                    # Evitar spam de logs
+                    last_log_time = getattr(self, f"_last_log_time_{position.symbol}", 0)
+                    if now_ts - last_log_time > 30:
+                        self.logger.warning(f"🧠 CIO ALERTA en {position.symbol}: {ai_reason}. Asfixiando Trade (Max Protection).")
+                        setattr(self, f"_last_log_time_{position.symbol}", now_ts)
+                        
                     if position.type == mt5.ORDER_TYPE_BUY:
                         new_sl = current_price - (1.5 * pip_in_points) # Aprieta a 1.5 pips de distancia para evitar MT5 Error 10016
                     else:
@@ -136,20 +152,28 @@ class TrailingStopManager:
                     # Solo ponemos BREAK EVEN (Precio de Entrada), pero NO subimos más el trailing para no ahogarlo prematuramente.
                     if position.sl < position.price_open and position.type == mt5.ORDER_TYPE_BUY:
                          new_sl = position.price_open # BREAK EVEN EXACTO
-                         self.logger.info(f"🧠 CIO RELAX en {position.symbol}: {ai_reason}. Fijando solo Break Even (Safe Zone).")
+                         last_log_time = getattr(self, f"_last_log_time_{position.symbol}", 0)
+                         if now_ts - last_log_time > 30:
+                             self.logger.info(f"🧠 CIO RELAX en {position.symbol}: {ai_reason}. Fijando solo Break Even (Safe Zone).")
+                             setattr(self, f"_last_log_time_{position.symbol}", now_ts)
                     elif position.sl > position.price_open and position.type == mt5.ORDER_TYPE_SELL:
                          new_sl = position.price_open # BREAK EVEN EXACTO
-                         self.logger.info(f"🧠 CIO RELAX en {position.symbol}: {ai_reason}. Fijando solo Break Even (Safe Zone).")
+                         last_log_time = getattr(self, f"_last_log_time_{position.symbol}", 0)
+                         if now_ts - last_log_time > 30:
+                             self.logger.info(f"🧠 CIO RELAX en {position.symbol}: {ai_reason}. Fijando solo Break Even (Safe Zone).")
+                             setattr(self, f"_last_log_time_{position.symbol}", now_ts)
                     else:
                          ai_approved = False # Ya estamos en B.E o mejor, dejamos respirar.
 
             # ─── EJECUTAR LA MODIFICACIÓN TÁCTICA ────────────────────
             if ai_approved:
+                # Solo enviar a MT5 si el movimiento es al menos 1.0 pip (evita spam 10016 al broker)
                 if position.type == mt5.ORDER_TYPE_BUY and new_sl > position.sl:
-                    self._modify_sl(position, new_sl, profit_pips)
-                elif position.type == mt5.ORDER_TYPE_SELL and new_sl < position.sl:
-                    if position.sl == 0.0 or new_sl < position.sl: # Manejo especial por si venía sin SL
-                         self._modify_sl(position, new_sl, profit_pips)
+                    if (new_sl - position.sl) / pip_in_points >= 1.0:
+                        self._modify_sl(position, new_sl, profit_pips)
+                elif position.type == mt5.ORDER_TYPE_SELL and (position.sl == 0.0 or new_sl < position.sl):
+                    if position.sl == 0.0 or (position.sl - new_sl) / pip_in_points >= 1.0:
+                        self._modify_sl(position, new_sl, profit_pips)
 
     def _execute_partial_close(self, position, tick):
         """Cierra el 50% de la posición e intenta poner Breakeven"""
