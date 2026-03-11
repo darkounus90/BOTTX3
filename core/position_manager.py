@@ -111,17 +111,35 @@ class PositionManager:
             
         risk_amount = usable_balance * (risk_pct / 100)
 
-        # ─── 4. CÁLCULO DE LOTAJE ───
+        # ─── 4. CÁLCULO DE LOTAJE (CONTEMPLANDO COMISIONES) ───
         si = mt5.symbol_info(symbol)
         pip_size = 0.01 if "JPY" in symbol else 0.0001
         # Pip Value formula: (PipSize / TickSize) * TickValue
         pip_val_lot = (pip_size / si.trade_tick_size) * si.trade_tick_value
         
-        lotes = risk_amount / (stop_loss_pips * pip_val_lot)
+        # FTMO Cobra comisión por lote operado. Debemos restarla del riesgo permitido
+        # para que Riesgo_Total = (Lotes * SL_Pips * Pip_Value) + (Lotes * Comisión_Por_Lote)
+        
+        # Usamos la config de Backtest que tiene los $7.0 de comisión guardados, 
+        # o asumimos 6.0 USD (lo que cobra FTMO en cuenta normal por round-trip)
+        commission_per_lot = getattr(BotConfig, "COMMISSION_PER_LOT", 7.0) # $7 USD conservador
+        
+        # Matemáticamente: Lotes = Riesgo_Amount / ((SL_Pips * Pip_Value) + Commission_Per_Lot)
+        cost_per_lot_at_sl = (stop_loss_pips * pip_val_lot) + commission_per_lot
+        
+        lotes = risk_amount / cost_per_lot_at_sl
         lotes = round(lotes / si.volume_step) * si.volume_step
         lotes = max(si.volume_min, min(lotes, si.volume_max))
 
-        self.logger.risk(f"🛡️ MATH FORTRESS: {symbol} | Risk {risk_pct:.3f}% | SL: {stop_loss_pips:.1f} | Lotes: {lotes}")
+        # ─── 5. LÍMITE DURO DE SEGURIDAD ───
+        # Límite máximo absoluto de lotes para evitar que un stop loss 
+        # extremadamente pequeño (ej. 2 pips) genere un lotaje destructivo de 20 lotes.
+        MAX_LOTS_ALLOWED = 2.0 
+        if lotes > MAX_LOTS_ALLOWED:
+             self.logger.warning(f"⚠️ HARD LIMIT ALCANZADO: Reduciendo lotes calculados de {lotes} a {MAX_LOTS_ALLOWED} por seguridad.")
+             lotes = MAX_LOTS_ALLOWED
+
+        self.logger.risk(f"🛡️ MATH FORTRESS: {symbol} | Risk {risk_pct:.3f}% ($ {risk_amount:.2f}) | SL: {stop_loss_pips:.1f} | Lotes: {lotes} | Com. Est.: ${(lotes*commission_per_lot):.2f}")
         return lotes
 
     def place_order(

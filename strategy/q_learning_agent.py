@@ -148,7 +148,13 @@ class QLearningAgent:
                 
                 if deals:
                     # Sumar profits de los deals (entrada y salida)
-                    total_profit = sum(d.profit for d in deals)
+                    # El profit bruto
+                    raw_profit = sum(d.profit for d in deals)
+                    # La comisión cobrada en estos deals
+                    total_commission = sum(d.commission for d in deals)
+                    # Beneficio Neto Real (Net Profit)
+                    total_profit = raw_profit + total_commission
+                    
                     reward = 1.0 if total_profit > 0 else -1.0
                     
                     with self.lock:
@@ -156,8 +162,8 @@ class QLearningAgent:
                         state = trade_info['state']
                         action = trade_info['action']
                         
-                        # Aprender de la vida real
-                        self.logger.info(f"🧠 Shadow Mode Learn: Ticket #{ticket} cerrado. Profit: ${total_profit:.2f}. Castigo/Premio: {reward}")
+                        # Aprender de la vida real (Mostrando Ganancia Real Neta)
+                        self.logger.info(f"🧠 Shadow Mode Learn: Ticket #{ticket} cerrado. Profit Neto: ${total_profit:.2f}. Castigo/Premio: {reward}")
                         # Next state dummy porque no es secuncial
                         self.learn(state, action, reward, state)
                         

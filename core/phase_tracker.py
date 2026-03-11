@@ -72,7 +72,9 @@ class PhaseTracker:
                     continue
                 dt = datetime.fromtimestamp(deal.time, tz=_ET)
                 day_key = dt.strftime("%Y-%m-%d")
-                daily_map[day_key] += deal.profit
+                # Profit Neto = Beneficio Bruto + Comisión (que viene en negativo)
+                net_profit = deal.profit + deal.commission
+                daily_map[day_key] += net_profit
 
             # Contar días rentables (>= $250 mínimo)
             profitable = 0
@@ -126,7 +128,8 @@ class PhaseTracker:
         closed_profit = 0.0
         if deals:
              # entry 1=OUT, 2=INOUT, 3=OUT_BY (todos representan salidas con profit real)
-             closed_profit = sum(d.profit for d in deals if d.entry in [1, 2, 3])
+             # Profit Neto = Profit Bruto + Comisión (que viene en negativo)
+             closed_profit = sum((d.profit + d.commission) for d in deals if d.entry in [1, 2, 3])
 
         self.current_day_profit = closed_profit + account_info.profit
 
