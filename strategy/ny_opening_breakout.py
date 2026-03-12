@@ -120,13 +120,13 @@ class NYOpeningBreakoutStrategy(BaseStrategy):
 
         # BREAKOUT ALCISTA (BUY)
         if last_closed['close'] > current_range_high and last_closed['open'] < current_range_high:
-            if cuerpo_size > 6.5 and decisive_move: # Aumento de 3.0 -> 6.5 pips
+            if cuerpo_size > 4.0 and decisive_move: # (Modo Tirador Designado, baja de 6.5)
                 signal_type = "BUY"
                 reason = "NY Range Breakout Alcista (Momentum Decisivo)"
 
         # BREAKOUT BAJISTA (SELL)
         elif last_closed['close'] < current_range_low and last_closed['open'] > current_range_low:
-            if cuerpo_size > 6.5 and decisive_move:
+            if cuerpo_size > 2.5 and decisive_move: # (Modo Tirador Designado, baja de 6.5)
                 signal_type = "SELL"
                 reason = "NY Range Breakout Bajista (Momentum Decisivo)"
 
