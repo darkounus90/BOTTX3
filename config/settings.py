@@ -105,7 +105,7 @@ class BotConfig:
     MAGIC_NUMBER = 234000
     DEVIATION = 20
     ORDER_COMMENT_PREFIX = "Darkobot"
-    MAX_SPREAD_PIPS = 5.0                # TX3 Funding: EURUSD ~2-4, GBPUSD ~4-8, USDJPY ~4-10
+    MAX_SPREAD_PIPS = 6.0                # TX3 Funding: EURUSD ~2-4, GBPUSD ~4-8, USDJPY ~4-10 (Ligeramente flexible)
 
     # ─── TIMING ───────────────────────────────────────────────────────
     LOOP_INTERVAL_SECONDS = 2            # Actualización ultra rápida (2s) para Dashboard y MT5
