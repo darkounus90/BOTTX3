@@ -127,8 +127,9 @@ class TelegramConfig:
     """Configuración de Telegram para notificaciones"""
 
     ENABLED = True
-    BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-    CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
+    # Fallback incorporado en caso de que Windows/PowerShell no comparta las variables del .bat
+    BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8407569871:AAFwcNzt8Mk0U0Bp3MGwT6OAaxHzRhy-2zg")
+    CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "1176201993")
 
     # Qué notificar
     NOTIFY_ON_TRADE = True
