@@ -397,7 +397,7 @@ class GeminiOracle:
         prompt = (
             f"ERES DR. QUANT, auditor de riesgo cuantitativo de un Fondo de Inversión.\n"
             f"Diagnostica este sistema: Uptime: {metrics.get('uptime')} | Balance: {metrics.get('balance')} | Pérdida Global Flotante: {metrics.get('overall_dd')} | MT5: {metrics.get('mt5_connected')}.\n"
-            f"REGLA DE ORO: Si el porcentaje de pérdida flotante es inferior al 3%, NO HAGAS ALARMAS. Es una fluctuación normal ($90 dolares es apenas el 0.1% de una cuenta de 50k, es irrelevante). Tranquiliza al usuario.\n"
+            f"REGLA DE ORO: Si el porcentaje de pérdida flotante es inferior al 3%, NO HAGAS ALARMAS. Es una fluctuación normal. OBLIGATORIO: Usa EXCLUSIVAMENTE los valores reportados en las métricas para tu diagnóstico.\n"
             f"Responde corto (1 párrafo) de diagnóstico y 1 consejo técnico."
         )
         resp = self._call_model(self.target_light, prompt, urgent=False)
