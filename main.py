@@ -845,22 +845,21 @@ class TX3ProBot:
                     # Log de escaneo periódico (cada 5 min por símbolo para visibilidad)
                     now_ts = sleep_module.time()
                     if not hasattr(self, '_last_scan_log'): self._last_scan_log = {}
+                    if not hasattr(self, '_in_hibernation'): self._in_hibernation = False
+                    if not hasattr(self, '_last_signal_found_timestamp'): self._last_signal_found_timestamp = now_ts
+                    
                     if now_ts - self._last_scan_log.get(symbol, 0) > 300:
                         if not self._in_hibernation:
                             self.logger.info(f"🔍 Escaneando {symbol} (M5) | Esperando setup técnico...")
                         self._last_scan_log[symbol] = now_ts
                     
-                    # ─── MODO HIBERNACIÓN (10 MIN) ───────────────────────
-                    # Si no se detectan señales en 10 min, el bot se "congela" lógicamente
-                    # refrescando cada 10 min en lugar de cada 2 seg para no saturar.
+                    # ─── MODO HIBERNACIÓN LÓGICA (10 MIN) ───────────────────────
+                    # Si no se detectan señales en 10 min, silenciamos los logs visuales para
+                    # no saturar la consola, pero EL ESCANEO REAL DE VELAS SIGUE ACTIVO en background.
                     if now_ts - self._last_signal_found_timestamp > 600: # 10 minutos
                         if not self._in_hibernation:
-                            self.logger.info("💤 MODO HIBERNACIÓN: No se han detectado señales en 10 min. El bot se congela lógicamente. Despertará al encontrar un cambio estructural.")
+                            self.logger.info("💤 MODO HIBERNACIÓN: Reduciendo spam de consola. El bot entra en escaneo silencioso en background...")
                             self._in_hibernation = True
-                        
-                        # Cada 10 min permitimos un escaneo real, de lo contrario saltamos
-                        if now_ts - self._last_scan_log.get(symbol, 0) < 600:
-                            continue
                     else:
                         self._in_hibernation = False
                     
