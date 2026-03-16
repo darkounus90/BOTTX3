@@ -477,8 +477,11 @@ class TX3ProBot:
                     metrics = {
                         "uptime": uptime_str,
                         "hours_since_last_trade": hours_since_last,
+                        "balance": self.risk_manager.balance_inicial,
                         "daily_dd": daily_dd,
+                        "daily_dd_pct": (daily_dd / self.risk_manager.balance_inicial) * 100 if self.risk_manager.balance_inicial > 0 else 0,
                         "overall_dd": overall_dd,
+                        "overall_dd_pct": (overall_dd / self.risk_manager.balance_inicial) * 100 if self.risk_manager.balance_inicial > 0 else 0,
                         "mt5_connected": self.connector.is_connected(),
                         "recent_errors": "Revisar logs urgentes."
                     }
