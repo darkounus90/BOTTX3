@@ -123,7 +123,7 @@ class TrailingStopManager:
             
             # ─── PERÍODO DE GRACIA: 5 minutos después de abrir ─────────
             # El trade necesita tiempo para respirar y desarrollar su tesis
-            trade_age_seconds = now_ts - position.time_setup
+            trade_age_seconds = now_ts - position.time
             GRACE_PERIOD_SECONDS = 300  # 5 minutos
             
             if trade_age_seconds < GRACE_PERIOD_SECONDS:
