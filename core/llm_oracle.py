@@ -285,11 +285,20 @@ class GeminiOracle:
         context_data = "Estructura H1/M15 neutral"
         try:
             import MetaTrader5 as mt5
-            rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M5, 0, 5)
-            if rates is not None:
-                closes = [r['close'] for r in rates]
-                trend = "Higher Highs" if closes[-1] > closes[0] else "Lower Lows"
-                context_data = f"Trend: {trend} | Last 5 Candles: {closes}"
+            # Contexto H1 (Tendencia Mayor)
+            h1_rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_H1, 0, 3)
+            h1_trend = "Indefinida"
+            if h1_rates is not None and len(h1_rates) >= 2:
+                h1_trend = "ALCISTA (Higher Highs)" if h1_rates[-1]['close'] > h1_rates[0]['close'] else "BAJISTA (Lower Lows)"
+            
+            # Contexto M5 (Micro Estructura)
+            m5_rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M5, 0, 5)
+            m5_context = ""
+            if m5_rates is not None:
+                closes = [r['close'] for r in m5_rates]
+                m5_context = f"| M5 Last 5: {closes}"
+            
+            context_data = f"H1 Trend: {h1_trend} {m5_context}"
         except: pass
 
         prompt = (
@@ -353,11 +362,18 @@ class GeminiOracle:
         context_data = "Estructura H1/M15 neutral"
         try:
             import MetaTrader5 as mt5
-            rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M15, 0, 5)
-            if rates is not None:
-                closes = [r['close'] for r in rates]
-                trend = "Higher Highs" if closes[-1] > closes[0] else "Lower Lows"
-                context_data = f"Trend: {trend} | Last 5 Candles M15: {closes}"
+            h1_rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_H1, 0, 3)
+            h1_trend = "Neutral"
+            if h1_rates is not None and len(h1_rates) >= 2:
+                h1_trend = "Alcista" if h1_rates[-1]['close'] > h1_rates[0]['close'] else "Bajista"
+
+            m15_rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M15, 0, 5)
+            m15_context = ""
+            if m15_rates is not None:
+                closes = [r['close'] for r in m15_rates]
+                m15_context = f"| M15 Closes: {closes}"
+            
+            context_data = f"H1 Trend: {h1_trend} {m15_context}"
         except: pass
 
         prompt = (
