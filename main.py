@@ -23,7 +23,7 @@ import signal
 import sys
 import threading
 import time as sleep_module
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import MetaTrader5 as mt5
@@ -705,13 +705,14 @@ class TX3ProBot:
                         self._notified_disconnect = False
                         reconnect_attempts = 0
                 
-                # Sincronizar trades cerrados por el broker (SL/TP/Trailing)
+                # Sincronizar trades cerrados por el broker (SL/TP/Trailing/Manual)
                 try:
-                    today = datetime.now()
-                    start_today = datetime(today.year, today.month, today.day)
-                    from datetime import timedelta
-                    deals_sync = mt5.history_deals_get(start_today, today + timedelta(days=1))
-                    if deals_sync:
+                    # Usamos una ventana de 24 horas para cubrir desfasajes GMT entre servidor y broker
+                    sync_start_time = datetime.now() - timedelta(hours=24)
+                    sync_end_time = datetime.now() + timedelta(hours=1)
+                    deals_sync = mt5.history_deals_get(sync_start_time, sync_end_time)
+                    
+                    if deals_sync is not None:
                         new_trades = self.journal.sync_mt5_history(deals_sync)
                         if new_trades:
                             for trade in new_trades:
@@ -720,11 +721,15 @@ class TX3ProBot:
                                     order_type=trade.get("type", "N/A"),
                                     volume=trade.get("volume", 0.0),
                                     profit=trade.get("profit", 0.0),
-                                    pips=trade.get("pips", 0.0),
+                                    pips=trade.get("profit_pips", 0.0), # Corregido de 'pips'
                                     duration="MT5 Sync"
                                 )
+                    else:
+                        err = mt5.last_error()
+                        if err[0] != 1:
+                            self.logger.debug(f"MT5 history_deals_get vacío o error: {err}")
                 except Exception as e:
-                    pass
+                    self.logger.error(f"Error en loop de sincronización de historial: {e}")
 
                 self.phase_tracker.update_daily_profit()
                 self._check_daily_reset()

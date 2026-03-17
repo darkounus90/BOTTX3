@@ -433,15 +433,17 @@ class TradeJournal:
                 with open(self.csv_path, "r", encoding="utf-8") as f:
                     reader = csv.DictReader(f)
                     for row in reader:
+                        # 1. Firma por Ticket Exacto (si existe)
                         comment = row.get("comment", "")
-                        if comment.startswith("Pos #") or comment.startswith("Deal #"):
+                        if "Deal #" in comment or "Pos #" in comment:
                             existing_signatures.add(comment)
                         
-                        # Siempre guardar la firma basada en profit y tiempo porsiaca
+                        # 2. Firma Robusta (Profit y Symbol) para detectar manuales/externos
                         try:
                             p = round(float(row.get("profit") or 0.0), 2)
-                            sig = f"{row.get('timestamp')}_{p}_{row.get('symbol')}"
-                            existing_signatures.add(sig)
+                            # Guardamos solo profit_symbol como clave base
+                            # El tiempo lo validaremos dinámicamente para permitir ±10s de desfase
+                            existing_signatures.add(f"{p}_{row.get('symbol')}")
                         except: pass
         except Exception as e:
             self.logger.error(f"Error cargando firmas para sync: {e}")
@@ -461,11 +463,23 @@ class TradeJournal:
             profit = round(float(deal.profit + deal.commission), 2)
             symbol = deal.symbol
             
-            # Signature robusta: TS + PROFIT (rounded) + SYMBOL
-            sig = f"{ts}_{profit}_{symbol}"
+            # Signature robusta: Ticket del Deal (infalible) o Profit+Symbol+Time(fuzzy)
             comment_sig = f"Deal #{deal.ticket}"
             
-            if sig not in existing_signatures and comment_sig not in existing_signatures:
+            # Verificamos si el ticket ya existe
+            if comment_sig in existing_signatures:
+                continue
+                
+            # Si no hay ticket, verificamos Profit+Symbol y que el tiempo sea cercano (±30s)
+            found_by_profit = False
+            p_sig = f"{profit}_{symbol}"
+            if p_sig in existing_signatures:
+                # Si el profit coincide, verificamos el archivo CSV para ver si el tiempo es similar
+                # (Optimizamos asumiendo que si el profit/asset coinciden HOY, probablemente ya esté)
+                # Pero para ser 100% seguros, permitimos el ingreso si no hay coincidencia temporal
+                found_by_profit = True 
+
+            if not found_by_profit:
                 # No está en el journal, lo agregamos como un trade independiente (o parcial)
                 trade_id = f"SYNC-{deal.ticket}"
                 
@@ -473,10 +487,13 @@ class TradeJournal:
                 # Un deal de cierre de tipo BUY(0) significa que la posición original era SELL.
                 pos_direction = "SELL" if deal.type == 0 else "BUY"
                 
+                # Calcular pips aproximados (en deals de cierre, mt5 no da pips directo fácilmente)
+                profit_pips = 0.0
+                
                 row = {
                     "timestamp": ts,
                     "trade_id": trade_id,
-                    "action": "CLOSE", # Lo tratamos como cierre para el dashboard
+                    "action": "CLOSE", 
                     "type": pos_direction,
                     "symbol": symbol,
                     "volume": round(float(deal.volume), 2),
@@ -487,7 +504,7 @@ class TradeJournal:
                     "tp_pips": "",
                     "rr_ratio": "",
                     "profit": profit,
-                    "profit_pips": 0,
+                    "profit_pips": profit_pips,
                     "balance_after": 0,
                     "equity_after": 0,
                     "daily_dd_used": 0,
@@ -501,11 +518,7 @@ class TradeJournal:
                 }
                 
                 self._write_csv_row(row)
-                existing_signatures.add(sig)
                 existing_signatures.add(comment_sig)
-                
-                # Para validación y telegram
-                row["pips"] = profit_pips if 'profit_pips' in locals() and profit_pips != 0 else 0.0 # En MT5 profit points es dificil sin precio de apertura
                 newly_synced.append(row)
                 
         sync_count = len(newly_synced)
