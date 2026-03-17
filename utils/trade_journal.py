@@ -459,8 +459,8 @@ class TradeJournal:
             utc_timestamp = deal.time - (self._broker_offset or 0)
             dt = datetime.fromtimestamp(utc_timestamp, tz=_ET)
             ts = dt.strftime("%Y-%m-%d %H:%M:%S")
-            # Profit Neto = Beneficio Bruto + Comisión
-            profit = round(float(deal.profit + deal.commission), 2)
+            # Profit Neto = Beneficio Bruto + Comisión + Swap
+            profit = round(float(deal.profit + deal.commission + deal.swap), 2)
             symbol = deal.symbol
             
             # Signature robusta: Ticket del Deal (infalible) o Profit+Symbol+Time(fuzzy)
