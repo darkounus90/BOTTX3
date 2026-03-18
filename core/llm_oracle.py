@@ -187,7 +187,7 @@ class GeminiOracle:
             return True
         return False
 
-    def _call_model(self, model_name: str, prompt: str, urgent=False):
+    def _call_model(self, model_name: str, prompt: str, urgent=False, as_json=False):
         """Wrapper con Rate Limit por modelo"""
         if not self.system_ready: return None
         
@@ -196,7 +196,7 @@ class GeminiOracle:
                 time.sleep(5)
                 # No reintentar infinitamente si es por RPD
                 if self.buckets[model_name]["rpd_count"] < self.buckets[model_name]["rpd_limit"]:
-                    return self._call_model(model_name, prompt, urgent)
+                    return self._call_model(model_name, prompt, urgent, as_json)
             return None
 
         model = self.models_instances.get(model_name)
@@ -213,8 +213,12 @@ class GeminiOracle:
                     genai.configure(api_key=self.api_key)
 
                 # Gemma-3 requiere prompts más directos, limpiamos posibles instrucciones conflictivas
-                # Generar contenido con timeout de seguridad (30s)
-                response = model.generate_content(prompt, request_options={"timeout": 30.0})
+                # Generar contenido con timeout de seguridad (30s) y soporte JSON nativo
+                kwargs = {"request_options": {"timeout": 30.0}}
+                if as_json:
+                    kwargs["generation_config"] = {"response_mime_type": "application/json"}
+                
+                response = model.generate_content(prompt, **kwargs)
                 if response and response.text:
                     txt = response.text.strip()
                     # Si no es JSON (es narrativo), guardamos para el dashboard
@@ -283,6 +287,8 @@ class GeminiOracle:
 
         # 3. PREPARAR CONTEXTO AVANZADO Y PROMPT
         context_data = "Estructura H1/M15 neutral"
+        dxy_context = "Correlación DXY no disponible"
+        news_context = "Sin noticias inminentes relevantes."
         try:
             import MetaTrader5 as mt5
             # Contexto H1 (Tendencia Mayor)
@@ -291,27 +297,53 @@ class GeminiOracle:
             if h1_rates is not None and len(h1_rates) >= 2:
                 h1_trend = "ALCISTA (Higher Highs)" if h1_rates[-1]['close'] > h1_rates[0]['close'] else "BAJISTA (Lower Lows)"
             
-            # Contexto M5 (Micro Estructura)
+            # Contexto M5 (Micro Estructura y Volatilidad ATR/Range)
             m5_rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M5, 0, 5)
             m5_context = ""
-            if m5_rates is not None:
+            if m5_rates is not None and len(m5_rates) > 0:
                 closes = [r['close'] for r in m5_rates]
-                m5_context = f"| M5 Last 5: {closes}"
+                r_min = min(r['low'] for r in m5_rates)
+                r_max = max(r['high'] for r in m5_rates)
+                m5_context = f"| M5 Last 5 Closes: {closes} | M5 Range: {r_max - r_min:.5f}"
             
-            context_data = f"H1 Trend: {h1_trend} {m5_context}"
+            # Contexto de Correlación Macroeconómica (Proxy USDCHF o DXY)
+            proxy_symbol = "USDCHF"
+            if mt5.symbol_info(proxy_symbol):
+                proxy_rates = mt5.copy_rates_from_pos(proxy_symbol, mt5.TIMEFRAME_H1, 0, 2)
+                if proxy_rates is not None and len(proxy_rates) >= 2:
+                    proxy_trend = "ALCISTA" if proxy_rates[-1]['close'] > proxy_rates[0]['close'] else "BAJISTA"
+                    dxy_context = f"El Dolar (Proxy {proxy_symbol}) está en tendencia H1 {proxy_trend}."
+
+            context_data = f"H1 Trend: {h1_trend} {m5_context}\nMacroeconómico: {dxy_context}"
+            
+            # Contexto de Filtro de Noticias
+            from core.news_filter import NewsFilter
+            nf = NewsFilter(self.logger)
+            upcoming = nf.get_upcoming_events(hours_ahead=2)
+            if upcoming:
+                news_context = f"¡ATENCIÓN! Noticias inminentes en <2h: " + ", ".join([f"{n['title']} ({n['currency']})" for n in upcoming])
+            
         except: pass
 
         prompt = (
             f"ERES CIO DE HEDGE FUND (SMC/ICT Professional).\n"
-            f"Símbolo: {symbol} | Señal: {signal_type} | ADX: {adx} | Estructura H1/M5: {context_data}\n"
+            f"Símbolo: {symbol} | Señal: {signal_type} | ADX: {adx} | Estructura Técnica: {context_data}\n"
+            f"Contexto Macro/Noticias: {news_context}\n"
             f"Lógica Matemática de Alerta: {reason}\n\n"
-            f"REGLA DE CAZA DE LIQUIDEZ (FILTRADA POR TENDENCIA MAYOR H1):\n"
-            f"- ZONA DE VENTA ROJA: Si la rompe por ENCIMA (Breakout) -> COMPRA (Solo si tendencia H1 es Alcista).\n"
-            f"- ZONA DE VENTA ROJA: Si rebota y rechaza MÁS ABAJO (Sweep Bajista) -> VENDE (Solo si tendencia H1 es Bajista).\n"
-            f"- ZONA DE COMPRA VERDE: Si la rompe MÁS ABAJO asustando a la masa (Sweep Alcista) -> COMPRA el rebote falso sin dudar.\n"
-            f"- VETO MANDATORIO: NUNCA vendas acercándote a una Zona Verde (Soporte) si la tendencia es Alcista. Vetar ventas contra muro.\n\n"
-            f"Analiza si la técnica actual ({signal_type}) respeta la Marea H1 descrita en tu Contexto y caza estas trampas institucionales. Veta cuchillos cayendo.\n"
-            f"RESPONDE SOLO JSON: {{'decision':'APPROVED|REJECTED', 'reason':'motivo corto y técnico', 'confidence':0-100}}"
+            f"REGLA DE CAZA DE LIQUIDEZ Y MACRO:\n"
+            f"- ZONA ROJA: Rompimiento por ENCIMA -> COMPRA (Solo si tendencia H1 es Alcista y Macro lo apoya).\n"
+            f"- ZONA ROJA: Rebote y rechazo MÁS ABAJO -> VENDE (Solo si tendencia H1 es Bajista).\n"
+            f"- ZONA VERDE: Rompimiento MÁS ABAJO asustando a la masa -> COMPRA el rebote falso sin dudar.\n"
+            f"- CORRELACIÓN: Si el Dólar (USDCHF/DXY) va en contra agresiva de nuestro trade, actúa con máxima cautela (Beta si hay riesgo institucional).\n"
+            f"- NOTICIAS: Si hay noticias inminentes, sé extremadamente conservador y veta si la estructura no es perfecta.\n\n"
+            f"Analiza paso a paso (Chain of Thought) si esta técnica ({signal_type}) respeta la Marea H1, la correlación Macro y caza trampas institucionales.\n"
+            f"ESTRUCTURA JSON REQUERIDA EXACTA:\n"
+            f"{{\n"
+            f"  \"analisis\": \"breve razonamiento institucional pensando paso a paso\",\n"
+            f"  \"decision\": \"APPROVED\" o \"REJECTED\",\n"
+            f"  \"reason\": \"motivo final resumido\",\n"
+            f"  \"confidence\": 0-100\n"
+            f"}}"
         )
 
         models_to_try = [m for m in self.cascade_models if m in self.buckets and self.buckets[m]["rpd_count"] < self.buckets[m]["rpd_limit"]]
@@ -320,7 +352,7 @@ class GeminiOracle:
         resp_text = None
         model_used = None
         for m_name in models_to_try:
-            resp_text = self._call_model(m_name, prompt, urgent=True)
+            resp_text = self._call_model(m_name, prompt, urgent=True, as_json=True)
             if resp_text and not resp_text.startswith("ERROR_"):
                 model_used = m_name
                 break
@@ -387,11 +419,16 @@ class GeminiOracle:
             f"- Si la tendencia sigue en la MISMA dirección del trade, SIEMPRE di HOLD.\n"
             f"- Si el trade tiene menos de +8 pips, PREFIERE HOLD (dale tiempo al trade de madurar).\n"
             f"- Un '{order_type}' con 'Lower Lows' en tendencia bajista es CONSISTENTE, no es señal de cierre.\n"
-            f"RESPONDE SOLO JSON: {{'decision':'CLOSE|HOLD', 'reason':'breve motivo'}}"
+            f"ESTRUCTURA JSON REQUERIDA EXACTA:\n"
+            f"{{\n"
+            f"  \"analisis\": \"razonamiento estructural sobre si deberiamos mantener o cerrar la posicion por agotamiento\",\n"
+            f"  \"decision\": \"CLOSE\" o \"HOLD\",\n"
+            f"  \"reason\": \"motivo final resumido\"\n"
+            f"}}"
         )
 
         # En lugar de usar la Cascada pesada (Gemini), utilizamos a GEMMA-3 directamente para evaluar salidas (Ahorro de API).
-        resp_text = self._call_model(self.target_light, prompt, urgent=False)
+        resp_text = self._call_model(self.target_light, prompt, urgent=False, as_json=True)
 
         if not resp_text or resp_text.startswith("ERROR_"):
             return {"decision": "HOLD", "reason": "Oráculo Gemma cansado, mantenemos regla técnica"}
