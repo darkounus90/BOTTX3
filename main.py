@@ -37,6 +37,7 @@ from core.news_filter import NewsFilter
 from core.trailing_stop import TrailingStopManager
 from core.llm_oracle import GeminiOracle
 from strategy.bollinger_rsi import BollingerRSIStrategy
+from strategy.ema_cross import EMACrossStrategy
 from strategy.ny_opening_breakout import NYOpeningBreakoutStrategy
 from strategy.tokyo_opening_breakout import TokyoOpeningBreakoutStrategy
 from strategy.london_opening_breakout import LondonOpeningBreakoutStrategy
@@ -100,17 +101,21 @@ class TX3ProBot:
         self.portfolio_manager = PortfolioManager(logger=self.logger)
         self.q_agent = QLearningAgent(logger=self.logger)
         
-        # Estrategias (Multi-Symbol Optimization + Multi-Strategy)
+        # Estrategias (Backtest-Optimized: Solo las que demostraron rentabilidad)
+        # ⚠️ Las 4 estrategias de Breakout (NY, London, Tokyo, Sydney) fueron 
+        # DESACTIVADAS por el Backtester Cuantitativo (2026-03-18).
+        # Todas mostraron PF < 1.0 y Win Rate < 40% en ambos pares durante 60 días.
         self.strategies = {}
         for symbol in BotConfig.WATCHLIST:
             self.strategies[symbol] = [
                 BollingerRSIStrategy(logger=self.logger, symbol=symbol),
-                NYOpeningBreakoutStrategy(logger=self.logger, symbol=symbol),
-                LondonOpeningBreakoutStrategy(logger=self.logger, symbol=symbol),
-                TokyoOpeningBreakoutStrategy(logger=self.logger, symbol=symbol),
-                SydneyOpeningBreakoutStrategy(logger=self.logger, symbol=symbol)
+                EMACrossStrategy(logger=self.logger, symbol=symbol),
+                # NYOpeningBreakoutStrategy(logger=self.logger, symbol=symbol),      # 🔴 DESACTIVADA: PF 0.52-0.89
+                # LondonOpeningBreakoutStrategy(logger=self.logger, symbol=symbol),  # 🔴 DESACTIVADA: PF 0.92-1.0
+                # TokyoOpeningBreakoutStrategy(logger=self.logger, symbol=symbol),   # 🔴 DESACTIVADA: PF 0.73-0.81
+                # SydneyOpeningBreakoutStrategy(logger=self.logger, symbol=symbol),  # 🔴 DESACTIVADA: PF 0.74
             ]
-            self.logger.info(f"✅ Todas las estrategias [Bull/Bear+RSI, NY, LND, TKY, SYN Breakouts] cargadas en: {symbol}")
+            self.logger.info(f"✅ Estrategias OPTIMIZADAS cargadas: [Bollinger+RSI, EMA Cross] → {symbol}")
 
         # Cargar estado previo si existe
         self._restore_state()

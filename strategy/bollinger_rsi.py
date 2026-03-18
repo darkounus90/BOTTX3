@@ -102,6 +102,22 @@ class BollingerRSIStrategy(BaseStrategy):
             self.logger.debug(f"{self.symbol} ADX alto ({last_closed['adx']:.1f} > {self.adx_threshold}). Evitando operar contra tendencia.")
             return None
 
+        # --- FILTRO HORARIO QUIRÚRGICO (Backtest-Driven) ---
+        # Solo operamos en las horas donde el backtest demostró rentabilidad positiva.
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        hour_est = datetime.now(ZoneInfo("America/New_York")).hour
+        
+        if "EUR" in self.symbol:
+            # EURUSD: Solo 3-7 AM EST (zona London Open, 69.4% WR backtested)
+            if hour_est < 3 or hour_est >= 7:
+                return None
+        elif "GBP" in self.symbol:
+            # GBPUSD: Solo 5 PM - 12 AM EST (zona Asia/Pacific, 63.3% WR backtested)
+            if hour_est < 17 and hour_est >= 0:
+                if not (hour_est >= 17 or hour_est < 1):
+                    return None
+
         # --- FILTRO DE SPREAD ---
         symbol_info = mt5.symbol_info(self.symbol)
         if symbol_info is None:

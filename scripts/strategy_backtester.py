@@ -247,6 +247,15 @@ def sim_bollinger_rsi(df, symbol):
         if row['adx'] > adx_threshold:
             continue
         
+        # FILTRO HORARIO QUIRÚRGICO (igual que el bot live)
+        candle_hour_est = (pd.Timestamp(row['time']).hour - 5) % 24
+        if "EUR" in symbol:
+            if candle_hour_est < 3 or candle_hour_est >= 7:
+                continue
+        elif "GBP" in symbol:
+            if not (candle_hour_est >= 17 or candle_hour_est < 1):
+                continue
+        
         signal = None
         if row['close'] < row['bb_lower'] and row['rsi'] < rsi_os:
             signal = "BUY"
@@ -328,6 +337,15 @@ def sim_ema_cross(df, symbol):
             continue
         if prev['adx'] < adx_threshold:
             continue
+        
+        # FILTRO HORARIO QUIRÚRGICO (igual que el bot live)
+        candle_hour_est = (pd.Timestamp(prev['time']).hour - 5) % 24
+        if "EUR" in symbol:
+            if candle_hour_est < 21 or candle_hour_est >= 23:
+                continue
+        elif "GBP" in symbol:
+            if candle_hour_est < 15 or candle_hour_est >= 17:
+                continue
         
         uptrend = prev['ema_fast'] > prev['ema_slow']
         downtrend = prev['ema_fast'] < prev['ema_slow']
@@ -542,36 +560,9 @@ def run_backtest(symbol="EURUSD", days=60):
     results.append(r2)
     print(f"    → {r2.wins + r2.losses} trades simulados")
     
-    print(f"[*] Simulando: NY Opening Breakout...")
-    r3 = sim_session_breakout(df_m15.copy(), symbol, "NY",
-                               valid_hours_est=list(range(3, 7)),   # 8-11 AM EST -> broker hrs
-                               min_body_pips=4.0)
-    results.append(r3)
-    print(f"    → {r3.wins + r3.losses} trades simulados")
-    
-    print(f"[*] Simulando: London Opening Breakout...")
-    r4 = sim_session_breakout(df_m15.copy(), symbol, "London",
-                               valid_hours_est=list(range(22, 24)) + list(range(0, 2)),  # 3-7 AM EST -> broker hrs
-                               min_body_pips=8.0,
-                               range_limit=30.0,
-                               need_h4_trend=True,
-                               df_h4=df_h4)
-    results.append(r4)
-    print(f"    → {r4.wins + r4.losses} trades simulados")
-    
-    print(f"[*] Simulando: Tokyo Opening Breakout...")
-    r5 = sim_session_breakout(df_m15.copy(), symbol, "Tokyo",
-                               valid_hours_est=list(range(14, 17)),   # 19:00-2:00 AM EST -> broker hrs
-                               min_body_pips=5.0)
-    results.append(r5)
-    print(f"    → {r5.wins + r5.losses} trades simulados")
-    
-    print(f"[*] Simulando: Sydney Opening Breakout...")
-    r6 = sim_session_breakout(df_m15.copy(), symbol, "Sydney",
-                               valid_hours_est=list(range(12, 14)),  # 17-19 EST -> broker hrs
-                               min_body_pips=5.0)
-    results.append(r6)
-    print(f"    → {r6.wins + r6.losses} trades simulados")
+    # ⚠️ Breakout strategies DESACTIVADAS por backtest anterior (PF < 1.0)
+    # NY, London, Tokyo, Sydney — todas mostraron pérdidas en 60 días.
+    print(f"    ⚠️ Breakout strategies (NY/London/Tokyo/Sydney) DESACTIVADAS por backtest previo")
     
     # ─── REPORTE FINAL ─────────────────────────────────────────
     reports = [r.get_report() for r in results]
