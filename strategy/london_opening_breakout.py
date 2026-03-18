@@ -84,37 +84,81 @@ class LondonOpeningBreakoutStrategy(BaseStrategy):
         pip_mult = 100 if "JPY" in self.symbol else 10000
         rango_pips = (current_range_high - current_range_low) * pip_mult
 
-        # Si ya operó un breakout hoy y ganó, no re-entramos
+        # 🛡️ PILAR 1: Límite de Tamaño de Caja Asiática
+        # Si el rango pre-Londres superó los 30 pips, el mercado no está comprimido; es caos.
+        if rango_pips > 30.0:
+            return None
+
+        # 🛡️ PILAR 1: Filtro de Tendencia Mayor (EMA 50 en H4)
+        # Extraer data profunda de H4 para evitar trampas en contra de la tendencia diaria.
+        h4_rates = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_H4, 0, 60)
+        
+        trend = "NEUTRAL"
+        if h4_rates is not None and len(h4_rates) >= 50:
+            h4_df = pd.DataFrame(h4_rates)
+            # Calcular la EMA 50
+            ema_50_h4 = h4_df['close'].ewm(span=50, adjust=False).mean().iloc[-1]
+            current_h4_close = h4_df['close'].iloc[-1]
+            
+            if current_h4_close > ema_50_h4:
+                trend = "BULLISH"
+            elif current_h4_close < ema_50_h4:
+                trend = "BEARISH"
+        else:
+            # RIESGO 1 MITIGADO: Falla de Servidor (Si no hay H4, abortamos Operación)
+            self.logger.warning(f"⚠️ [FAIL-SAFE] Sin data H4 suficiente para el Escudo de Tendencia. Abortando trade {self.symbol}.")
+            return None
+
+        # Si ya operó un breakout hoy y ganó, no re-entramos hoy
         if getattr(self, 'has_traded_today', False):
             return None
+
+        # 🛡️ MITIGACIÓN 3: Bloqueo atómico de concurrencia (1 segundo)
+        import time
+        now_ts = time.time()
+        if hasattr(BaseStrategy, "_global_last_signal_time"):
+            if now_ts - BaseStrategy._global_last_signal_time < 2.0:
+                # Si una estrategia hermana emitió señal hace -2 segs, abortamos para evitar abrir ambas a la vez
+                return None
+
+        # 🛡️ PILAR 4: Bloqueo de Correlaciones (Restricción de exposición al Quote)
+        positions = mt5.positions_get()
+        if positions is not None and len(positions) > 0:
+            new_quote = self.symbol[3:]
+            for pos in positions:
+                if pos.magic == BotConfig.MAGIC_NUMBER:
+                    pos_quote = pos.symbol[3:]
+                    if pos_quote == new_quote and pos.symbol != self.symbol:
+                        self.logger.warning(f"🛡️ BLOQUEO DXY: Omitiendo {self.symbol} porque ya hay exposición activa en la cuenta hacia {new_quote} vía {pos.symbol}.")
+                        return None
 
         signal_type = None
         reason = ""
 
         # Lógica Fuerte de Ruptura (Momentum) 🚀
         # 1. El mercado estuvo metido en una caja (consolidation asiática)
-        # 2. La última vela CERRÓ agresivamente por encima/debajo de esa caja.
-        # 3. La vela en sí misma debe ser grande, mostrando poder institucional (no mechas débiles).
+        # 2. La última vela CERRÓ firmemente por encima/debajo.
+        # 3. Fuerza en vela (>= 8 pips) + Confirmación H4 EMA.
         
-        pip_mult = 100 if "JPY" in self.symbol else 10000
         vela_size = abs(last_closed['close'] - last_closed['open']) * pip_mult
         
         # BREAKOUT ALCISTA (BUY)
         if last_closed['close'] > current_range_high and last_closed['open'] < current_range_high:
-            if vela_size >= 8.0: # 🛡️ EXIGENCIA INSTITUCIONAL: Filtra el ruido. Requerimos inercia alcista fuerte (>= 8 pips)
+            if vela_size >= 8.0 and trend == "BULLISH":
                 signal_type = "BUY"
-                reason = "London Range Breakout Alcista (Momentum Confirmado)"
+                reason = "London Range Breakout Alcista (Escudo H4 + Momentum Confirmado)"
 
         # BREAKOUT BAJISTA (SELL)
         elif last_closed['close'] < current_range_low and last_closed['open'] > current_range_low:
-            if vela_size >= 8.0: # 🛡️ EXIGENCIA INSTITUCIONAL: Caída violenta del precio necesaria para evitar Stop Hunts
+            if vela_size >= 8.0 and trend == "BEARISH":
                 signal_type = "SELL"
-                reason = "London Range Breakout Bajista (Momentum Confirmado)"
+                reason = "London Range Breakout Bajista (Escudo H4 + Momentum Confirmado)"
 
         if not signal_type:
             return None
 
-        # Marcamos que ya disparamos esta vela
+        # Marcamos globalmente que hemos emitido una señal (Mitigación 3 concurrencia)
+        BaseStrategy._global_last_signal_time = now_ts
         self.last_signal_time = current_candle_time
         
         # Marcar que ya hubo ruptura hoy (para no spamear entradas si entra de nuevo a la caja y sale)

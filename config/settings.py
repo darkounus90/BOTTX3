@@ -179,6 +179,17 @@ class SessionConfig:
 
     SYDNEY_START_HOUR = 17
     SYDNEY_START_MINUTE = 0
+    SYDNEY_END_HOUR = 1
+    SYDNEY_END_MINUTE = 0
+
+    # Superposición de volumen máximo
+    OVERLAP_START_HOUR = 8
+    OVERLAP_START_MINUTE = 0
+    OVERLAP_END_HOUR = 12
+    OVERLAP_END_MINUTE = 0
+
+    TRADING_DAYS = [0, 1, 2, 3, 4]       # Lunes a Viernes
+    SYDNEY_START_MINUTE = 0
     SYDNEY_END_HOUR = 2
     SYDNEY_END_MINUTE = 0
 

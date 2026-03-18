@@ -75,12 +75,22 @@ class NewsFilter:
         Verifica si es seguro operar el símbolo dado basándose en calendario e IA.
 
         Returns:
-            True si no hay noticias de alto impacto cercanas, o si la IA confirma la entrada.
+            True si no hay noticias de alto impacto cercanas y la API funciona correctamente.
         """
         if not self.enabled:
             return True
 
+        # 🛡️ PILAR 5 / MITIGACIÓN 4: Fail-Safe Absoluto si el servidor de noticias muere.
+        if getattr(self, "api_failed_today", False):
+            self.logger.critical(f"🛑 [FAIL-SAFE ACTIVO] API de Noticias inaccesible. Operativa BLOQUEADA en {symbol} para evitar cisne negro.")
+            return False
+
         events = self._get_todays_events()
+        
+        # Volvemos a chequear por si la bandera se activó dentro del intento de arriba
+        if getattr(self, "api_failed_today", False):
+            return False
+
         if not events:
             return True
 
@@ -176,6 +186,7 @@ class NewsFilter:
             events = self._fetch_events_from_api()
             self._cached_events = events
             self._cache_date = today
+            self.api_failed_today = False
             if events:
                 self.logger.info(f"📰 {len(events)} eventos económicos detectados hoy")
             else:
@@ -183,39 +194,46 @@ class NewsFilter:
             return events
 
         except Exception as e:
-            self.logger.warning(f"📰 No se pudieron obtener eventos: {e}")
-            # Si falla la API, usar el schedule estático de noticias clave
-            return self._get_static_schedule()
+            self.logger.error(f"🚨 [CRUCIAL] Fallo crónico obteniendo calendario económico: {e}")
+            # 🛡️ MITIGACIÓN 4: Anulamos el peligroso schedule estático. Si no hay certeza 100%, NO SE OPERA.
+            self.api_failed_today = True
+            
+            # Notificar por Telegram que el bot está ciego
+            from utils.telegram_notifier import TelegramNotifier
+            tg = TelegramNotifier(self.logger)
+            tg._send(f"🚨 <b>FAIL-SAFE ACTIVADO</b> 🚨\n\nEl servidor de Calendario Económico está caído o bloqueando al bot.\nPor protección de cuenta de fondeo, <b>todas las operaciones algorítmicas quedan SUSPENDIDAS</b> hasta que se restaure la conexión.\n\n<code>Error: {e}</code>")
+            
+            return []
 
     def _fetch_events_from_api(self) -> list[dict]:
         """
         Intenta obtener eventos del calendario económico.
         Usa la API pública de noticias económicas.
         """
-        try:
-            # Intentar con ForexFactory/Investing.com calendario
-            # Como backup, usamos una API gratuita
-            url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
-            response = requests.get(url, timeout=10)
+        # Intentar con ForexFactory calendar
+        url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+        
+        # 🛡️ MITIGACIÓN 7: Timeout estricto de 3 segundos para evitar Bloqueo del Hilo Principal
+        response = requests.get(url, timeout=3)
 
-            if response.status_code != 200:
-                return []
+        if response.status_code != 200:
+            raise ConnectionError(f"HTTP Status {response.status_code} al conectar con Noticias")
 
-            data = response.json()
-            events = []
-            from config.settings import BotConfig
-            from zoneinfo import ZoneInfo
-            now = datetime.now(ZoneInfo(BotConfig.TIMEZONE))
-            today = now.strftime("%Y-%m-%d")
+        data = response.json()
+        events = []
+        from config.settings import BotConfig
+        from zoneinfo import ZoneInfo
+        now = datetime.now(ZoneInfo(BotConfig.TIMEZONE))
+        today = now.strftime("%Y-%m-%d")
 
-            for item in data:
-                event_date = item.get("date", "")
-                if not event_date.startswith(today):
-                    continue
+        for item in data:
+            event_date = item.get("date", "")
+            if not event_date.startswith(today):
+                continue
 
-                impact = item.get("impact", "").lower()
-                if impact != "high":
-                    continue
+            impact = item.get("impact", "").lower()
+            if impact != "high":
+                continue
 
                 try:
                     event_time = datetime.strptime(event_date, "%Y-%m-%dT%H:%M:%S%z")
@@ -236,9 +254,6 @@ class NewsFilter:
                 })
 
             return events
-
-        except Exception:
-            return []
 
     def _get_static_schedule(self) -> list[dict]:
         """

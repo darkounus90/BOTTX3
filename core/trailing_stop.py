@@ -38,6 +38,21 @@ class TrailingStopManager:
                 f"Step: {self.step_pips} pips"
             )
 
+    def _get_atr_pips(self, symbol: str, period: int = 14) -> float:
+        """Calcula el ATR en pips para el blindaje dinámico"""
+        rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M15, 0, period + 1)
+        if rates is None: return 20.0
+        tr_list = []
+        for i in range(1, len(rates)):
+            high = rates[i]['high']
+            low = rates[i]['low']
+            prev_close = rates[i-1]['close']
+            tr = max(high - low, abs(high - prev_close), abs(low - prev_close))
+            tr_list.append(tr)
+        atr_points = sum(tr_list) / len(tr_list)
+        pip_size = 0.01 if "JPY" in symbol else 0.0001
+        return (atr_points / pip_size) if pip_size > 0 else 20.0
+
     def update_trailing_stops(self):
         """
         Revisa y actualiza los trailing stops de todas las posiciones abiertas.
@@ -106,6 +121,24 @@ class TrailingStopManager:
             profit_pips = (position.price_open - current_price) / pip_in_points
             order_type_str = "SELL"
             new_math_sl = current_price + (self.step_pips * pip_in_points)
+
+        # 🛡️ PILAR 3: Blindaje Automático Preventivo (Break Even a 1x ATR)
+        atr_pips = self._get_atr_pips(position.symbol)
+        if profit_pips >= atr_pips:
+            be_pip = 1.0 # 1 pip para cubrir comisiones de ida y vuelta
+            if position.type == mt5.ORDER_TYPE_BUY:
+                be_price = position.price_open + (be_pip * pip_in_points)
+                # MITIGACIÓN 2: Modificación atómica, evitamos Spam 10013 alertando solo cambios significativos.
+                if position.sl < be_price and abs(position.sl - be_price) > (0.5 * pip_in_points):
+                    self.logger.success(f"🛡️ BLINDAJE 1x ATR: {position.symbol} asegura {be_pip} pips de BE. Riesgo de Pérdida Eliminado.")
+                    self._modify_sl(position, be_price, current_profit_pips=profit_pips)
+                    return
+            elif position.type == mt5.ORDER_TYPE_SELL:
+                be_price = position.price_open - (be_pip * pip_in_points)
+                if (position.sl == 0.0 or position.sl > be_price) and (position.sl == 0.0 or abs(position.sl - be_price) > (0.5 * pip_in_points)):
+                    self.logger.success(f"🛡️ BLINDAJE 1x ATR: {position.symbol} asegura {be_pip} pips de BE. Riesgo de Pérdida Eliminado.")
+                    self._modify_sl(position, be_price, current_profit_pips=profit_pips)
+                    return
 
         # Por defecto, la matemática básica aprueba mover el SL solo si ya pasó pips de activación
         ai_approved = (profit_pips >= self.activation_pips)

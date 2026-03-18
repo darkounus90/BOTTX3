@@ -3,8 +3,8 @@
 ============================================
 Calcula tamaños de posición y ejecuta órdenes con SL/TP obligatorio.
 """
-
 import MetaTrader5 as mt5
+import math
 from config.settings import ChallengeConfig, BotConfig
 from utils.logger import BotLogger
 
@@ -70,7 +70,14 @@ class PositionManager:
         else:
             # El riesgo base (1%) se multiplica por el factor de supervivencia.
             risk_pct = BotConfig.MAX_RISK_PER_TRADE_PCT * survival_factor
-        
+            
+        # 🛡️ PILAR 2: Autodefensa de Drawdown Diario (Modo Supervivencia)
+        if self.risk_manager:
+            daily_sts = self.risk_manager.check_daily_drawdown()
+            if daily_sts["loss"] >= (daily_sts["limit"] * 0.5):
+                self.logger.warning(f"🐢 MODO SUPERVIVENCIA ACTIVO: Drawdown diario a {daily_sts['loss']/(daily_sts['limit'] or 1):.0%}. Reduciendo lotaje asimétricamente a la MITAD (0.5x).")
+                risk_pct *= 0.5
+
         # ─── 2. ADAPTACIÓN DE VOLATILIDAD (ATR) ───
         # Si el usuario no mandó un SL técnico, calculamos uno basado en el ruido del mercado.
         if stop_loss_pips is None or stop_loss_pips <= 5:
@@ -127,8 +134,11 @@ class PositionManager:
         # Matemáticamente: Lotes = Riesgo_Amount / ((SL_Pips * Pip_Value) + Commission_Per_Lot)
         cost_per_lot_at_sl = (stop_loss_pips * pip_val_lot) + commission_per_lot
         
-        lotes = risk_amount / cost_per_lot_at_sl
-        lotes = round(lotes / si.volume_step) * si.volume_step
+        lotes_raw = risk_amount / cost_per_lot_at_sl
+        
+        # 🛡️ MITIGACIÓN RIESGO 5: Redondeo estricto hacia ABAJO usando floor para EVITAR volúmenes inválidos o pasarse del riesgo
+        steps = math.floor(lotes_raw / si.volume_step)
+        lotes = steps * si.volume_step
         lotes = max(si.volume_min, min(lotes, si.volume_max))
 
         # ─── 5. LÍMITE DURO DE SEGURIDAD (PROPORCIONAL AL BALANCE) ───
