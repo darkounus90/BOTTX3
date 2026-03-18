@@ -131,6 +131,11 @@ class PositionManager:
         # o asumimos 9.0 USD (lo que cobra FTMO a tu tipo de cuenta)
         commission_per_lot = getattr(BotConfig, "COMMISSION_PER_LOT", 9.0) # $9 USD conservador
         
+        # 🛡️ PREDICCIÓN 1: Prevenir Riesgo Infinito (ZeroDivisionError)
+        if stop_loss_pips <= 0:
+            self.logger.critical(f"🛑 FATAL: SL es {stop_loss_pips}. Forzando SL a 1.0 pip para evitar ZeroDivisionError matemático.")
+            stop_loss_pips = 1.0
+
         # Matemáticamente: Lotes = Riesgo_Amount / ((SL_Pips * Pip_Value) + Commission_Per_Lot)
         cost_per_lot_at_sl = (stop_loss_pips * pip_val_lot) + commission_per_lot
         
@@ -431,6 +436,27 @@ class PositionManager:
             error_msg = result.comment if result else "Unknown"
             self.logger.error(f"Error cerrando {ticket}: {error_msg}")
             return False
+
+    def close_weekend_positions(self):
+        """
+        🛡️ PREDICCIÓN 2: Liquidador de Weekend Gaps.
+        Cierra todas las operaciones para protegerse del Fin de Semana.
+        """
+        self.logger.info("🛡️ WEEKEND LIQUIDATOR: Escaneando posiciones abiertas (Viernes 15:00 EST).")
+        positions = mt5.positions_get()
+        # Evitar el crash Type-Error si MT5 retorna None en lugar de una tupla vacía
+        if positions is None:
+            self.logger.info("🛡️ Todo limpio. Ninguna operación que cerrar para el fin de semana.")
+            return
+
+        bot_positions = [p for p in positions if p.magic == BotConfig.MAGIC_NUMBER]
+        if not bot_positions:
+            self.logger.info("🛡️ Todo limpio. Ninguna operación del bot para el fin de semana.")
+            return
+            
+        for pos in bot_positions:
+            self.logger.warning(f"🚨 LIQUIDADOR ACTIVO: Cerrando forzosamente el Ticket #{pos.ticket} ({pos.symbol}) antes del cierre de viernes.")
+            self.close_position(pos.ticket)
 
     def reset_daily(self):
         """Resetea el contador diario de trades"""
