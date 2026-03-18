@@ -389,43 +389,48 @@ def sim_ema_cross(df, symbol):
     
     return result
 
-def sim_trend_pullback(df, symbol):
-    """Simula la estrategia Trend Pullback (StochRSI + EMA 200)"""
-    result = BacktestResult("Trend Pullback Stoch")
+def sim_fractal_energy(df, symbol):
+    """Simula la Estrategia Original: Fractal Energy Exhaustion"""
+    result = BacktestResult("Fractal Energy Exhaustion")
     pip_size = 0.01 if "JPY" in symbol else 0.0001
     
-    df['ema_200'] = df['close'].ewm(span=200, adjust=False).mean()
+    # 1. Energía Fractal (Eficiencia del movimiento)
+    df['body_size'] = abs(df['close'] - df['open'])
+    df['full_size'] = abs(df['high'] - df['low'])
     
+    df['sum_body'] = df['body_size'].rolling(10).sum()
+    df['sum_full'] = df['full_size'].rolling(10).sum()
+    df['efficiency'] = df['sum_body'] / (df['sum_full'] + 1e-9)
+    
+    # 2. RSI rápido para detectar impulsos extremos
     delta = df['close'].diff()
-    gain = delta.where(delta > 0, 0.0)
-    loss = -delta.where(delta < 0, 0.0)
-    avg_gain = gain.rolling(window=14).mean()
-    avg_loss = loss.rolling(window=14).mean()
-    rs = avg_gain / (avg_loss + 1e-9)
-    df['rsi'] = 100 - (100 / (1 + rs))
+    gain = delta.where(delta > 0, 0.0).rolling(7).mean()
+    loss = -delta.where(delta < 0, 0.0).rolling(7).mean()
+    rs = gain / (loss + 1e-9)
+    df['rsi_7'] = 100 - (100 / (1 + rs))
 
-    rsi_min = df['rsi'].rolling(window=14).min()
-    rsi_max = df['rsi'].rolling(window=14).max()
-    df['stoch_k'] = 100 * ((df['rsi'] - rsi_min) / (rsi_max - rsi_min + 1e-9))
-    df['stoch_k'] = df['stoch_k'].rolling(window=3).mean()
-    df['stoch_d'] = df['stoch_k'].rolling(window=3).mean()
-    
-    df['tr'] = df['high'] - df['low']
-    df['atr'] = df['tr'].rolling(14).mean()
+    df['atr'] = df['full_size'].rolling(14).mean()
 
-    for i in range(250, len(df) - 50):
+    for i in range(100, len(df) - 50):
         prev = df.iloc[i-1]
         curr = df.iloc[i]
         
         signal = None
         
-        if curr['close'] > curr['ema_200']:
-            if prev['stoch_k'] <= prev['stoch_d'] and curr['stoch_k'] > curr['stoch_d'] and curr['stoch_d'] < 25:
-                signal = "BUY"
-        elif curr['close'] < curr['ema_200']:
-            if prev['stoch_k'] >= prev['stoch_d'] and curr['stoch_k'] < curr['stoch_d'] and curr['stoch_d'] > 75:
-                signal = "SELL"
-                
+        # Filtro de sobre-extension: Eficiencia alta e impulso en RSI extremo
+        if prev['efficiency'] > 0.60:
+            # Escenario de VENTA
+            if prev['rsi_7'] > 80:
+                is_engulfing_bear = curr['close'] < curr['open'] and curr['open'] >= prev['close'] and curr['close'] < prev['open']
+                if is_engulfing_bear:
+                    signal = "SELL"
+            
+            # Escenario de COMPRA
+            elif prev['rsi_7'] < 20:
+                is_engulfing_bull = curr['close'] > curr['open'] and curr['open'] <= prev['close'] and curr['close'] > prev['open']
+                if is_engulfing_bull:
+                    signal = "BUY"
+                    
         if not signal:
             continue
             
@@ -433,10 +438,10 @@ def sim_trend_pullback(df, symbol):
         if pd.isna(atr_val) or atr_val <= 0: continue
         
         point = pip_size / 10
-        sl_pips = round((atr_val * 1.5) / (10 * point), 1)
-        tp_pips = round((atr_val * 2.0) / (10 * point), 1)
+        sl_pips = round((atr_val * 2.0) / (10 * point), 1)
+        tp_pips = round((atr_val * 3.0) / (10 * point), 1) # R:R 1:1.5
         sl_pips = max(sl_pips, 15.0)
-        tp_pips = max(tp_pips, 30.0)
+        tp_pips = max(tp_pips, 22.5)
         
         hour_est = (pd.Timestamp(curr['time']).hour - 5) % 24
         future = df.iloc[i+1:i+50].to_dict('records')
@@ -510,8 +515,8 @@ def run_backtest(symbol="EURUSD", days=60):
     results.append(r2)
     print(f"    → {r2.wins + r2.losses} trades simulados")
 
-    print(f"[*] Simulando: Trend Pullback Stoch...")
-    r3 = sim_trend_pullback(df_m15.copy(), symbol) # Funciona excelente en M15
+    print(f"[*] Simulando: Fractal Energy Exhaustion (Estrategia Privada)...")
+    r3 = sim_fractal_energy(df_m15.copy(), symbol) # Testeada en M15
     results.append(r3)
     print(f"    → {r3.wins + r3.losses} trades simulados")
 
