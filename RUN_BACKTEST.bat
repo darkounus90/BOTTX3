@@ -42,6 +42,15 @@ REM Ejecutar backtest para GBPUSD (60 días)
 %PYTHON_CMD% scripts\strategy_backtester.py --days 60 --symbol GBPUSD
 
 echo.
+echo ───────────────────────────────────────────────────────────────
+echo [3/3] Analizando AUDUSD (60 dias)...
+echo ───────────────────────────────────────────────────────────────
+echo.
+
+REM Ejecutar backtest para AUDUSD (60 días)
+%PYTHON_CMD% scripts\strategy_backtester.py --days 60 --symbol AUDUSD
+
+echo.
 echo ╔══════════════════════════════════════════════════════════════╗
 echo ║   ✅ BACKTEST COMPLETADO                                    ║
 echo ║   Los resultados se guardaron en data\backtest_results.json  ║

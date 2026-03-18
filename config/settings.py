@@ -88,7 +88,7 @@ class BotConfig:
     
     MODE_FILTERS = "STRICT"              
     DEFAULT_SYMBOL = "EURUSD"
-    WATCHLIST = ["EURUSD", "GBPUSD"]     # 🔥 ELIMINADO USDJPY (Es el par con los spreads más caros e impredecibles, es un veneno a esta hora)
+    WATCHLIST = ["EURUSD", "GBPUSD", "AUDUSD"]  # 🔥 ELIMINADO USDJPY, AGREGADO AUDUSD por su fuerte Mean-Reversion nocturno
     DEFAULT_TIMEFRAME = "M5"             
     EMA_FAST_PERIOD = 20
     EMA_SLOW_PERIOD = 50
