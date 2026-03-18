@@ -158,7 +158,7 @@ class DashboardConfig:
 class SessionConfig:
     """Configuración de sesiones de trading (EST)"""
 
-    RESTRICT_TO_LONDON_NY = True         
+    RESTRICT_TO_LONDON_NY = False        # 🟢 DESACTIVADO: Ahora cada estrategia (Bollinger, ICT, etc.) maneja sus propias horas base (Ej: Asia para ICT)
     FRIDAY_FLAT_HOUR = 15                
     
     # 🔥 MATAMOS TOKIO Y SYDNEY, SOLO LONDRES CRÍTICO Y NY
