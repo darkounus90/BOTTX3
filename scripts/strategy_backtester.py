@@ -199,11 +199,11 @@ def sim_bollinger_rsi(df, symbol):
     result = BacktestResult("Bollinger+RSI Reversion")
     
     bb_period = 20
-    bb_dev = 1.8
+    bb_dev = 2.0
     rsi_period = 14
-    rsi_ob = 65.0
-    rsi_os = 35.0
-    adx_threshold = 45.0
+    rsi_ob = 70.0
+    rsi_os = 30.0
+    adx_threshold = 30.0
     
     # Calcular indicadores
     delta = df['close'].diff()
@@ -256,11 +256,17 @@ def sim_bollinger_rsi(df, symbol):
             if not (candle_hour_est >= 17 or candle_hour_est < 1):
                 continue
         
+        lower_wick = row['open'] - row['low'] if row['open'] < row['close'] else row['close'] - row['low']
+        upper_wick = row['high'] - row['close'] if row['open'] < row['close'] else row['high'] - row['open']
+        cuerpo = abs(row['close'] - row['open'])
+
         signal = None
         if row['close'] < row['bb_lower'] and row['rsi'] < rsi_os:
-            signal = "BUY"
+            if lower_wick > (cuerpo * 1.2):
+                signal = "BUY"
         elif row['close'] > row['bb_upper'] and row['rsi'] > rsi_ob:
-            signal = "SELL"
+            if upper_wick > (cuerpo * 1.2):
+                signal = "SELL"
         
         if not signal:
             continue
