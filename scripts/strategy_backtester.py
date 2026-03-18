@@ -514,6 +514,55 @@ def sim_asian_scalper(df, symbol):
         
     return result
 
+def sim_squeeze_momentum(df, symbol):
+    """Simula el Squeeze Momentum (John Carter) en M15"""
+    result = BacktestResult("Squeeze Momentum M15")
+    pip_size = 0.01 if "JPY" in symbol else 0.0001
+    
+    # 1. Bollinger Bands
+    df['basis'] = df['close'].rolling(20).mean()
+    df['dev'] = 2.0 * df['close'].rolling(20).std()
+    df['upperBB'] = df['basis'] + df['dev']
+    df['lowerBB'] = df['basis'] - df['dev']
+
+    # 2. Keltner Channels
+    df['tr0'] = abs(df['high'] - df['low'])
+    df['tr1'] = abs(df['high'] - df['close'].shift())
+    df['tr2'] = abs(df['low'] - df['close'].shift())
+    df['tr'] = df[['tr0', 'tr1', 'tr2']].max(axis=1)
+    df['range_ma'] = df['tr'].rolling(20).mean()
+    df['upperKC'] = df['basis'] + df['range_ma'] * 1.5
+    df['lowerKC'] = df['basis'] - df['range_ma'] * 1.5
+
+    df['squeeze_on'] = (df['lowerBB'] > df['lowerKC']) & (df['upperBB'] < df['upperKC'])
+    df['squeeze_off'] = (df['lowerBB'] < df['lowerKC']) | (df['upperBB'] > df['upperKC'])
+
+    df['ema12'] = df['close'].ewm(span=12, adjust=False).mean()
+    df['ema26'] = df['close'].ewm(span=26, adjust=False).mean()
+    df['macd'] = df['ema12'] - df['ema26']
+
+    for i in range(100, len(df) - 50):
+        prev = df.iloc[i-1]
+        curr = df.iloc[i]
+        
+        hour_est = (pd.Timestamp(curr['time']).hour - 5) % 24
+        
+        just_fired = prev['squeeze_on'] and curr['squeeze_off']
+        if not just_fired:
+            continue
+            
+        signal = "BUY" if curr['macd'] > 0 else "SELL"
+            
+        sl_pips = 15.0
+        tp_pips = 45.0 # R:R 1:3
+        
+        future = df.iloc[i+1:i+20].to_dict('records') # Tarda más en M15
+        pnl = calculate_pnl(signal, curr['close'], sl_pips, tp_pips, future, symbol)
+        
+        result.add_trade(pnl, hour_est, signal, sl_pips, tp_pips)
+        
+    return result
+
 def sim_session_breakout(df_m15, symbol, session_name, valid_hours_est, min_body_pips=5.0, range_limit=None, need_h4_trend=False, df_h4=None):
     """
     Simulador genérico de Breakout de Sesión.
@@ -699,6 +748,11 @@ def run_backtest(symbol="EURUSD", days=60):
     r4 = sim_asian_scalper(df_m5.copy(), symbol)
     results.append(r4)
     print(f"    → {r4.wins + r4.losses} trades simulados")
+    
+    print(f"[*] Simulando: Squeeze Momentum M15...")
+    r5 = sim_squeeze_momentum(df_m15.copy(), symbol)
+    results.append(r5)
+    print(f"    → {r5.wins + r5.losses} trades simulados")
     
     # ⚠️ Breakout strategies DESACTIVADAS por backtest anterior (PF < 1.0)
     # NY, London, Tokyo, Sydney — todas mostraron pérdidas en 60 días.
