@@ -1,7 +1,10 @@
 @echo off
+cd /d "%~dp0"
 title Diagnostico del Bot TX3 PRO
 color 0B
-
+echo.
+echo Presiona enter para comenzar el diagnostico...
+pause
 echo =======================================================
 echo          TX3 PRO BOT - DIAGNOSTICO DE SISTEMA
 echo =======================================================
@@ -9,7 +12,6 @@ echo.
 echo Ejecutando verificacion de todas las funciones del bot...
 echo.
 
-:: Verificar si el .venv esta activado y si existe
 if exist ".venv\Scripts\python.exe" (
     echo Usando entorno virtual local (.venv)...
     .venv\Scripts\python.exe bot_diagnostics.py
