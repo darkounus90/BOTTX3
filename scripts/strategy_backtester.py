@@ -507,23 +507,35 @@ def run_backtest(symbol="EURUSD", days=60):
     print(f"  📊 Período analizado: {days} días")
     print(f"{'═' * 70}")
     
-    # Guardar JSON para análisis posterior (archivo separado por símbolo)
-    output_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", f"backtest_{symbol}.json")
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump({
-            "symbol": symbol,
-            "days": days,
-            "date": datetime.now().isoformat(),
-            "strategies": reports
-        }, f, indent=2, ensure_ascii=False)
-    print(f"\n  💾 Resultados guardados en: {output_path}")
+    # Retornar los reportes en lugar de guardar uno por uno
+    return reports
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="TX3 Strategy Backtester")
     parser.add_argument("--days", type=int, default=60, help="Días de historia a analizar (default: 60)")
-    parser.add_argument("--symbol", type=str, default="EURUSD", help="Símbolo a analizar (default: EURUSD)")
+    parser.add_argument("--symbols", type=str, default="EURUSD,GBPUSD", help="Símbolos separados por coma (default: EURUSD,GBPUSD)")
     args = parser.parse_args()
     
-    run_backtest(symbol=args.symbol, days=args.days)
+    symbols_list = [s.strip() for s in args.symbols.split(",") if s.strip()]
+    
+    all_results = []
+    for sym in symbols_list:
+        reports = run_backtest(symbol=sym, days=args.days)
+        if reports:
+            all_results.append({
+                "symbol": sym,
+                "days": args.days,
+                "strategies": reports
+            })
+            
+    # Guardar un ÚNICO JSON maestro
+    output_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "backtest_results.json")
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump({
+            "date": datetime.now().isoformat(),
+            "results": all_results
+        }, f, indent=2, ensure_ascii=False)
+        
+    print(f"\n[🚀] TODOS LOS RESULTADOS CONSOLIDADOS EN: {output_path}")

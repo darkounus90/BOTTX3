@@ -28,27 +28,8 @@ echo   Esto puede tomar 30-60 segundos. Analizando miles de velas...
 echo ═══════════════════════════════════════════════════════════════
 echo.
 
-REM Ejecutar backtest para EURUSD (60 días)
-echo [1/2] Analizando EURUSD (60 dias)...
-%PYTHON_CMD% scripts\strategy_backtester.py --days 60 --symbol EURUSD
-
-echo.
-echo ───────────────────────────────────────────────────────────────
-echo [2/2] Analizando GBPUSD (60 dias)...
-echo ───────────────────────────────────────────────────────────────
-echo.
-
-REM Ejecutar backtest para GBPUSD (60 días)
-%PYTHON_CMD% scripts\strategy_backtester.py --days 60 --symbol GBPUSD
-
-echo.
-echo ───────────────────────────────────────────────────────────────
-echo [3/3] Analizando AUDUSD (60 dias)...
-echo ───────────────────────────────────────────────────────────────
-echo.
-
-REM Ejecutar backtest para AUDUSD (60 días)
-%PYTHON_CMD% scripts\strategy_backtester.py --days 60 --symbol AUDUSD
+echo [🚀] Analizando Portfolio Oficial (EURUSD, GBPUSD)...
+%PYTHON_CMD% scripts\strategy_backtester.py --days 60 --symbols EURUSD,GBPUSD
 
 echo.
 echo ╔══════════════════════════════════════════════════════════════╗
