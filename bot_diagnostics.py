@@ -97,6 +97,7 @@ def run_diagnostics():
         
         # Validar lógica estática (compilación de la clase sin forzar instanciación riesgosa)
         assert bool(RiskManager)
+        assert hasattr(PositionManager, "close_all_positions"), "PositionManager no soporta Cierre de Pánico (News)"
         assert bool(PositionManager)
         assert bool(PortfolioManager)
         assert bool(TrailingStopManager)
@@ -104,7 +105,7 @@ def run_diagnostics():
         tracker = PhaseTracker(logger=real_logger, phase=1)
         assert hasattr(tracker, "check_phase_complete")
         
-        return "Trade/Risk/Position/Trailing/Portfolio Managers compilados y listos."
+        return "Trade/Risk/Position (Con Modo Pánico)/Portfolio Managers listos."
     test("Core: Managers Transaccionales y de Riesgo", test_core_managers)
 
     def test_core_intel():
@@ -114,11 +115,12 @@ def run_diagnostics():
         
         # Probar instanciación de IA segura
         oracle = GeminiOracle(logger=real_logger)
+        assert hasattr(oracle, "_cooldown_cache"), "GeminiOracle no tiene protección de fatiga (Cooldown)"
         assert hasattr(oracle, "evaluate_system_health"), "GeminiOracle error"
         assert bool(SMCScanner)
         assert bool(AISentimentAnalyzer)
         
-        return "Conciencia Institucional (Oracle, SMC, Sentiment) OK."
+        return "Oráculo Anti-Fatiga (Cooldown) y Conciencia Institucional OK."
     test("Core: Análisis Avanzado (Oracle, SMC, Sentiment)", test_core_intel)
 
     # ==========================================
