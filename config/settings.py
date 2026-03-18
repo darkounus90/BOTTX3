@@ -88,7 +88,7 @@ class BotConfig:
     
     MODE_FILTERS = "STRICT"              
     DEFAULT_SYMBOL = "EURUSD"
-    WATCHLIST = ["EURUSD", "GBPUSD", "AUDUSD"]  # 🔥 ELIMINADO USDJPY, AGREGADO AUDUSD por su fuerte Mean-Reversion nocturno
+    WATCHLIST = ["EURUSD", "GBPUSD"]     # 🔥 ELIMINADO AUDUSD/USDJPY: Las pruebas cuantitativas demuestran que destruyen capital.
     DEFAULT_TIMEFRAME = "M5"             
     EMA_FAST_PERIOD = 20
     EMA_SLOW_PERIOD = 50
