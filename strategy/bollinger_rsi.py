@@ -21,12 +21,12 @@ class BollingerRSIStrategy(BaseStrategy):
         self.symbol = symbol or BotConfig.DEFAULT_SYMBOL
         self.timeframe = mt5.TIMEFRAME_M5 # M5 para entradas más rápidas como definiste
         self.bb_period = 20
-        self.bb_dev = 1.8          # Reducido de 2.0 a 1.8 para tocar la banda más seguido
+        self.bb_dev = 2.0          # Aumentado para mayor seguridad (antes 1.8)
         self.rsi_period = 14
-        self.rsi_overbought = 65.0 # Aflojado (antes 75) para que el RSI logre dar el "OK"
-        self.rsi_oversold = 35.0   # Aflojado (antes 25) 
+        self.rsi_overbought = 70.0 # Endurecido (antes 65.0) para filtros más estrictos
+        self.rsi_oversold = 30.0   # Endurecido (antes 35.0) para filtros más estrictos
         self.adx_period = 14
-        self.adx_threshold = 45.0  # Ampliado (antes 28): permite operar en mercados con más inercia
+        self.adx_threshold = 30.0  # Reducido (antes 45.0) para evitar tendencias agresivas
         self.bars_needed = 100
 
     def get_name(self) -> str:
@@ -158,13 +158,13 @@ class BollingerRSIStrategy(BaseStrategy):
         
         # BUY (Largo): Rechazo en zona de sobreventa
         if is_oversold and broke_lower_band:
-            if lower_wick > (cuerpo * 0.8): # La mecha inferior debe ser casi tan grande como el cuerpo (Rechazo)
+            if lower_wick > (cuerpo * 1.2): # La mecha inferior debe ser mayor al cuerpo (Rechazo fuerte)
                 signal_type = "BUY"
                 reason = f"Institutional Rejection (Bottom) | RSI:{last_closed['rsi']:.1f}"
             
         # SELL (Corto): Rechazo en zona de sobrecompra
         elif is_overbought and broke_upper_band:
-            if upper_wick > (cuerpo * 0.8):
+            if upper_wick > (cuerpo * 1.2): # La mecha superior debe ser mayor al cuerpo (Rechazo fuerte)
                 signal_type = "SELL"
                 reason = f"Institutional Rejection (Top) | RSI:{last_closed['rsi']:.1f}"
             
