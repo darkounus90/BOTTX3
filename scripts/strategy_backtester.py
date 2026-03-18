@@ -415,6 +415,10 @@ def sim_ict_killzone(df, symbol):
         in_ny = 7 <= hour_est < 10
         in_asia = hour_est >= 20 or hour_est < 0
         
+        # Optimización: NY suele tener tendencias muy fuertes y continuas en EURUSD. Desactivamos NY para EURUSD.
+        if "EUR" in symbol:
+            in_ny = False
+            
         if not (in_london or in_ny or in_asia):
             continue
             
@@ -423,8 +427,10 @@ def sim_ict_killzone(df, symbol):
         asian_low = lookback_df['low'].min()
         
         recent_df = df.iloc[i-5:i]
-        sweep_high = recent_df['high'].max() >= asian_high
-        sweep_low = recent_df['low'].min() <= asian_low
+        # Optimización: El barrido (sweep) debe ser claro (al menos 1 pip = 10 points) para evitar ruido.
+        sweep_threshold = pip_size * 1.0  
+        sweep_high = recent_df['high'].max() >= (asian_high + sweep_threshold)
+        sweep_low = recent_df['low'].min() <= (asian_low - sweep_threshold)
         
         # FVG Detection
         bullish_fvg = prev3['high'] < prev1['low'] and prev1['close'] > prev2['open']

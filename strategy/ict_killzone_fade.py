@@ -44,6 +44,10 @@ class ICTKillzoneFadeStrategy(BaseStrategy):
         in_ny = self.ny_killzone_start <= hour_est < self.ny_killzone_end
         in_asia = hour_est >= self.asia_killzone_start or hour_est < self.asia_killzone_end
         
+        # Filtro empírico: NY suele ser demasiado tendencial para EURUSD y rompe la lógica de Fade
+        if "EUR" in self.symbol:
+            in_ny = False
+            
         return in_london or in_ny or in_asia
 
     def generate_signal(self) -> dict | None:
@@ -73,9 +77,13 @@ class ICTKillzoneFadeStrategy(BaseStrategy):
         
         # --- 3. DETECCIÓN DE JUDAS SWING (LIQUIDITY SWEEP) ---
         # Verificar si en las últimas 5 velas el precio rompió el alto o bajo para atrapar liquidez
+        symbol_info = mt5.symbol_info(self.symbol)
+        point = symbol_info.point if symbol_info and symbol_info.point else 0.00001
+        sweep_threshold = point * 10  # Exigir penetración clara de al menos 1 pip
+        
         recent_df = df.iloc[-5:-1]
-        sweep_high = recent_df['high'].max() >= asian_high
-        sweep_low = recent_df['low'].min() <= asian_low
+        sweep_high = recent_df['high'].max() >= (asian_high + sweep_threshold)
+        sweep_low = recent_df['low'].min() <= (asian_low - sweep_threshold)
 
         # --- 4. DETECCIÓN DE FAIR VALUE GAP (FVG) ---
         # FVG Alcista (Bullish FVG): Vela 1 Alta < Vela 3 Baja
@@ -119,9 +127,6 @@ class ICTKillzoneFadeStrategy(BaseStrategy):
         self.last_signal_time = current_candle_time
 
         # --- GESTIÓN DE RIESGO: SL ESTRUCTURAL ICT ---
-        symbol_info = mt5.symbol_info(self.symbol)
-        point = symbol_info.point if symbol_info and symbol_info.point else 0.00001
-        
         # En ICT el Stop Loss original suele ir debajo de la mecha del sweep.
         # Aproximamos con un SL fijo basado en ATR o el tamaño del Sweep
         sl_pip_dist = (current_atr * 1.5) / (point * 10)
