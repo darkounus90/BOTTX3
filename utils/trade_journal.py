@@ -489,17 +489,10 @@ class TradeJournal:
             if comment_sig in existing_signatures:
                 continue
                 
-            # Validamos contra trades registrados que NO tienen ticket (como los nativos)
-            found_by_profit = False
-            for t in existing_fuzzy_trades:
-                # Comparamos el Profit exacto, mismo Símbolo y tiempo cercano (+-300 segundos, 5 min)
-                if t["symbol"] == symbol and abs(t["profit"] - profit) < 0.1:
-                    time_diff = abs((t["time"] - dt).total_seconds())
-                    if time_diff < 300: # 5 minutos de tolerancia para considerar que es el mismo trade
-                        found_by_profit = True
-                        break
-
-            if not found_by_profit:
+            # 🛡️ SINCRONIZACIÓN FORZADA POR TICKET
+            # Eliminamos la búsqueda por profit/tiempo (fuzzy) para asegurar que 
+            # cada operación manual se registre sin excepciones.
+            if True:
                 # No está en el journal, lo agregamos como un trade independiente (o parcial)
                 trade_id = f"SYNC-{deal.ticket}"
                 
