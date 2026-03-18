@@ -651,9 +651,10 @@ class TX3ProBot:
         try:
             from datetime import datetime, timedelta
             now = datetime.now()
-            # Ventana de 24 horas para cubrir cualquier zona horaria del broker
-            sync_start = now - timedelta(hours=24)
-            deals_sync = mt5.history_deals_get(sync_start, now + timedelta(hours=1))
+            # Ventana generosa (48h atrás, 24h adelante) para cubrir cualquier zona horaria del broker
+            sync_start = now - timedelta(hours=48)
+            sync_end = now + timedelta(hours=24)
+            deals_sync = mt5.history_deals_get(sync_start, sync_end)
             if deals_sync:
                 self.journal.sync_mt5_history(deals_sync)
         except Exception as e:
@@ -711,9 +712,9 @@ class TX3ProBot:
                 
                 # Sincronizar trades cerrados por el broker (SL/TP/Trailing/Manual)
                 try:
-                    # Usamos una ventana de 24 horas para cubrir desfasajes GMT entre servidor y broker
-                    sync_start_time = datetime.now() - timedelta(hours=24)
-                    sync_end_time = datetime.now() + timedelta(hours=1)
+                    # Usamos una ventana de 24 horas adelante para cubrir desfasajes GMT extremos entre servidor y broker
+                    sync_start_time = datetime.now() - timedelta(hours=48)
+                    sync_end_time = datetime.now() + timedelta(hours=24)
                     deals_sync = mt5.history_deals_get(sync_start_time, sync_end_time)
                     
                     if deals_sync is not None:
