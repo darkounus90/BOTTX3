@@ -647,16 +647,29 @@ class TX3ProBot:
             self.telegram.notify_error("🚨 FALLO DE INICIO: Auto-prueba técnica fallida. Revisa los logs.")
             return
 
-        # 🩺 SINCRONIZACIÓN INICIAL DE HISTORIAL (Consistencia Dashboard)
+        # 🩺 SINCRONIZACIÓN INICIAL DE HISTORIAL (Consistencia Dashboard y Alertas)
         try:
             from datetime import datetime, timedelta
             now = datetime.now()
-            # Ventana generosa (48h atrás, 24h adelante) para cubrir cualquier zona horaria del broker
+            # Ventana generosa (48h atrás, 24h adelante) para cubrir brokers con GMT extremo
             sync_start = now - timedelta(hours=48)
             sync_end = now + timedelta(hours=24)
             deals_sync = mt5.history_deals_get(sync_start, sync_end)
+            
             if deals_sync:
-                self.journal.sync_mt5_history(deals_sync)
+                new_trades = self.journal.sync_mt5_history(deals_sync)
+                # 🔔 NOTIFICACIÓN RETROACTIVA: Si el bot estaba apagado y hubo cierres, avisa ahora.
+                if new_trades:
+                    self.logger.info(f"🔔 Detectados {len(new_trades)} cierres externos. Notificando...")
+                    for trade in new_trades:
+                        self.telegram.notify_trade_closed(
+                            symbol=trade.get("symbol", "N/A"),
+                            order_type=trade.get("type", "N/A"),
+                            volume=trade.get("volume", 0.0),
+                            profit=trade.get("profit", 0.0),
+                            pips=0.0,
+                            duration="MT5 Startup Sync"
+                        )
         except Exception as e:
             self.logger.warning(f"No se pudo sincronizar historial inicial: {e}")
 
