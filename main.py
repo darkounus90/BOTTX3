@@ -43,6 +43,7 @@ from strategy.tokyo_opening_breakout import TokyoOpeningBreakoutStrategy
 from strategy.london_opening_breakout import LondonOpeningBreakoutStrategy
 from strategy.sydney_opening_breakout import SydneyOpeningBreakoutStrategy
 from strategy.ict_killzone_fade import ICTKillzoneFadeStrategy
+from strategy.asian_scalper import AsianScalperStrategy
 from utils.logger import BotLogger
 from utils.mt5_connector import MT5Connector
 from utils.telegram_notifier import TelegramNotifier
@@ -112,10 +113,11 @@ class TX3ProBot:
                 BollingerRSIStrategy(logger=self.logger, symbol=symbol),
                 EMACrossStrategy(logger=self.logger, symbol=symbol),
                 # NYOpeningBreakoutStrategy(logger=self.logger, symbol=symbol),      # 🔴 DESACTIVADA: PF 0.52-0.89
-                # LondonOpeningBreakoutStrategy(logger=self.logger, symbol=symbol),  # 🔴 DESACTIVADA: PF 0.92-1.0
-                # TokyoOpeningBreakoutStrategy(logger=self.logger, symbol=symbol),   # 🔴 DESACTIVADA: PF 0.73-0.81
-                # SydneyOpeningBreakoutStrategy(logger=self.logger, symbol=symbol),  # 🔴 DESACTIVADA: PF 0.74
-                ICTKillzoneFadeStrategy(logger=self.logger, symbol=symbol),        # 🔮 ACTIVADA PARA TESTEO: Módulo ICT Kill Zone Fade
+                # LondonOpeningBreakoutStrategy(logger=self.logger, symbol=symbol),  # 🔴 DESACTIVADA
+                # TokyoOpeningBreakoutStrategy(logger=self.logger, symbol=symbol),   # 🔴 DESACTIVADA
+                # SydneyOpeningBreakoutStrategy(logger=self.logger, symbol=symbol),  # 🔴 DESACTIVADA
+                # ICTKillzoneFadeStrategy(logger=self.logger, symbol=symbol),        # 🔴 DESACTIVADA (Mucho Estrés Probabilístico)
+                AsianScalperStrategy(logger=self.logger, symbol=symbol),             # 🟢 ACTIVADA: Alta Frecuencia Segura Nocturna
             ]
             self.logger.info(f"✅ Estrategias OPTIMIZADAS cargadas: [Bollinger+RSI, EMA Cross] → {symbol}")
 

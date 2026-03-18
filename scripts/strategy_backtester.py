@@ -460,6 +460,60 @@ def sim_ict_killzone(df, symbol):
         
     return result
 
+def sim_asian_scalper(df, symbol):
+    """Simula la estrategia Asian Scalper (High WinRate, Low DD)"""
+    result = BacktestResult("Asian Scalper")
+    pip_size = 0.01 if "JPY" in symbol else 0.0001
+    
+    df['mavg'] = df['close'].rolling(20).mean()
+    df['std'] = df['close'].rolling(20).std()
+    df['bb_upper'] = df['mavg'] + (2.0 * df['std'])
+    df['bb_lower'] = df['mavg'] - (2.0 * df['std'])
+    
+    delta = df['close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=7).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=7).mean()
+    rs = gain / loss
+    df['rsi'] = 100 - (100 / (1 + rs))
+    
+    # ADX Proxy simple para backtesting (usamos ATR proxy_volatility cruzado para no hacer el calculo super lento de pandas DMI)
+    df['tr'] = df['high'] - df['low']
+    df['atr'] = df['tr'].rolling(14).mean()
+    df['adx_proxy'] = abs(df['close'] - df['close'].shift(14)) / df['atr']
+
+    for i in range(100, len(df) - 50):
+        curr = df.iloc[i]
+        
+        hour_est = (pd.Timestamp(curr['time']).hour - 5) % 24
+        
+        # Filtro Horario: Solo horas muertas (18:00 a 01:00 EST)
+        if not (hour_est >= 18 or hour_est <= 1):
+            continue
+            
+        # Filtro de volatilidad
+        adx_flat = curr['adx_proxy'] < 1.0 # Proxy de ADX bajo
+        if not adx_flat:
+            continue
+            
+        signal = None
+        if curr['close'] < curr['bb_lower'] and curr['rsi'] < 25:
+            signal = "BUY"
+        elif curr['close'] > curr['bb_upper'] and curr['rsi'] > 75:
+            signal = "SELL"
+            
+        if not signal:
+            continue
+            
+        sl_pips = 20.0
+        tp_pips = 5.0 # Scalp estricto
+        
+        future = df.iloc[i+1:i+10].to_dict('records') # 50 minutos max
+        pnl = calculate_pnl(signal, curr['close'], sl_pips, tp_pips, future, symbol)
+        
+        result.add_trade(pnl, hour_est, signal, sl_pips, tp_pips)
+        
+    return result
+
 def sim_session_breakout(df_m15, symbol, session_name, valid_hours_est, min_body_pips=5.0, range_limit=None, need_h4_trend=False, df_h4=None):
     """
     Simulador genérico de Breakout de Sesión.
@@ -640,6 +694,11 @@ def run_backtest(symbol="EURUSD", days=60):
     r3 = sim_ict_killzone(df_m5.copy(), symbol)
     results.append(r3)
     print(f"    → {r3.wins + r3.losses} trades simulados")
+    
+    print(f"[*] Simulando: Asian Session Scalper...")
+    r4 = sim_asian_scalper(df_m5.copy(), symbol)
+    results.append(r4)
+    print(f"    → {r4.wins + r4.losses} trades simulados")
     
     # ⚠️ Breakout strategies DESACTIVADAS por backtest anterior (PF < 1.0)
     # NY, London, Tokyo, Sydney — todas mostraron pérdidas en 60 días.
