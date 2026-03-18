@@ -451,6 +451,55 @@ def sim_fractal_energy(df, symbol):
         
     return result
 
+def sim_zscore_reversion(df, symbol):
+    """Simula la Estrategia Cuantitativa Fuerte: Z-Score Statistical Reversion"""
+    result = BacktestResult("Z-Score Reversion")
+    pip_size = 0.01 if "JPY" in symbol else 0.0001
+    
+    df['ema_200'] = df['close'].ewm(span=200, adjust=False).mean()
+    df['sma_50'] = df['close'].rolling(window=50).mean()
+    df['std_50'] = df['close'].rolling(window=50).std()
+    df['z_score'] = (df['close'] - df['sma_50']) / (df['std_50'] + 1e-9)
+    
+    df['tr'] = df['high'] - df['low']
+    df['atr'] = df['tr'].rolling(14).mean()
+
+    z_threshold = 2.5
+    
+    for i in range(250, len(df) - 50):
+        prev = df.iloc[i-1]
+        curr = df.iloc[i]
+        
+        signal = None
+        
+        if prev['z_score'] >= z_threshold and curr['z_score'] < z_threshold:
+            if curr['close'] < curr['ema_200']:
+                signal = "SELL"
+                
+        elif prev['z_score'] <= -z_threshold and curr['z_score'] > -z_threshold:
+            if curr['close'] > curr['ema_200']:
+                signal = "BUY"
+                
+        if not signal:
+            continue
+            
+        atr_val = curr['atr']
+        if pd.isna(atr_val) or atr_val <= 0: continue
+        
+        point = pip_size / 10
+        sl_pips = round((atr_val * 1.5) / (10 * point), 1)
+        tp_pips = round((atr_val * 2.5) / (10 * point), 1)
+        sl_pips = max(sl_pips, 15.0)
+        tp_pips = max(tp_pips, 25.0)
+        
+        hour_est = (pd.Timestamp(curr['time']).hour - 5) % 24
+        future = df.iloc[i+1:i+50].to_dict('records')
+        pnl = calculate_pnl(signal, curr['close'], sl_pips, tp_pips, future, symbol)
+        
+        result.add_trade(pnl, hour_est, signal, sl_pips, tp_pips)
+        
+    return result
+
 # ═══════════════════════════════════════════════════════════════
 #  MOTOR PRINCIPAL
 # ═══════════════════════════════════════════════════════════════
@@ -519,6 +568,11 @@ def run_backtest(symbol="EURUSD", days=60):
     r3 = sim_fractal_energy(df_m15.copy(), symbol) # Testeada en M15
     results.append(r3)
     print(f"    → {r3.wins + r3.losses} trades simulados")
+
+    print(f"[*] Simulando: Z-Score Statistical Reversion...")
+    r4 = sim_zscore_reversion(df_m15.copy(), symbol)
+    results.append(r4)
+    print(f"    → {r4.wins + r4.losses} trades simulados")
 
     # ─── REPORTE FINAL ─────────────────────────────────────────
     reports = [r.get_report() for r in results]
