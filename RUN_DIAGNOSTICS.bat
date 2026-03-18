@@ -12,14 +12,17 @@ echo.
 echo Ejecutando verificacion de todas las funciones del bot...
 echo.
 
-if exist ".venv\Scripts\python.exe" (
-    echo Usando entorno virtual local (.venv)...
-    .venv\Scripts\python.exe bot_diagnostics.py
-) else (
-    echo Entorno virtual no encontrado, usando python global...
-    python bot_diagnostics.py
-)
+if exist ".venv\Scripts\python.exe" goto use_venv
 
+echo Entorno virtual no encontrado, usando python global...
+python bot_diagnostics.py
+goto end_diagnostics
+
+:use_venv
+echo Usando entorno virtual local...
+.venv\Scripts\python.exe bot_diagnostics.py
+
+:end_diagnostics
 echo.
 echo =======================================================
 echo Diagnostico finalizado. 
