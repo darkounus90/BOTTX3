@@ -129,11 +129,15 @@ class TX3ProBot:
                 self.phase_tracker.daily_profits = state.get("daily_profits", [])
                 self.phase_tracker.total_trading_days = state.get("total_trading_days", 0)
                 
-                # Restaurar balance inicial real (capturado de MT5)
+                # 🛡️ PROTECCIÓN DE CAPITAL: 
+                # Solo restauramos el balance si es MAYOR al del Challenge (indica profit anterior).
+                # Si es menor, mantenemos los 50,000 del Challenge para calcular el Drawdown correctamente.
                 saved_balance = state.get("balance_inicial", 0)
-                if saved_balance > 0:
+                if saved_balance > ChallengeConfig.BALANCE_INICIAL:
                     self.risk_manager.balance_inicial = saved_balance
                     self.phase_tracker.balance_inicial = saved_balance
+                else:
+                    self.logger.info(f"🛡️ Manteniendo base de ${ChallengeConfig.BALANCE_INICIAL:,.2f} para cálculo de Drawdown real.")
                 
                 # Restaurar equity inicio día (solo si es el mismo día)
                 saved_equity = state.get("equity_inicio_dia", 0)

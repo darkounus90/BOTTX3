@@ -24,15 +24,19 @@ class RiskManager:
     def __init__(self, logger: BotLogger):
         self.logger = logger
 
-        # Inicializa base, pero los límites se calcularán dinámicamente con las properties
-        # Inicializa con el balance real del broker para cuentas con dinero real o variables
+        # ─── ANCLAJE DE CAPITAL DEL RETO ───
+        # Forzamos que el balance inicial sea el del Challenge (50k) 
+        # para que el drawdown total concuerde con el broker.
+        self._balance_inicial = ChallengeConfig.BALANCE_INICIAL
+        
         account_info = mt5.account_info()
         if account_info:
-            self._balance_inicial = account_info.balance
+            # La equidad de inicio de día se resetea a las 5 PM EST.
+            # Si el bot inicia fuera de ese horario, intenta una estimación conservadora.
             self.equity_inicio_dia = max(account_info.balance, account_info.equity)
+            self.logger.info(f"💰 Sincronizando Capital: MT5 Balance=${account_info.balance:,.2f} | Equity=${account_info.equity:,.2f}")
         else:
-            self.logger.warning("No se pudo obtener info de cuenta en inicio de RiskManager. Usando default de config.")
-            self._balance_inicial = ChallengeConfig.BALANCE_INICIAL
+            self.logger.warning("No se pudo obtener info de cuenta en inicio de RiskManager. Usando default de $50k.")
             self.equity_inicio_dia = ChallengeConfig.BALANCE_INICIAL
 
         # Estado
@@ -41,7 +45,7 @@ class RiskManager:
         self.is_overall_warning = False
         self.is_overall_emergency = False
 
-        self.logger.risk(f"Risk Manager inicializado. Balance Base: ${self._balance_inicial:,.2f} | Equidad Día: ${self.equity_inicio_dia:,.2f}")
+        self.logger.risk(f"🛡️ Risk Manager ANCLADO a Reto: ${self._balance_inicial:,.2f} | Equidad Día: ${self.equity_inicio_dia:,.2f}")
 
     @property
     def balance_inicial(self):
