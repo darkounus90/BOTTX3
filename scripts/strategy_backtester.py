@@ -627,8 +627,8 @@ def run_backtest(symbol="EURUSD", days=60):
     print(f"  📊 Período analizado: {days} días")
     print(f"{'═' * 70}")
     
-    # Guardar JSON para análisis posterior
-    output_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "backtest_results.json")
+    # Guardar JSON para análisis posterior (archivo separado por símbolo)
+    output_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", f"backtest_{symbol}.json")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump({
