@@ -1,127 +1,277 @@
 <!DOCTYPE html>
 <html lang="es" class="dark">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Darkobot | Login</title>
+    <title>Darkobot | Access Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&family=Syncopate:wght@700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --tx-base: #0B1120;
-            --tx-panel: rgba(15, 23, 42, 0.7);
-            --tx-border: rgba(56, 189, 248, 0.2);
-            --glow-1: rgba(6, 182, 212, 0.15);
-            --glow-2: rgba(99, 102, 241, 0.15);
+            --glass-bg: rgba(10, 15, 30, 0.45);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --cyan-glow: #06B6D4;
+            --purple-glow: #6366F1;
         }
 
         body {
-            background-color: var(--tx-base);
+            /* Fallback background if image fails */
+            background-color: #050811; 
+            /* Se aplica un tinte oscuro para darle un toque cyberpunk, usando la URL de Flask */
+            background-image: linear-gradient(to right bottom, rgba(5,8,17,0.85), rgba(5,8,17,0.92)), url("{{ url_for('static', filename='img/bg_login.png') }}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
             font-family: 'Outfit', sans-serif;
-            background-image:
-                radial-gradient(circle at 10% 40%, var(--glow-1), transparent 30%),
-                radial-gradient(circle at 90% 20%, var(--glow-2), transparent 35%);
             height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
+            margin: 0;
+            color: white;
         }
 
+        /* Ambient floating orbs (para darle vida e iluminación al fondo oscuro) */
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(90px);
+            z-index: -1;
+            animation: float 20s infinite alternate cubic-bezier(0.5, 0, 0.5, 1);
+        }
+        .orb-1 { width: 450px; height: 450px; background: var(--cyan-glow); top: -10%; left: -10%; opacity: 0.15; }
+        .orb-2 { width: 550px; height: 550px; background: var(--purple-glow); bottom: -20%; right: -10%; opacity: 0.15; animation-delay: -5s; }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(60px, 60px) scale(1.1); }
+        }
+
+        /* Glassmorphism Card (Nivel Institucional) */
         .glass-card {
-            background: var(--tx-panel);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--tx-border);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            border-radius: 1.5rem;
+            background: var(--glass-bg);
+            backdrop-filter: blur(28px) saturate(180%);
+            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: 0 40px 80px -15px rgba(0, 0, 0, 0.9), 
+                        inset 0 1px 0 rgba(255, 255, 255, 0.15);
             width: 100%;
-            max-width: 400px;
-            padding: 2.5rem;
-            animation: fadeIn 0.6s ease-out;
+            max-width: 440px;
+            padding: 3.5rem 3rem;
+            animation: cardEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateY(40px) scale(0.95);
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        @keyframes cardEntrance {
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
-        .input-glow:focus {
-            box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
-            border-color: rgba(6, 182, 212, 0.5);
+        /* Brand Styling */
+        .brand-title {
+            font-family: 'Syncopate', sans-serif;
+            font-size: 2.8rem;
+            letter-spacing: -1.5px;
+            text-shadow: 0 0 25px rgba(6, 182, 212, 0.2);
+            margin-bottom: -5px;
+        }
+        .brand-bot {
+            color: var(--cyan-glow);
+            text-shadow: 0 0 15px rgba(6, 182, 212, 0.8);
+        }
+        .mission-control {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            letter-spacing: 4px;
+            color: #8b9bb4;
+            text-transform: uppercase;
+            opacity: 0.8;
         }
 
-        .btn-gradient {
-            background: linear-gradient(135deg, #06B6D4 0%, #6366F1 100%);
+        /* Floating Label & Minimalist Inputs */
+        .input-group {
+            position: relative;
+            margin-bottom: 2.5rem;
+        }
+        
+        .input-group input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 14px 0 8px 0;
+            font-size: 1.15rem;
+            color: white;
             transition: all 0.3s ease;
+            outline: none;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 1px;
         }
 
-        .btn-gradient:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px -5px rgba(6, 182, 212, 0.5);
+        .input-group input::placeholder {
+            color: transparent; /* Needed for the :placeholder-shown trick in raw CSS */
         }
+
+        .input-group label {
+            position: absolute;
+            top: 14px;
+            left: 0;
+            color: #718096;
+            font-size: 1rem;
+            pointer-events: none;
+            transition: 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            font-family: 'Outfit', sans-serif;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* Valid/Focus trick for floating label */
+        .input-group input:focus ~ label,
+        .input-group input:valid ~ label {
+            top: -12px;
+            font-size: 0.70rem;
+            color: var(--cyan-glow);
+            letter-spacing: 3px;
+            text-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
+            font-weight: 600;
+        }
+
+        /* The Animated Bottom Border Glow */
+        .input-group .line {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0%;
+            height: 2px;
+            background: linear-gradient(90deg, var(--cyan-glow), var(--purple-glow));
+            transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.6);
+        }
+
+        .input-group input:focus ~ .line {
+            width: 100%;
+        }
+
+        /* The Magnetic Connect Button */
+        .btn-magic {
+            width: 100%;
+            padding: 1.1rem;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%);
+            border: 1px solid rgba(6, 182, 212, 0.4);
+            color: white;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 0.95rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(6, 182, 212, 0.2);
+            margin-top: 1rem;
+        }
+
+        .btn-magic::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-magic:hover::before {
+            left: 100%;
+        }
+
+        .btn-magic:hover {
+            transform: translateY(-2px);
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.8) 0%, rgba(99, 102, 241, 0.8) 100%);
+            border-color: rgba(255,255,255,0.5);
+            box-shadow: 0 15px 35px -5px rgba(6, 182, 212, 0.5), inset 0 0 10px rgba(255,255,255,0.3);
+            text-shadow: 0 0 5px rgba(255,255,255,0.8);
+        }
+
+        .btn-magic:active {
+            transform: translateY(1px);
+        }
+        
+        /* Auto-fill fix for webkit browsers */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:active{
+            -webkit-box-shadow: 0 0 0 30px #080c18 inset !important;
+            -webkit-text-fill-color: white !important;
+            transition: background-color 5000s ease-in-out 0s;
+        }
+
     </style>
 </head>
-
 <body>
+
+    <!-- Ambient Glowing Orbs -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
     <div class="glass-card">
-        <div class="text-center mb-8">
-            <div class="inline-block p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-cyan-400" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        <div class="text-center mb-12 relative">
+            <!-- Sleek Icon -->
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-800/40 border border-slate-600/30 mb-5 shadow-[0_0_40px_rgba(6,182,212,0.3)] backdrop-blur-md">
+                <svg class="w-8 h-8 text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
             </div>
-            <h1 class="text-3xl font-bold text-white tracking-tight">DARKO<span class="text-cyan-400">BOT</span></h1>
-            <p class="text-gray-400 text-sm mt-2">Mission Control Authorization</p>
+            
+            <h1 class="brand-title">DARKO<span class="brand-bot">BOT</span></h1>
+            <p class="mission-control mt-3">Quant Matrix Portal</p>
         </div>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        {% for category, message in messages %}
-        <div class="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">
-            {{ message }}
-        </div>
-        {% endfor %}
-        {% endif %}
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                <!-- Error Message Styling -->
+                <div class="mb-8 p-3 rounded-lg bg-red-900/30 border-l-4 border-red-500 text-red-300 text-xs font-mono tracking-wide flex items-center shadow-[0_0_20px_rgba(239,68,68,0.15)]">
+                    <span class="inline-block mr-3 text-red-500">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </span>
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
         {% endwith %}
 
-        <form action="/login" method="POST" class="space-y-6">
-            <div>
-                <label class="block text-gray-400 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Usuario</label>
-                <input type="text" name="username" required
-                    class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-3 text-white focus:outline-none input-glow transition-all"
-                    placeholder="dark90">
+        <form action="/login" method="POST">
+            
+            <div class="input-group">
+                <input type="text" name="username" required autocomplete="off">
+                <label>OPERATOR ID</label>
+                <div class="line"></div>
             </div>
-            <div>
-                <label
-                    class="block text-gray-400 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Contraseña</label>
-                <input type="password" name="password" required
-                    class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-3 text-white focus:outline-none input-glow transition-all"
-                    placeholder="••••••••">
+
+            <div class="input-group">
+                <input type="password" name="password" required>
+                <label>ACCESS KEY</label>
+                <div class="line"></div>
             </div>
-            <button type="submit"
-                class="w-full btn-gradient text-white font-bold py-4 rounded-xl shadow-lg uppercase tracking-wider text-sm">
-                Desbloquear Acceso
+
+            <button type="submit" class="btn-magic mt-4">
+                Initialize Link
             </button>
         </form>
 
-        <div class="mt-8 text-center">
-            <p class="text-[0.65rem] text-gray-500 uppercase tracking-widest font-mono">
-                &copy; 2026 BOTALGO INC. | ENCRYPTED LINK
+        <div class="mt-12 text-center relative z-10">
+            <p class="text-[0.55rem] text-slate-500 uppercase tracking-[0.25em] font-mono leading-relaxed">
+                &copy; 2026 BOTALGO INC. ALL RIGHTS RESERVED.<br>
+                <span class="text-cyan-900/50 font-bold">●</span> ACTIVE 256-BIT ENCRYPTION <span class="text-cyan-900/50 font-bold">●</span>
             </p>
         </div>
     </div>
-</body>
 
+</body>
 </html>
