@@ -101,15 +101,15 @@ class LondonOpeningBreakoutStrategy(BaseStrategy):
         
         # BREAKOUT ALCISTA (BUY)
         if last_closed['close'] > current_range_high and last_closed['open'] < current_range_high:
-            if vela_size > 4.0: # La vela de ruptura debe tener cuerpo sustancial (>4 pips)
+            if vela_size >= 8.0: # 🛡️ EXIGENCIA INSTITUCIONAL: Filtra el ruido. Requerimos inercia alcista fuerte (>= 8 pips)
                 signal_type = "BUY"
-                reason = "London Range Breakout Alcista (Momentum)"
+                reason = "London Range Breakout Alcista (Momentum Confirmado)"
 
         # BREAKOUT BAJISTA (SELL)
         elif last_closed['close'] < current_range_low and last_closed['open'] > current_range_low:
-            if vela_size > 2.5: # La vela bajista necesita menos inercia (>2.5 pips)
+            if vela_size >= 8.0: # 🛡️ EXIGENCIA INSTITUCIONAL: Caída violenta del precio necesaria para evitar Stop Hunts
                 signal_type = "SELL"
-                reason = "London Range Breakout Bajista (Momentum)"
+                reason = "London Range Breakout Bajista (Momentum Confirmado)"
 
         if not signal_type:
             return None

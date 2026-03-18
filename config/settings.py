@@ -61,35 +61,35 @@ class BotConfig:
     TIMEZONE = "America/Bogota"          # Zona horaria para dashboard, logs y resets
 
     # ─── RISK MANAGEMENT (FTMO COMPLIANCE) ────────────────────────────
-    MAX_RISK_PER_TRADE_PCT = 0.8                 # 0.8% = $400 base para cuenta 50K. Francotirador Pesado.
+    MAX_RISK_PER_TRADE_PCT = 0.4                 # 0.4% = $200 base para cuenta 50K. Modo Conservador para Sobrevivir.
     STRICT_CONSISTENCY_MODE = True       # FTMO exige que no haya "one-sided bets".
     KELLY_FRACTION = 0.0                 # Cero para evitar sobreapalancamiento prohibido por FTMO.
-    MAX_TRADES_PER_DAY = 10              # Control para no exceder las 2000 peticiones al servidor.
-    MAX_OPEN_POSITIONS = 3               # Permite hasta 3 posiciones simultáneas.
-    REVENGE_COOLDOWN_MINUTES = 30        # Minutos de bloqueo tras cerrar un trade (Protege contra ruido/spike en M5)
+    MAX_TRADES_PER_DAY = 5               # Reducimos los tiros diarios a 5 (Francotirador élite).
+    MAX_OPEN_POSITIONS = 2               # Permite hasta solo 2 simultáneas para evitar correlaciones suicidas.
+    REVENGE_COOLDOWN_MINUTES = 60        # 1 HORA de bloqueo tras cerrar un trade (Elimina 100% el revenge trading)
 
     # ─── EMERGENCY THRESHOLDS ─────────────────────────────────────────
     DAILY_DD_WARNING_PCT = 80            # Alerta al 80% del límite diario
-    DAILY_DD_EMERGENCY_PCT = 95          # Cierre al 95% del límite diario (Seguridad máxima)
-    OVERALL_DD_WARNING_PCT = 80          # Alerta al 80% del límite total ($3,200)
-    OVERALL_DD_EMERGENCY_PCT = 95        # Cierre al 95% del límite total ($3,800)
+    DAILY_DD_EMERGENCY_PCT = 95          # Cierre al 95% del límite diario
+    OVERALL_DD_WARNING_PCT = 80          # Alerta al 80% del límite total
+    OVERALL_DD_EMERGENCY_PCT = 95        # Cierre al 95% del límite total
 
     # ─── STRATEGY ─────────────────────────────────────────────────────
-    ORACLE_ENABLED = True                # Habilita o deshabilita la conciencia del CIO Gemini
-    SIMULATE_50K_CHALLENGE = False       # Ya es cuenta real de $50K — no necesita simulación
-    SIGNAL_MODE_ENABLED = False          # FTMO permite EAs, así que el bot puede operar directamente en MT5.
+    ORACLE_ENABLED = True                # Mantiene la consciencia IA
+    SIMULATE_50K_CHALLENGE = False       
+    SIGNAL_MODE_ENABLED = False          
     
     # ─── NEXT-GEN INSTITUTIONAL ARMORY ─────────────────────────────────
-    SMC_ENABLED = True                   # Detector de Liquidez (Ahora actúa como 'Asesor Visual', no bloquea trades)
-    NEWS_KILLZONES_ENABLED = True        # Radar Alta Frecuencia (Cierre agresivo antes de NFP/CPI)
-    PORTFOLIO_REBALANCING = True         # Mapa de Calor Volumétrico (Asignación dinámica entre divisas)
-    Q_LEARNING_ENABLED = False           # APAGADO: La IA en pañales frena los trades ("HOLD" por miedo a lo desconocido)
-    HEDGING_ENABLED = False              # APAGADO: La cobertura de trades perdedores congela el margen, prohibido o peligroso en Prop Firms
+    SMC_ENABLED = True                   # Detector de Liquidez activo 
+    NEWS_KILLZONES_ENABLED = True        # Cierre agresivo ante noticias clave
+    PORTFOLIO_REBALANCING = True         
+    Q_LEARNING_ENABLED = False           
+    HEDGING_ENABLED = False              
     
-    MODE_FILTERS = "STRICT"              # "STRICT" para máxima precisión institucional
+    MODE_FILTERS = "STRICT"              
     DEFAULT_SYMBOL = "EURUSD"
-    WATCHLIST = ["EURUSD", "GBPUSD", "USDJPY"] # Diversificación: Euro, Libra, Yen
-    DEFAULT_TIMEFRAME = "M5"             # M5 para entradas más rápidas
+    WATCHLIST = ["EURUSD", "GBPUSD"]     # 🔥 ELIMINADO USDJPY (Es el par con los spreads más caros e impredecibles, es un veneno a esta hora)
+    DEFAULT_TIMEFRAME = "M5"             
     EMA_FAST_PERIOD = 20
     EMA_SLOW_PERIOD = 50
     DEFAULT_SL_PIPS = 20
@@ -98,17 +98,17 @@ class BotConfig:
 
     # ─── TRAILING STOP ────────────────────────────────────────────────
     TRAILING_STOP_ENABLED = True
-    TRAILING_ACTIVATION_PIPS = 5         # Activar trailing tras +5 pips (Asegurar más rápido)
-    TRAILING_STEP_PIPS = 5               # Mover SL cada 5 pips de ganancia
+    TRAILING_ACTIVATION_PIPS = 8         # Asegurar break even un poco más tarde para no ahogar el ruido
+    TRAILING_STEP_PIPS = 4               
 
     # ─── ORDERS ───────────────────────────────────────────────────────
     MAGIC_NUMBER = 234000
     DEVIATION = 20
     ORDER_COMMENT_PREFIX = "Darkobot"
-    MAX_SPREAD_PIPS = 6.0                # TX3 Funding: EURUSD ~2-4, GBPUSD ~4-8, USDJPY ~4-10 (Ligeramente flexible)
+    MAX_SPREAD_PIPS = 4.0                # 🔥 MAX 4 PIPS: Si el broker cobra más, el bot NO opera. Cuida tu capital.
 
     # ─── TIMING ───────────────────────────────────────────────────────
-    LOOP_INTERVAL_SECONDS = 2            # Actualización ultra rápida (2s) para Dashboard y MT5
+    LOOP_INTERVAL_SECONDS = 2            
     DAILY_RESET_HOUR_EST = 17
     DAILY_RESET_MINUTE_EST = 0
 
@@ -119,8 +119,8 @@ class BotConfig:
 
     # ─── NEWS FILTER ──────────────────────────────────────────────────
     NEWS_FILTER_ENABLED = True
-    NEWS_AVOID_MINUTES_BEFORE = 30       # No operar 30 min antes de noticia
-    NEWS_AVOID_MINUTES_AFTER = 15        # No operar 15 min después
+    NEWS_AVOID_MINUTES_BEFORE = 45       # Ser todavía más precavido
+    NEWS_AVOID_MINUTES_AFTER = 30        
 
 
 class TelegramConfig:
@@ -148,7 +148,7 @@ class DashboardConfig:
     HOST = "0.0.0.0"
     PORT = 5050
     SECRET_KEY = os.environ.get("DASHBOARD_SECRET", "tx3-pro-bot-secret")
-    UPDATE_INTERVAL_MS = 5000            # Actualizar cada 5 segundos
+    UPDATE_INTERVAL_MS = 5000            
     USERNAME = os.environ.get("DASHBOARD_USER", "dark90")
     PASSWORD = os.environ.get("DASHBOARD_PASS", "971124")
     GUEST_USERNAME = os.environ.get("DASHBOARD_GUEST_USER", "invitado")
@@ -158,17 +158,18 @@ class DashboardConfig:
 class SessionConfig:
     """Configuración de sesiones de trading (EST)"""
 
-    RESTRICT_TO_LONDON_NY = True         # Solo operar en sesiones densas (Londres y New York)
-    FRIDAY_FLAT_HOUR = 15                # FTMO: Prohibido Gap Trading. Se cierran operaciones 2 horas antes (15:00 EST).
+    RESTRICT_TO_LONDON_NY = True         
+    FRIDAY_FLAT_HOUR = 15                
     
-    LONDON_START_HOUR = 3
+    # 🔥 MATAMOS TOKIO Y SYDNEY, SOLO LONDRES CRÍTICO Y NY
+    LONDON_START_HOUR = 4                # Empezar a las 4 AM EST (Ya pasaron los fakeouts de apertura de las 3 AM)
     LONDON_START_MINUTE = 0
     LONDON_END_HOUR = 12
     LONDON_END_MINUTE = 0
 
     NY_START_HOUR = 8
     NY_START_MINUTE = 0
-    NY_END_HOUR = 17
+    NY_END_HOUR = 13                   # Parar a la 1 PM EST (Evitar la muerte del volumen de las tardes)
     NY_END_MINUTE = 0
     
     TOKYO_START_HOUR = 19

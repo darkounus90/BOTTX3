@@ -426,6 +426,7 @@ class TradeJournal:
             
         newly_synced = []
         existing_signatures = set()
+        existing_fuzzy_trades = []
         
         # Cargar firmas existentes para evitar duplicados
         try:
@@ -438,13 +439,26 @@ class TradeJournal:
                         if "Deal #" in comment or "Pos #" in comment:
                             existing_signatures.add(comment)
                         
-                        # 2. Firma Robusta (Profit y Symbol) para detectar manuales/externos
+                        # 2. Firma Temporal Robusta para transacciones que no guardaron ticket
                         try:
                             p = round(float(row.get("profit") or 0.0), 2)
-                            # Guardamos solo profit_symbol como clave base
-                            # El tiempo lo validaremos dinámicamente para permitir ±10s de desfase
-                            existing_signatures.add(f"{p}_{row.get('symbol')}")
-                        except: pass
+                            ts_str = row.get("timestamp", "")
+                            
+                            # Validar que si tiene longitud correcta antes de pasarlo al datetime
+                            if len(ts_str) >= 19:
+                                ts_dt = datetime.strptime(ts_str[:19], "%Y-%m-%d %H:%M:%S")
+                                # Hacemos aware al datetime si la fecha no tiene TZ info
+                                ts_dt = ts_dt.replace(tzinfo=_ET)
+                            else:
+                                continue
+
+                            existing_fuzzy_trades.append({
+                                "profit": p,
+                                "symbol": row.get("symbol", ""),
+                                "time": ts_dt
+                            })
+                        except Exception as e:
+                            pass
         except Exception as e:
             self.logger.error(f"Error cargando firmas para sync: {e}")
 
@@ -463,21 +477,22 @@ class TradeJournal:
             profit = round(float(deal.profit + deal.commission + deal.swap), 2)
             symbol = deal.symbol
             
-            # Signature robusta: Ticket del Deal (infalible) o Profit+Symbol+Time(fuzzy)
+            # Signature robusta: Ticket del Deal (infalible)
             comment_sig = f"Deal #{deal.ticket}"
             
             # Verificamos si el ticket ya existe
             if comment_sig in existing_signatures:
                 continue
                 
-            # Si no hay ticket, verificamos Profit+Symbol y que el tiempo sea cercano (±30s)
+            # Validamos contra trades registrados que NO tienen ticket (como los nativos)
             found_by_profit = False
-            p_sig = f"{profit}_{symbol}"
-            if p_sig in existing_signatures:
-                # Si el profit coincide, verificamos el archivo CSV para ver si el tiempo es similar
-                # (Optimizamos asumiendo que si el profit/asset coinciden HOY, probablemente ya esté)
-                # Pero para ser 100% seguros, permitimos el ingreso si no hay coincidencia temporal
-                found_by_profit = True 
+            for t in existing_fuzzy_trades:
+                # Comparamos el Profit exacto, mismo Símbolo y tiempo cercano (+-300 segundos, 5 min)
+                if t["symbol"] == symbol and abs(t["profit"] - profit) < 0.1:
+                    time_diff = abs((t["time"] - dt).total_seconds())
+                    if time_diff < 300: # 5 minutos de tolerancia para considerar que es el mismo trade
+                        found_by_profit = True
+                        break
 
             if not found_by_profit:
                 # No está en el journal, lo agregamos como un trade independiente (o parcial)
