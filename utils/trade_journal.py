@@ -63,6 +63,11 @@ class TradeJournal:
         # Crear directorios
         self.csv_path = BotConfig.JOURNAL_FILE
         self.detail_dir = BotConfig.JOURNAL_DETAILED_DIR
+        
+        # AGREGAR DEPURAción: ¿Dónde está guardando realmente?
+        abs_csv = os.path.abspath(self.csv_path)
+        self.logger.info(f"🕵️ RUTA DEL JOURNAL: {abs_csv}")
+
         os.makedirs(os.path.dirname(self.csv_path), exist_ok=True)
         os.makedirs(self.detail_dir, exist_ok=True)
 
