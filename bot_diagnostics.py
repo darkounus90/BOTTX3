@@ -83,8 +83,8 @@ def run_diagnostics():
     def test_core_filters():
         from core.news_filter import NewsFilter
         from core.session_filter import SessionFilter
-        assert hasattr(NewsFilter, "is_news_time") or hasattr(NewsFilter, "update_calendar"), "NewsFilter incompleto"
-        assert hasattr(SessionFilter, "is_allowed_session") or hasattr(SessionFilter, "is_trading_time"), "SessionFilter incompleto"
+        assert hasattr(NewsFilter, "is_safe_to_trade") or hasattr(NewsFilter, "get_upcoming_events"), "NewsFilter incompleto"
+        assert hasattr(SessionFilter, "is_trading_allowed") or hasattr(SessionFilter, "get_current_session"), "SessionFilter incompleto"
         return "Filtros de Noticias y Sesiones OK."
     test("Core: Filtros Temporales (News & Session)", test_core_filters)
 

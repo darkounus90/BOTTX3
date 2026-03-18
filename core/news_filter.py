@@ -235,25 +235,25 @@ class NewsFilter:
             if impact != "high":
                 continue
 
-                try:
-                    event_time = datetime.strptime(event_date, "%Y-%m-%dT%H:%M:%S%z")
-                    from config.settings import BotConfig
-                    from zoneinfo import ZoneInfo
-                    # Convertir a hora de Colombia antes de quitarle el timezone para el objeto interno
-                    event_time = event_time.astimezone(ZoneInfo(BotConfig.TIMEZONE)).replace(tzinfo=None)
-                except (ValueError, TypeError):
-                    continue
+            try:
+                event_time = datetime.strptime(event_date, "%Y-%m-%dT%H:%M:%S%z")
+                from config.settings import BotConfig
+                from zoneinfo import ZoneInfo
+                # Convertir a hora de Colombia antes de quitarle el timezone para el objeto interno
+                event_time = event_time.astimezone(ZoneInfo(BotConfig.TIMEZONE)).replace(tzinfo=None)
+            except (ValueError, TypeError):
+                continue
 
-                events.append({
-                    "title": item.get("title", "Unknown Event"),
-                    "currency": item.get("country", "USD"),
-                    "impact": "HIGH",
-                    "time": event_time,
-                    "forecast": item.get("forecast", ""),
-                    "previous": item.get("previous", ""),
-                })
+            events.append({
+                "title": item.get("title", "Unknown Event"),
+                "currency": item.get("country", "USD"),
+                "impact": "HIGH",
+                "time": event_time,
+                "forecast": item.get("forecast", ""),
+                "previous": item.get("previous", ""),
+            })
 
-            return events
+        return events
 
     def _get_static_schedule(self) -> list[dict]:
         """
