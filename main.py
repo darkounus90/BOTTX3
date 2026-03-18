@@ -115,7 +115,7 @@ class TX3ProBot:
                 # LondonOpeningBreakoutStrategy(logger=self.logger, symbol=symbol),  # 🔴 DESACTIVADA: PF 0.92-1.0
                 # TokyoOpeningBreakoutStrategy(logger=self.logger, symbol=symbol),   # 🔴 DESACTIVADA: PF 0.73-0.81
                 # SydneyOpeningBreakoutStrategy(logger=self.logger, symbol=symbol),  # 🔴 DESACTIVADA: PF 0.74
-                # ICTKillzoneFadeStrategy(logger=self.logger, symbol=symbol),        # 🔮 FUTURO: Módulo ICT Kill Zone Fade (Pendiente testeo)
+                ICTKillzoneFadeStrategy(logger=self.logger, symbol=symbol),        # 🔮 ACTIVADA PARA TESTEO: Módulo ICT Kill Zone Fade
             ]
             self.logger.info(f"✅ Estrategias OPTIMIZADAS cargadas: [Bollinger+RSI, EMA Cross] → {symbol}")
 

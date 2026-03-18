@@ -390,6 +390,70 @@ def sim_ema_cross(df, symbol):
     return result
 
 
+def sim_ict_killzone(df, symbol):
+    """Simula la estrategia ICT Kill Zone Fade (Judas Swing + FVG)"""
+    result = BacktestResult("ICT Kill Zone Fade")
+    pip_size = 0.01 if "JPY" in symbol else 0.0001
+    
+    # Calcular ATR necesario
+    high_low = df['high'] - df['low']
+    high_close = abs(df['high'] - df['close'].shift(1))
+    low_close = abs(df['low'] - df['close'].shift(1))
+    tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+    df['atr'] = tr.rolling(14).mean()
+    
+    for i in range(100, len(df) - 50):
+        prev3 = df.iloc[i-3]
+        prev2 = df.iloc[i-2]
+        prev1 = df.iloc[i-1]
+        curr = df.iloc[i]
+        
+        # Filtro de Killzone en EST (Aproximando GMT+2 del mt5 a EST -7)
+        hour_est = (pd.Timestamp(curr['time']).hour - 5) % 24
+        
+        in_london = 2 <= hour_est < 5
+        in_ny = 7 <= hour_est < 10
+        in_asia = hour_est >= 20 or hour_est < 0
+        
+        if not (in_london or in_ny or in_asia):
+            continue
+            
+        lookback_df = df.iloc[i-65:i-5]
+        asian_high = lookback_df['high'].max()
+        asian_low = lookback_df['low'].min()
+        
+        recent_df = df.iloc[i-5:i]
+        sweep_high = recent_df['high'].max() >= asian_high
+        sweep_low = recent_df['low'].min() <= asian_low
+        
+        # FVG Detection
+        bullish_fvg = prev3['high'] < prev1['low'] and prev1['close'] > prev2['open']
+        bearish_fvg = prev3['low'] > prev1['high'] and prev1['close'] < prev2['open']
+        
+        signal = None
+        if sweep_low and bullish_fvg and prev1['close'] > prev1['open']:
+            signal = "BUY"
+        elif sweep_high and bearish_fvg and prev1['close'] < prev1['open']:
+            signal = "SELL"
+            
+        if not signal:
+            continue
+            
+        atr_val = curr['atr']
+        if pd.isna(atr_val) or atr_val <= 0: continue
+        
+        point = pip_size / 10
+        sl_pips = round((atr_val * 1.5) / (10 * point), 1)
+        sl_pips = max(sl_pips, 10.0)
+        tp_pips = sl_pips * 2.5 # RR 1:2.5 natural
+        
+        future = df.iloc[i+1:i+50].to_dict('records')
+        pnl = calculate_pnl(signal, curr['close'], sl_pips, tp_pips, future, symbol)
+        
+        result.add_trade(pnl, hour_est, signal, sl_pips, tp_pips)
+        
+    return result
+
 def sim_session_breakout(df_m15, symbol, session_name, valid_hours_est, min_body_pips=5.0, range_limit=None, need_h4_trend=False, df_h4=None):
     """
     Simulador genérico de Breakout de Sesión.
@@ -566,9 +630,14 @@ def run_backtest(symbol="EURUSD", days=60):
     results.append(r2)
     print(f"    → {r2.wins + r2.losses} trades simulados")
     
+    print(f"[*] Simulando: Módulo Opcional ICT Kill Zone Fade...")
+    r3 = sim_ict_killzone(df_m5.copy(), symbol)
+    results.append(r3)
+    print(f"    → {r3.wins + r3.losses} trades simulados")
+    
     # ⚠️ Breakout strategies DESACTIVADAS por backtest anterior (PF < 1.0)
     # NY, London, Tokyo, Sydney — todas mostraron pérdidas en 60 días.
-    print(f"    ⚠️ Breakout strategies (NY/London/Tokyo/Sydney) DESACTIVADAS por backtest previo")
+    print(f"    ⚠️ Breakout strategies (NY/London/Tokyo/Sydney) DESACTIVADAS")
     
     # ─── REPORTE FINAL ─────────────────────────────────────────
     reports = [r.get_report() for r in results]

@@ -61,20 +61,74 @@ class ICTKillzoneFadeStrategy(BaseStrategy):
         df = pd.DataFrame(rates)
         df['time'] = pd.to_datetime(df['time'], unit='s')
 
-        # 2. ESPACIO PARA LÓGICA DE DETECCIÓN DE LIQUIDEZ Y JUDAS SWING
-        # - Identificar máximos y mínimos de la sesión anterior (Asia Range, Midnight Open)
-        # - Detectar desplazamiento rápido fuera del rango (Run on Liquidity)
-        # - Confirmar cambio de estructura en M5/M1 (Market Structure Shift)
-        # - Detectar Fair Value Gap (FVG) o Imbalance
+        # Variables de tiempo de la vela actual
+        last_closed = df.iloc[-2]
+        prev_closed = df.iloc[-3]
         
-        # ... IMPLEMENTACIÓN PENDIENTE (Módulo Futuro) ...
+        # --- 2. DEFINIR RANGO DE LIQUIDEZ PREVIO (Asian Session / Recent Swings) ---
+        # Miramos 60 velas atrás (5 horas) descartando las últimas 5 velas para encontrar el nivel de barrido (Swing High/Low).
+        lookback_df = df.iloc[-65:-5]
+        asian_high = lookback_df['high'].max()
+        asian_low = lookback_df['low'].min()
+        
+        # --- 3. DETECCIÓN DE JUDAS SWING (LIQUIDITY SWEEP) ---
+        # Verificar si en las últimas 5 velas el precio rompió el alto o bajo para atrapar liquidez
+        recent_df = df.iloc[-5:-1]
+        sweep_high = recent_df['high'].max() >= asian_high
+        sweep_low = recent_df['low'].min() <= asian_low
 
-        # 3. Ejemplo placeholder de estructura de señal
-        """
-        signal_type = "SELL" # O "BUY"
-        reason = "ICT Judas Swing NY Killzone | Liquidity Sweep + MSS + FVG"
-        sl_pips = 10.0
-        tp_pips = 30.0 # R:R típico de ICT es mínimo 1:2 o 1:3
+        # --- 4. DETECCIÓN DE FAIR VALUE GAP (FVG) ---
+        # FVG Alcista (Bullish FVG): Vela 1 Alta < Vela 3 Baja
+        # FVG Bajista (Bearish FVG): Vela 1 Baja > Vela 3 Alta
+        # Evaluamos el patrón de 3 velas: [-4], [-3], [-2] (las cerradas más recientes)
+        v1 = df.iloc[-4]
+        v2 = df.iloc[-3]
+        v3 = df.iloc[-2]
+
+        bullish_fvg = v1['high'] < v3['low'] and v3['close'] > v2['open']  # Se requiere confirmación alcista
+        bearish_fvg = v1['low'] > v3['high'] and v3['close'] < v2['open']  # Se requiere confirmación bajista
+
+        signal_type = None
+        reason = ""
+        
+        # ATR para Risk Management
+        atr = df['high'].iloc[-14:] - df['low'].iloc[-14:]
+        current_atr = atr.mean()
+        
+        # LÓGICA DE GATILLO:
+        # 1. Barre mínimo (Liquidity Purge) y forma un FVG Alcista -> BUY
+        if sweep_low and bullish_fvg:
+            # Filtro adicional: El cuerpo de la última vela cerrada (v3) cerró fuerte
+            if v3['close'] > v3['open']:
+                signal_type = "BUY"
+                reason = "ICT Judas Swing | Liquidity Sweep (L) + Bullish FVG"
+                
+        # 2. Barre máximo (Buy Stops Purge) y forma un FVG Bajista -> SELL
+        elif sweep_high and bearish_fvg:
+            if v3['close'] < v3['open']:
+                signal_type = "SELL"
+                reason = "ICT Judas Swing | Liquidity Sweep (H) + Bearish FVG"
+
+        if not signal_type:
+            return None
+
+        # --- EVITAR SPAM EN LA MISMA VELA ---
+        current_candle_time = last_closed['time']
+        if getattr(self, 'last_signal_time', None) == current_candle_time:
+            return None
+        self.last_signal_time = current_candle_time
+
+        # --- GESTIÓN DE RIESGO: SL ESTRUCTURAL ICT ---
+        symbol_info = mt5.symbol_info(self.symbol)
+        point = symbol_info.point if symbol_info and symbol_info.point else 0.00001
+        
+        # En ICT el Stop Loss original suele ir debajo de la mecha del sweep.
+        # Aproximamos con un SL fijo basado en ATR o el tamaño del Sweep
+        sl_pip_dist = (current_atr * 1.5) / (point * 10)
+        tp_pip_dist = (current_atr * 3.5) / (point * 10)  # ICT R:R mínimo de 1:2 o más
+
+        sl_pips = max(round(sl_pip_dist, 1), 10.0)
+        tp_pips = max(round(tp_pip_dist, 1), 25.0)
 
         ts_signal = {
             "signal": signal_type,
@@ -83,8 +137,6 @@ class ICTKillzoneFadeStrategy(BaseStrategy):
             "take_profit_pips": tp_pips,
             "reason": reason
         }
+
         self.log_signal(ts_signal)
         return ts_signal
-        """
-
-        return None
