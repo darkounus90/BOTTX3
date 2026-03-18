@@ -753,6 +753,24 @@ class TX3ProBot:
                 self._check_daily_reset()
                 self._update_dashboard()
                 
+                # ─── ZONA DE PÁNICO DE NOTICIAS (News Killzone) ─────
+                if self.news_filter.enabled:
+                    try:
+                        upcoming_news = self.news_filter.get_upcoming_events(hours_ahead=1)
+                        if upcoming_news:
+                            now_n = datetime.now()
+                            for event in upcoming_news:
+                                time_to_news = (event["time"] - now_n).total_seconds() / 60.0
+                                # Si faltan menos de 10 minutos para la noticia y hay trades abiertos
+                                if 0 < time_to_news <= 10.0:
+                                    if self.position_manager.get_open_positions_count() > 0:
+                                        self.logger.critical(f"☢️ NEWS KILLZONE: Noticia extrema '{event.get('title')}' en {time_to_news:.1f} minutos. Ejecutando Cierre Forzado para eludir GAPs.")
+                                        closed_count = self.position_manager.close_all_positions(reason="Pánico Pre-Noticia")
+                                        if closed_count > 0:
+                                            self.telegram.notify_error(f"☢️ <b>NEWS KILLZONE</b>\nNoticia inminente en {time_to_news:.1f} min.\nSe han cerrado {closed_count} posiciones para evitar un GAP mortal.")
+                    except Exception as e:
+                        pass
+                
                 # Guardado periódico
                 if datetime.now().minute % 5 == 0 and datetime.now().second < 5:
                     self._save_state()

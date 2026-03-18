@@ -62,6 +62,7 @@ class GeminiOracle:
         
         # Caché de señales para evitar duplicar llamadas en la misma vela M5
         self._signal_cache = {}
+        self._cooldown_cache = {} # Fatiga del Oráculo
         self.last_narration = "Esperando diagnóstico inicial..."
 
         if self.enabled:
@@ -280,6 +281,13 @@ class GeminiOracle:
         now_nyc = datetime.now(ZoneInfo(BotConfig.TIMEZONE))
         candle_key = now_nyc.strftime("%Y%m%d%H") + str(now_nyc.minute // 5)
         cache_id = f"{symbol}_{signal_type}"
+        
+        # 🛡️ FATIGA DEL ORÁCULO: Evitar spam a la API si ya lo rechazó recientemente (1 hora cooldown).
+        if cache_id in self._cooldown_cache:
+            last_reject_time = self._cooldown_cache[cache_id]
+            if (datetime.now() - last_reject_time).total_seconds() < 3600:
+                return {"decision": "REJECTED", "reason": "Smart Cooldown: Par/Dirección vetada recientemente para ahorrar cuota de API."}
+                
         if cache_id in self._signal_cache:
             last_candle, last_decision = self._signal_cache[cache_id]
             if last_candle == candle_key:
@@ -370,6 +378,9 @@ class GeminiOracle:
             base_reason = data.get("reason", "Aprobado por IA")
             clean_model_name = model_used.replace("models/", "") if model_used else "Desconocido"
             data["reason"] = f"{base_reason} [Consultado por: {clean_model_name}]"
+            
+            if data["decision"] == "REJECTED":
+                self._cooldown_cache[cache_id] = datetime.now()
             
             self._signal_cache[cache_id] = (candle_key, data)
             return data

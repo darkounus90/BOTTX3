@@ -228,13 +228,21 @@ class PositionManager:
         # 1 pip = 10 points para pares de 5 dígitos
         pip_in_points = 10 * point
 
-        # ─── Validar Spread Dinámico ─────────────────────────────────
+        # ─── Validar Spread Dinámico y Killzones (Rollover) ──────────
         current_spread_pips = (tick.ask - tick.bid) / pip_in_points
         if current_spread_pips > BotConfig.MAX_SPREAD_PIPS:
             self.logger.warning(
                 f"⚠️ Operación rechazada: Spread muy alto en {symbol} "
                 f"({current_spread_pips:.1f} pips > {BotConfig.MAX_SPREAD_PIPS} max)"
             )
+            return None
+            
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        now_est = datetime.now(ZoneInfo(BotConfig.TIMEZONE))
+        # Rollover bank reset (4:55 PM - 5:05 PM EST) ampliamos ventana de seguridad
+        if (now_est.hour == 16 and now_est.minute >= 50) or (now_est.hour == 17 and now_est.minute <= 10):
+            self.logger.critical(f"🛑 ZONA ROJA DE ROLLOVER: Abortando order_send real en {symbol} para proteger de gap de liquidez bancario.")
             return None
 
         if order_type == mt5.ORDER_TYPE_BUY:
@@ -436,6 +444,18 @@ class PositionManager:
             error_msg = result.comment if result else "Unknown"
             self.logger.error(f"Error cerrando {ticket}: {error_msg}")
             return False
+
+    def close_all_positions(self, reason: str = "Cierre Forzado General") -> int:
+        """Cierra absolutamente todas las posiciones abiertas en modo pánico"""
+        open_pos = self.get_open_positions()
+        if not open_pos:
+            return 0
+        closed_count = 0
+        self.logger.critical(f"🚨 INICIANDO CIERRE QUIRÚRGICO DE TODAS LAS POSICIONES: {reason}")
+        for pos in open_pos:
+            if self.close_position(pos.ticket):
+                closed_count += 1
+        return closed_count
 
     def close_weekend_positions(self):
         """
