@@ -38,6 +38,7 @@ from core.trailing_stop import TrailingStopManager
 from core.llm_oracle import GeminiOracle
 from strategy.bollinger_rsi import BollingerRSIStrategy
 from strategy.ema_cross import EMACrossStrategy
+from strategy.zscore_reversion import ZScoreReversionStrategy
 from utils.logger import BotLogger
 from utils.mt5_connector import MT5Connector
 from utils.telegram_notifier import TelegramNotifier
