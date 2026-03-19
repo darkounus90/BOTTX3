@@ -898,6 +898,7 @@ class TX3ProBot:
                     # Log de escaneo periódico (cada 5 min por símbolo para visibilidad)
                     now_ts = sleep_module.time()
                     if not hasattr(self, '_last_scan_log'): self._last_scan_log = {}
+                    if not hasattr(self, '_last_heartbeat_log'): self._last_heartbeat_log = {}
                     if not hasattr(self, '_in_hibernation'): self._in_hibernation = False
                     if not hasattr(self, '_last_signal_found_timestamp'): self._last_signal_found_timestamp = now_ts
                     
@@ -913,6 +914,11 @@ class TX3ProBot:
                         if not self._in_hibernation:
                             self.logger.info("💤 MODO HIBERNACIÓN: Reduciendo spam de consola. El bot entra en escaneo silencioso en background...")
                             self._in_hibernation = True
+                        
+                        # Emitir un latido cada 60 minutos durante la hibernación para no parecer congelado
+                        if now_ts - self._last_heartbeat_log.get(symbol, 0) > 3600:
+                            self.logger.info(f"💓 HEARTBEAT: Bot activo y vigilando {symbol} en background (0 señales recientes).")
+                            self._last_heartbeat_log[symbol] = now_ts
                     else:
                         self._in_hibernation = False
                     

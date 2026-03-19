@@ -99,7 +99,11 @@ class BollingerRSIStrategy(BaseStrategy):
         
         # Evitamos operar si la tendencia es tan agresiva que romperá bandas sin piedad
         if last_closed['adx'] > self.adx_threshold:
-            self.logger.debug(f"{self.symbol} ADX alto ({last_closed['adx']:.1f} > {self.adx_threshold}). Evitando operar contra tendencia.")
+            import time
+            now_ts = time.time()
+            if not hasattr(self, '_last_adx_log') or now_ts - self._last_adx_log > 300:
+                self.logger.debug(f"{self.symbol} ADX alto ({last_closed['adx']:.1f} > {self.adx_threshold}). Evitando operar contra tendencia.")
+                self._last_adx_log = now_ts
             return None
 
         # --- FILTRO HORARIO QUIRÚRGICO (Backtest-Driven) ---
@@ -125,7 +129,11 @@ class BollingerRSIStrategy(BaseStrategy):
         
         spread_pips = symbol_info.spread * (10 if symbol_info.digits == 3 or symbol_info.digits == 5 else 1) / 10.0 # Ajuste pips
         if spread_pips > getattr(BotConfig, "MAX_SPREAD_PIPS", 3.0):
-            self.logger.debug(f"{self.symbol} Spread alto ({spread_pips:.1f} pips). Ignorando señal.")
+            import time
+            now_ts = time.time()
+            if not hasattr(self, '_last_spread_log') or now_ts - self._last_spread_log > 300:
+                self.logger.debug(f"{self.symbol} Spread alto ({spread_pips:.1f} pips). Ignorando señal.")
+                self._last_spread_log = now_ts
             return None
 
         signal_type = None
