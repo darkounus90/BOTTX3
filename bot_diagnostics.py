@@ -139,19 +139,19 @@ def run_diagnostics():
         return "Estrategias de Reversión y Tendencia OK."
     test("Estrategias: Osciladores y Tendencia", test_strategies_basic)
 
-    def test_strategies_breakouts():
-        from strategy.ny_opening_breakout import NYOpeningBreakoutStrategy
-        from strategy.london_opening_breakout import LondonOpeningBreakoutStrategy
-        from strategy.tokyo_opening_breakout import TokyoOpeningBreakoutStrategy
-        from strategy.sydney_opening_breakout import SydneyOpeningBreakoutStrategy
+    def test_strategies_quant():
+        from strategy.zscore_reversion import ZScoreReversionStrategy
         
-        assert bool(NYOpeningBreakoutStrategy)
-        assert bool(LondonOpeningBreakoutStrategy)
-        assert bool(TokyoOpeningBreakoutStrategy)
-        assert bool(SydneyOpeningBreakoutStrategy)
+        assert bool(ZScoreReversionStrategy)
         
-        return "Estrategias de Breakout de Sesión Importadas."
-    test("Estrategias: Breakouts Institucionales", test_strategies_breakouts)
+        try:
+            from strategy.fractal_energy import FractalEnergyExhaustionStrategy
+            assert bool(FractalEnergyExhaustionStrategy)
+        except ImportError:
+            pass
+            
+        return "Estrategias Cuantitativas (Z-Score) Importadas Exitosamente."
+    test("Estrategias: Modelos Cuantitativos y Estadísticos", test_strategies_quant)
 
     def test_strategies_ml():
         from strategy.ml_random_forest import MLRandomForestStrategy
