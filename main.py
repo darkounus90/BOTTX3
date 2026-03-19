@@ -103,11 +103,22 @@ class TX3ProBot:
         # Todas mostraron PF < 1.0 y Win Rate < 40% en ambos pares durante 60 días.
         self.strategies = {}
         for symbol in BotConfig.WATCHLIST:
-            self.strategies[symbol] = [
-                BollingerRSIStrategy(logger=self.logger, symbol=symbol),
-                EMACrossStrategy(logger=self.logger, symbol=symbol),
-            ]
-            self.logger.info(f"✅ Estrategias OPTIMIZADAS cargadas: [Bollinger+RSI, EMA Cross] → {symbol}")
+            if symbol == "GBPUSD":
+                # 🏆 GBPUSD: Solo operará la estrategia Z-Score Reversion (Profit Factor 3.05, Win Rate 64%)
+                self.strategies[symbol] = [
+                    ZScoreReversionStrategy(logger=self.logger, symbol=symbol)
+                ]
+                self.logger.info(f"✅ Estrategia ELITE cargada: [Z-Score Reversion] → {symbol}")
+            elif symbol == "EURUSD":
+                # 🥇 EURUSD: Operará las estrategias Bollinger+RSI y EMA Cross (Ambas Profit Factor > 2.19)
+                self.strategies[symbol] = [
+                    BollingerRSIStrategy(logger=self.logger, symbol=symbol),
+                    EMACrossStrategy(logger=self.logger, symbol=symbol),
+                    ZScoreReversionStrategy(logger=self.logger, symbol=symbol) # Optimizable
+                ]
+                self.logger.info(f"✅ Estrategias RENTABLES cargadas: [Bollinger+RSI, EMA Cross, Z-Score] → {symbol}")
+            else:
+                self.strategies[symbol] = []
 
         # Cargar estado previo si existe
         self._restore_state()

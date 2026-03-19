@@ -564,10 +564,7 @@ def run_backtest(symbol="EURUSD", days=60):
     results.append(r2)
     print(f"    → {r2.wins + r2.losses} trades simulados")
 
-    print(f"[*] Simulando: Fractal Energy Exhaustion (Estrategia Privada)...")
-    r3 = sim_fractal_energy(df_m15.copy(), symbol) # Testeada en M15
-    results.append(r3)
-    print(f"    → {r3.wins + r3.losses} trades simulados")
+
 
     print(f"[*] Simulando: Z-Score Statistical Reversion...")
     r4 = sim_zscore_reversion(df_m15.copy(), symbol)
