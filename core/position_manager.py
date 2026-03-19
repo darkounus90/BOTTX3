@@ -287,7 +287,9 @@ class PositionManager:
             # Devolvemos None para que el sistema detenga el flujo de ejecución automático de esta señal
             return None
 
-        # ─── Crear y enviar request ──────────────────────────────────
+        # ─── Crear y enviar request (con REINTENTOS Anti-Requote) ────
+        import time as sleep_module
+        
         request = {
             "action": mt5.TRADE_ACTION_DEAL,
             "symbol": symbol,
@@ -303,19 +305,44 @@ class PositionManager:
             "type_filling": mt5.ORDER_FILLING_IOC,
         }
 
-        result = mt5.order_send(request)
+        retries = 3
+        result = None
+        for attempt in range(retries):
+            result = mt5.order_send(request)
+            
+            if result is None:
+                self.logger.error(f"order_send retornó None (Intento {attempt+1}/{retries})")
+                sleep_module.sleep(0.5)
+                continue
+                
+            if result.retcode == mt5.TRADE_RETCODE_DONE:
+                break # Éxito
+                
+            # Errores técnicos transitorios de MT5 (Requotes o Context Busy)
+            if result.retcode in [10004, 10006, 10018, 10021]:
+                self.logger.warning(f"⚠️ Requote/Busy del Broker (code: {result.retcode}). Reintentando {attempt+1}/{retries}...")
+                sleep_module.sleep(1.0) # Esperar 1s y reintentar
+                
+                # Actualizar precio por si cambió brutalmente en ese segundo
+                tick = mt5.symbol_info_tick(symbol)
+                new_price = tick.ask if order_type == mt5.ORDER_TYPE_BUY else tick.bid
+                request["price"] = new_price
+                request["sl"] = new_price - (stop_loss_pips * pip_in_points) if order_type == mt5.ORDER_TYPE_BUY else new_price + (stop_loss_pips * pip_in_points)
+                request["tp"] = new_price + (take_profit_pips * pip_in_points) if order_type == mt5.ORDER_TYPE_BUY else new_price - (take_profit_pips * pip_in_points)
+                continue
+            else:
+                break # Otro tipo de error fatal, no reintentamos
 
         if result is None:
-            self.logger.error("order_send retornó None")
             return None
 
         if result.retcode != mt5.TRADE_RETCODE_DONE:
             if result.retcode == 10027:
                 self.logger.error(f"❌ El botón 'Algo Trading' de MT5 está apagado (code: 10027). Re-actívalo urgentemente para no perder más señales.")
             elif result.retcode == 10026:
-                self.logger.error(f"❌ BROKER BLOQUEÓ EL ALGO TRADING (code: 10026). Tu botón está verde, pero el servidor del Broker (o tu Prop Firm) bloqueó el uso de bots a tu cuenta. Contacta a su soporte técnico.")
+                self.logger.error(f"❌ BROKER BLOQUEÓ EL ALGO TRADING (code: 10026). Tu botón está verde, pero el servidor del Broker bloqueó el uso de bots a tu cuenta.")
             else:
-                self.logger.error(f"Error en orden: {result.comment} (code: {result.retcode})")
+                self.logger.error(f"Error fatal en orden tras {retries} intentos: {result.comment} (code: {result.retcode})")
             return None
 
         # ─── Éxito ───────────────────────────────────────────────────
@@ -491,6 +518,10 @@ class PositionManager:
         del mismo lotaje para congelar (Hedge) la equidad.
         """
         if not getattr(BotConfig, "HEDGING_ENABLED", False):
+            return
+            
+        if getattr(BotConfig, "STRICT_CONSISTENCY_MODE", False):
+            # 🔥 FTMO COMPLIANCE: Absolutamente bloqueado el hedging en modo estricto de cuentas de fondeo
             return
             
         open_positions = self.get_open_positions()

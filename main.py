@@ -980,12 +980,29 @@ class TX3ProBot:
                                     
                                     # e. Juez Supremo: ORÁCULO LLM (Gemini)
                                     if self.oracle.enabled:
+                                        # 🛡️ LATENCY GUARD: Capturar precio antes de la IA
+                                        tick_before = mt5.symbol_info_tick(symbol)
+                                        price_before = tick_before.ask if signal['signal'] == 'BUY' else tick_before.bid
+                                        
                                         oracle_resp = self.oracle.evaluate_trade(
                                             symbol=signal['symbol'],
                                             signal_type=signal['signal'],
                                             reason=signal.get('reason', 'Análisis Quant Base'),
                                             adx=signal.get('adx', None)
                                         )
+                                        
+                                        # 🛡️ LATENCY GUARD: Comprobar precio después de la IA
+                                        tick_after = mt5.symbol_info_tick(symbol)
+                                        price_after = tick_after.ask if signal['signal'] == 'BUY' else tick_after.bid
+                                        
+                                        point = mt5.symbol_info(symbol).point
+                                        pip_size = 10 * point
+                                        slippage_pips = abs(price_after - price_before) / pip_size
+                                        
+                                        if slippage_pips > 2.0:
+                                            self.logger.warning(f"⚠️ LATENCY ABORT: El precio se deslizó {slippage_pips:.1f} pips mientras la IA calculaba. Trade abortado para proteger Entry Price en FX.")
+                                            continue
+
                                         if oracle_resp.get("decision") == "REJECTED":
                                             self.logger.warning(f"🛑 Trade Cancelado por Oráculo (CIO): {oracle_resp.get('reason')}")
                                             continue
@@ -995,7 +1012,7 @@ class TX3ProBot:
                                             signal['probability'] = oracle_resp.get('confidence', 50.0)
                                             # Taguea IA
                                             signal['strategy_tag'] = f"Gemini_{strategy.get_name()}"
-                                            self.logger.success(f"✅ 🧠 ORÁCULO APROBÓ EL TRADE: {oracle_resp.get('reason')}")
+                                            self.logger.success(f"✅ 🧠 ORÁCULO APROBÓ EL TRADE: {oracle_resp.get('reason')} (Slippage IA: {slippage_pips:.1f} pips)")
                                         
                                     if self.dry_run:
                                         self.logger.info(f"🔍 DRY RUN SIGNAL: {signal['signal']} {symbol}")
