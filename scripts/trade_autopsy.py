@@ -3,6 +3,9 @@ import os
 import pandas as pd
 import MetaTrader5 as mt5
 from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Adjust path to import core correctly
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
