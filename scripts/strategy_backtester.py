@@ -56,7 +56,11 @@ class BacktestResult:
 
     def get_report(self):
         total = self.wins + self.losses
-        if total == 0: return {"name": self.name, "trades": 0, "filtered": self.filtered, "verdict": "SIN DATOS"}
+        if total == 0: 
+            return {
+                "name": self.name, "trades": 0, "filtered": self.filtered, 
+                "win_rate": 0, "profit_factor": 0, "total_pnl": 0, "max_drawdown": 0, "verdict": "SIN DATOS"
+            }
         win_rate = (self.wins / total) * 100
         avg_w = sum(t["pnl"] for t in self.trades if t["pnl"] > 0) / max(self.wins, 1)
         avg_l = abs(sum(t["pnl"] for t in self.trades if t["pnl"] < 0) / max(self.losses, 1))
