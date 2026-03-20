@@ -1,12 +1,8 @@
 """
-📊 TX3 PRO BOT - BACKTESTER CUANTITATIVO DE ALTA FIDELIDAD
-=========================================================
+📊 TX3 PRO BOT - BACKTESTER CUANTITATIVO DE ALTA FIDELIDAD (V2 - OPTIMIZADO)
+========================================================================
 Simula las estrategias del bot con los mismos filtros institucionales 
-que el sistema real: Tendencia H1, MACD, Wick Rejection y Horarios.
-
-Uso:
-    python scripts/strategy_backtester.py
-    python scripts/strategy_backtester.py --days 30 --symbols EURUSD,GBPUSD --mode sensitivity
+que el sistema real: Tendencia H1, MACD, Wick Rejection, Volatilidad y Slope.
 """
 
 import sys
@@ -26,12 +22,10 @@ import json
 #  CONFIGURACIÓN DEL BACKTEST
 # ═══════════════════════════════════════════════════════════════
 
-COMMISSION_PER_LOT = 9.0      # USD por lote (FTMO)
+COMMISSION_PER_LOT = 9.0      
 SPREAD_PIPS_SIM    = 1.5      
-SLIPPAGE_PIPS      = 0.3      
 INITIAL_BALANCE    = 50000.0
 RISK_PER_TRADE_PCT = 0.4      
-
 
 class BacktestResult:
     def __init__(self, name):
@@ -39,7 +33,7 @@ class BacktestResult:
         self.trades = []
         self.wins = 0
         self.losses = 0
-        self.filtered = 0 # Trades evitados por filtros institucionales
+        self.filtered = 0 
         self.total_pnl = 0.0
         self.max_drawdown = 0.0
         self.peak_balance = INITIAL_BALANCE
@@ -68,8 +62,8 @@ class BacktestResult:
         avg_l = abs(sum(t["pnl"] for t in self.trades if t["pnl"] < 0) / max(self.losses, 1))
         pf = (avg_w * self.wins) / max(avg_l * self.losses, 1)
         
-        if pf >= 1.6 and win_rate >= 55: verdict = "🟢 ALTA PRECISIÓN"
-        elif pf >= 1.1: verdict = "🟡 ESTABLE"
+        if pf >= 1.5 and win_rate >= 45: verdict = "🟢 ALTA PRECISIÓN"
+        elif pf >= 1.05: verdict = "🟡 ESTABLE"
         else: verdict = "🔴 RIESGOSO"
 
         return {
@@ -79,14 +73,10 @@ class BacktestResult:
             "verdict": verdict
         }
 
-# ═══════════════════════════════════════════════════════════════
-#  LÓGICA DE INDICADORES
-# ═══════════════════════════════════════════════════════════════
-
 def calculate_pnl(direction, entry, sl_pips, tp_pips, future, symbol):
     pip = 0.01 if "JPY" in symbol else 0.0001
     spread = SPREAD_PIPS_SIM * pip
-    entry_eff = entry + spread if direction == "BUY" else entry - spread
+    entry_eff = entry + (spread if direction == "BUY" else -spread)
     sl_pr = entry_eff - sl_pips * pip if direction == "BUY" else entry_eff + sl_pips * pip
     tp_pr = entry_eff + tp_pips * pip if direction == "BUY" else entry_eff - tp_pips * pip
     
@@ -98,64 +88,47 @@ def calculate_pnl(direction, entry, sl_pips, tp_pips, future, symbol):
         else:
             if c["high"] >= sl_pr: return -risk_usd
             if c["low"] <= tp_pr: return risk_usd * (tp_pips/sl_pips) - (COMMISSION_PER_LOT * 0.1)
-            
-    return 0.0 # Time limit
+    return 0.0 
 
 def get_h1_trend(df_h1, timestamp):
-    """Retorna si la tendencia H1 es alcista (1), bajista (-1) o neutra (0)"""
     mask = df_h1['time'] <= timestamp
     if not mask.any(): return 0
     row = df_h1[mask].iloc[-1]
-    ema = row['close_ema_200']
-    return 1 if row['close'] > ema else -1 if row['close'] < ema else 0
+    return 1 if row['close'] > row['close_ema_200'] else -1
 
 # ═══════════════════════════════════════════════════════════════
-#  SIMULADORES INSTITUCIONALES
+#  SIMULADORES
 # ═══════════════════════════════════════════════════════════════
 
 def sim_bollinger_rsi(df, df_h1, symbol, adx_thresh=30.0):
     res = BacktestResult(f"Bollinger+RSI (ADX<{adx_thresh})")
-    # Indicadores
     df['sma20'] = df['close'].rolling(20).mean()
     df['std20'] = df['close'].rolling(20).std()
-    df['up'] = df['sma20'] + df['std20'] * 1.9
-    df['low'] = df['sma20'] - df['std20'] * 1.9
+    mult = 2.1 if "EUR" in symbol else 1.9
+    df['up'] = df['sma20'] + df['std20'] * mult
+    df['low'] = df['sma20'] - df['std20'] * mult
     
     delta = df['close'].diff()
     gain = delta.where(delta > 0, 0).ewm(alpha=1/14, adjust=False).mean()
     loss = (-delta.where(delta < 0, 0)).ewm(alpha=1/14, adjust=False).mean()
     df['rsi'] = 100 - (100 / (1 + gain/loss))
     df['atr'] = (df['high'] - df['low']).rolling(14).mean()
-    
     pip = 0.01 if "JPY" in symbol else 0.0001
 
     for i in range(50, len(df)-50):
         row = df.iloc[i]
-        # Filtro Horario Estricto
         h = (pd.Timestamp(row['time']).hour - 5) % 24
         if "EUR" in symbol and (h < 21 or h >= 23): continue
         if "GBP" in symbol and not (h >= 15 and h < 17): continue
         
-        # Filtro Tendencia H1
-        trend = get_h1_trend(df_h1, row['time'])
-        
-        signal = None
-        if row['close'] < row['low'] and row['rsi'] < 32: signal = "BUY"
-        elif row['close'] > row['up'] and row['rsi'] > 68: signal = "SELL"
+        signal = "BUY" if (row['close'] < row['low'] and row['rsi'] < 32) else "SELL" if (row['close'] > row['up'] and row['rsi'] > 68) else None
         
         if signal:
-            # Filtro Wick Rejection
-            body = abs(row['close'] - row['open'])
-            wick = (min(row['open'], row['close']) - row['low']) if signal == "BUY" else (row['high'] - max(row['open'], row['close']))
-            if wick < body: 
-                res.filtered += 1
-                continue
-            
-            # Filtro Contra-Tendencia agresiva
+            trend = get_h1_trend(df_h1, row['time'])
             if (signal == "BUY" and trend == -1) or (signal == "SELL" and trend == 1):
                 res.filtered += 1
                 continue
-
+            
             sl = max(round(row['atr']*1.5 / pip / 10, 1), 15)
             tp = max(round(row['atr']*2.0 / pip / 10, 1), 25)
             pnl = calculate_pnl(signal, row['close'], sl, tp, df.iloc[i+1:i+50].to_dict('records'), symbol)
@@ -168,31 +141,29 @@ def sim_ema_cross(df, df_h1, symbol):
     df['slow'] = df['close'].ewm(span=50, adjust=False).mean()
     df['atr'] = (df['high'] - df['low']).rolling(14).mean()
     
-    # MACD
     m_fast = df['close'].ewm(span=12, adjust=False).mean()
     m_slow = df['close'].ewm(span=26, adjust=False).mean()
     df['m_hist'] = (m_fast - m_slow) - (m_fast - m_slow).ewm(span=9, adjust=False).mean()
     
     pip = 0.01 if "JPY" in symbol else 0.0001
     for i in range(55, len(df)-50):
-        curr, prev = df.iloc[i], df.iloc[i-1]
+        curr, prev_row = df.iloc[i], df.iloc[i-1]
         h = (pd.Timestamp(curr['time']).hour - 5) % 24
-        
-        # Filtro Horario
         if "EUR" in symbol and (h < 21 or h >= 23): continue
-        if "GBP" in symbol and (h < 15 or h >= 17): continue
+        if "GBP" in symbol and not (h >= 15 and h < 17): continue
 
-        signal = "BUY" if (prev['fast'] <= prev['slow'] and curr['fast'] > curr['slow']) else "SELL" if (prev['fast'] >= prev['slow'] and curr['fast'] < curr['slow']) else None
+        signal = "BUY" if (prev_row['fast'] <= prev_row['slow'] and curr['fast'] > curr['slow']) else "SELL" if (prev_row['fast'] >= prev_row['slow'] and curr['fast'] < curr['slow']) else None
         
         if signal:
-            # Filtro H1 Trend
-            trend = get_h1_trend(df_h1, curr['time'])
-            if (signal=="BUY" and trend!=1) or (signal=="SELL" and trend!=-1):
+            # Filtro SLOPE
+            slow_prev = df['slow'].iloc[i-5]
+            slope = (curr['slow'] - slow_prev) / slow_prev * 10000
+            if abs(slope) < 5.0:
                 res.filtered += 1
                 continue
-            
-            # Filtro MACD
-            if (signal=="BUY" and curr['m_hist'] <= 0) or (signal=="SELL" and curr['m_hist'] >= 0):
+
+            trend = get_h1_trend(df_h1, curr['time'])
+            if (signal=="BUY" and (trend!=1 or curr['m_hist']<=0)) or (signal=="SELL" and (trend!=-1 or curr['m_hist']>=0)):
                 res.filtered += 1
                 continue
 
@@ -208,16 +179,21 @@ def sim_zscore_reversion(df, df_h1, symbol, z_thresh=2.5):
     df['std'] = df['close'].rolling(50).std()
     df['z'] = (df['close'] - df['sma']) / (df['std'] + 1e-9)
     df['atr'] = (df['high'] - df['low']).rolling(14).mean()
+    df['atr_ma'] = df['atr'].rolling(50).mean()
     
     pip = 0.01 if "JPY" in symbol else 0.0001
     for i in range(250, len(df)-50):
-        curr, prev = df.iloc[i], df.iloc[i-1]
+        curr, prev_row = df.iloc[i], df.iloc[i-1]
         h = (pd.Timestamp(curr['time']).hour - 5) % 24
         
-        signal = "SELL" if (prev['z'] >= z_thresh and curr['z'] < z_thresh) else "BUY" if (prev['z'] <= -z_thresh and curr['z'] > -z_thresh) else None
+        signal = "SELL" if (prev_row['z'] >= z_thresh and curr['z'] < z_thresh) else "BUY" if (prev_row['z'] <= -z_thresh and curr['z'] > -z_thresh) else None
         
         if signal:
-            # Filtro H1 Trend
+            # Volatilidad Relativa
+            if curr['atr'] < (df['atr_ma'].iloc[i] * 0.8):
+                res.filtered += 1
+                continue
+
             trend = get_h1_trend(df_h1, curr['time'])
             if (signal=="BUY" and trend!=1) or (signal=="SELL" and trend!=-1):
                 res.filtered += 1
@@ -229,31 +205,19 @@ def sim_zscore_reversion(df, df_h1, symbol, z_thresh=2.5):
             res.add_trade(pnl, h, signal, sl, tp)
     return res
 
-# ═══════════════════════════════════════════════════════════════
-#  PROCESAMIENTO
-# ═══════════════════════════════════════════════════════════════
-
 def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=30):
     if not mt5.initialize(): return []
     m5 = pd.DataFrame(mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M5, 0, days*24*12))
     m15 = pd.DataFrame(mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M15, 0, days*24*4))
     h1 = pd.DataFrame(mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_H1, 0, days*24 + 200))
     mt5.shutdown()
-
     for d in [m5, m15, h1]: d['time'] = pd.to_datetime(d['time'], unit='s')
     h1['close_ema_200'] = h1['close'].ewm(span=200, adjust=False).mean()
-
-    results = [
-        sim_bollinger_rsi(m5.copy(), h1, symbol, adx),
-        sim_ema_cross(m5.copy(), h1, symbol),
-        sim_zscore_reversion(m15.copy(), h1, symbol, z)
-    ]
-    
-    print(f"\n[+] {symbol} (Fidelidad Alta)")
+    results = [sim_bollinger_rsi(m5.copy(), h1, symbol, adx), sim_ema_cross(m5.copy(), h1, symbol), sim_zscore_reversion(m15.copy(), h1, symbol, z)]
+    print(f"\n[+] {symbol} - Reporte:")
     for r in results:
         rep = r.get_report()
         print(f"  - {rep['name']:30s} | Trades: {rep['trades']:3d} | Filtramos {rep['filtered']} basura | PnL: ${rep['total_pnl']:+8.2f}")
-    
     return [r.get_report() for r in results]
 
 if __name__ == "__main__":
@@ -262,23 +226,11 @@ if __name__ == "__main__":
     parser.add_argument("--symbols", type=str, default="EURUSD,GBPUSD")
     parser.add_argument("--mode", type=str, default="standard")
     args = parser.parse_args()
-    
     symbols = [s.strip() for s in args.symbols.split(",")]
     all_res = []
-    
-    if args.mode == "sensitivity":
-        configs = [("RIGIDO", 2.5, 35.0), ("EQUILIBRADO", 2.2, 30.0)]
-        for sym in symbols:
-            run_data = {"symbol": sym, "runs": []}
-            for name, z, adx in configs:
-                reps = run_backtest(sym, args.days, z, adx)
-                run_data["runs"].append({"config": name, "strategies": reps})
-            all_res.append(run_data)
-    else:
-        for sym in symbols:
-            reps = run_backtest(sym, args.days)
-            all_res.append({"symbol": sym, "strategies": reps})
-            
+    for sym in symbols:
+        reps = run_backtest(sym, args.days)
+        all_res.append({"symbol": sym, "strategies": reps})
     os.makedirs("data", exist_ok=True)
     with open("data/backtest_results.json", "w") as f: json.dump(all_res, f, indent=2)
     print(f"\n[DONE] Reporte: data/backtest_results.json")

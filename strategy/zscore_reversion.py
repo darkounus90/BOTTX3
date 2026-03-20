@@ -11,8 +11,6 @@ class ZScoreReversionStrategy(BaseStrategy):
     ================================================
     Mide la anomalía estadística del precio respecto a su Media Móvil
     calculando a cuántas Desviaciones Estándar (Z-Score) se encuentra.
-    No usa Martingala, ni Grid, ni arbitraje de latencia (prohibidos).
-    Solo matemática direccional pura (Mean Reversion) con Stop Loss fijo.
     """
 
     def __init__(self, logger: BotLogger, symbol: str = None):
@@ -23,9 +21,9 @@ class ZScoreReversionStrategy(BaseStrategy):
         # Parámetros Cuantitativos
         self.sma_period = 50
         self.std_period = 50
-        self.z_threshold = 2.5 # MANTENER RIGIDO: Modo OPTIMO para GBPUSD (según backtest)
-        
-        self.bars_needed = 200
+        self.z_threshold = 2.5 
+        self.atr_ma_period = 50          # Para filtro de volatilidad relativa
+        self.bars_needed = 350           # Suficiente para indicadores y filtros
 
     def get_name(self) -> str:
         return f"Z-Score Reversion ({self.symbol})"
@@ -38,7 +36,7 @@ class ZScoreReversionStrategy(BaseStrategy):
         df = pd.DataFrame(rates)
         df['time'] = pd.to_datetime(df['time'], unit='s')
 
-        # 1. Filtro Macro Institucional (Solo operar a favor de M15 Macro)
+        # 1. Filtro Macro Institucional
         df['ema_200'] = df['close'].ewm(span=200, adjust=False).mean()
 
         # 2. Cálculo del Equilibrio y Volatilidad Real
@@ -48,31 +46,39 @@ class ZScoreReversionStrategy(BaseStrategy):
         # 3. Cálculo de la Anomalía Estadística (Z-Score)
         df['z_score'] = (df['close'] - df['sma_50']) / (df['std_50'] + 1e-9)
 
-        # 4. Cálculo de ATR para StopLoss dinámico basado en volatilidad real
-        df['tr0'] = abs(df['high'] - df['low'])
-        df['tr1'] = abs(df['high'] - df['close'].shift())
-        df['tr2'] = abs(df['low'] - df['close'].shift())
-        df['tr'] = df[['tr0', 'tr1', 'tr2']].max(axis=1)
-        df['atr'] = df['tr'].rolling(14).mean()
+        # 4. Cálculo de ATR
+        high_low = abs(df['high'] - df['low'])
+        high_close = abs(df['high'] - df['close'].shift())
+        low_close = abs(df['low'] - df['close'].shift())
+        tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+        df['atr'] = tr.rolling(14).mean()
 
+        # 5. Filtro de Volatilidad Relativa (Evitar mercados muertos)
+        df['atr_ma'] = df['atr'].rolling(window=self.atr_ma_period).mean()
+        
         prev = df.iloc[-3]
         last = df.iloc[-2]
+
+        is_volatile = last['atr'] > (df['atr_ma'].iloc[-1] * 0.8)
+        is_uptrend = last['close'] > last['ema_200']
+        is_downtrend = last['close'] < last['ema_200']
 
         signal_type = None
         reason = ""
 
+        if not is_volatile:
+            return None
+
         # Lógica Cuantitativa (Retorno a la Media)
-        # Si el Z-Score estaba por encima de 2.5 (Anomalía Alcista Extrema) y cruza de regreso hacia abajo
         if prev['z_score'] >= self.z_threshold and last['z_score'] < self.z_threshold:
-            if last['close'] < last['ema_200']: # Operando a favor de la macro bajista
+            if is_downtrend: 
                 signal_type = "SELL"
-                reason = f"Z-Score Reversion (Anomalía +{self.z_threshold} SD corregida a la baja)"
+                reason = f"Z-Score Reversion ({self.z_threshold} SD) | Volatility OK"
                 
-        # Si el Z-Score estaba por debajo de -2.5 (Anomalía Bajista Extrema) y cruza hacia arriba
         elif prev['z_score'] <= -self.z_threshold and last['z_score'] > -self.z_threshold:
-            if last['close'] > last['ema_200']: # Operando a favor de la macro alcista
+            if is_uptrend:
                 signal_type = "BUY"
-                reason = f"Z-Score Reversion (Anomalía -{self.z_threshold} SD corregida al alza)"
+                reason = f"Z-Score Reversion (-{self.z_threshold} SD) | Volatility OK"
 
         if not signal_type:
             return None
@@ -86,11 +92,9 @@ class ZScoreReversionStrategy(BaseStrategy):
         atr_val = last['atr']
         point = pip_size / 10
 
-        # FTMO Safe Risk/Reward (Ratio 1:1.5 exacto, SL/TP estáticos al abrir el trade)
         sl_pips = round((atr_val * 1.5) / (10 * point), 1)
         tp_pips = round((atr_val * 2.5) / (10 * point), 1)
         
-        # Pisos máximos/mínimos para monedas core como EURUSD/GBPUSD
         sl_pips = max(sl_pips, 15.0)
         tp_pips = max(tp_pips, 25.0)
 

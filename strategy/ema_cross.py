@@ -46,8 +46,9 @@ class EMACrossStrategy(BaseStrategy):
         self.adx_period = 14                             
         self.adx_threshold = 18                          # Aumentado para eliminar ruido en M5
         self.rsi_period = 14
-        self.atr_period = 14                             
-        self.bars_needed = 300                           
+        self.atr_period = 14
+        self.slope_period = 5            # Para medir inclinación de tendencia
+        self.bars_needed = 350
         self.last_processed_time = None                  # Optimización VPS: Cache de última vela evaluada
 
         self.logger.info(
