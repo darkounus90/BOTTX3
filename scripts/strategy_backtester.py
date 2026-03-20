@@ -264,7 +264,7 @@ if __name__ == "__main__":
     parser.add_argument("--days", type=int, default=60)
     parser.add_argument("--symbols", type=str, default="EURUSD,GBPUSD")
     parser.add_argument("--mode", type=str, default="standard")
-    args = parser.parse_argument_group().parser.parse_args() # argparse fix for some envs
+    args = parser.parse_args()
     
     symbols = [s.strip() for s in args.symbols.split(",")]
     all_res = []
