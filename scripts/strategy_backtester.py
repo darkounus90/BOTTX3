@@ -96,9 +96,6 @@ def calculate_pnl(direction, entry, sl_pips, tp_pips, future, symbol):
             if c["low"] <= sl_pr: return -risk_usd
             if c["high"] >= tp_pr: return risk_usd * (tp_pips/sl_pips) - (COMMISSION_PER_LOT * 0.1)
         else:
-            if c["high"] <= sl_pr: return -risk_usd # High crosses SL price
-            if c["low"] <= tp_pr: return risk_usd * (tp_pips/sl_pips) - (COMMISSION_PER_LOT * 0.1)
-            # Fix SL logic for sell: candle high must be >= sl_pr
             if c["high"] >= sl_pr: return -risk_usd
             if c["low"] <= tp_pr: return risk_usd * (tp_pips/sl_pips) - (COMMISSION_PER_LOT * 0.1)
             
@@ -137,7 +134,7 @@ def sim_bollinger_rsi(df, df_h1, symbol, adx_thresh=30.0):
         # Filtro Horario Estricto
         h = (pd.Timestamp(row['time']).hour - 5) % 24
         if "EUR" in symbol and (h < 21 or h >= 23): continue
-        if "GBP" in symbol and (h < 15 or h >= 17): continue
+        if "GBP" in symbol and not (h >= 15 and h < 17): continue
         
         # Filtro Tendencia H1
         trend = get_h1_trend(df_h1, row['time'])
