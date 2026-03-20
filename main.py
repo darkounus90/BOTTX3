@@ -628,21 +628,14 @@ class TX3ProBot:
         account_info = mt5.account_info()
         if account_info:
             real_balance = account_info.balance
-            # Si no hay estado guardado previo, usar el balance real de MT5
-            # como referencia en lugar del valor fijo de ChallengeConfig
-            state = self.state_manager.load_state()
-            if state and state.get("balance_inicial", 0) > 0:
-                # Restaurar el balance inicial guardado previamente
-                initial_ref = state["balance_inicial"]
-                self.logger.info(f"💾 Balance inicial restaurado: ${initial_ref:,.2f}")
-            else:
-                # Primera ejecución: usar balance actual de MT5
-                initial_ref = real_balance
-                self.logger.info(f"🆕 Balance inicial capturado de MT5: ${initial_ref:,.2f}")
+            # 🛡️ PROTECCIÓN DE CAPITAL:
+            # NO SOBREESCRIBIR el balance inicial con el balance actual si estamos en drawdown.
+            # _restore_state() ya lo inicializó al valor de ChallengeConfig.BALANCE_INICIAL (ej. 50k) 
+            # o al valor escalado si superamos los 50k. 
+            self.logger.info(f"⚖️ Sincronizando: Balance inicial anclado en ${self.risk_manager.balance_inicial:,.2f} | Balance real MT5: ${real_balance:,.2f}")
             
-            # Propagar a todos los módulos
-            self.risk_manager.balance_inicial = initial_ref
-            self.phase_tracker.balance_inicial = initial_ref
+            # Asegurar que los módulos compartan el mismo anclaje de seguridad
+            self.phase_tracker.balance_inicial = self.risk_manager.balance_inicial
             
             # Setup equity inicio día si es necesario
             if self.risk_manager.equity_inicio_dia == ChallengeConfig.BALANCE_INICIAL:
