@@ -23,7 +23,7 @@ class ZScoreReversionStrategy(BaseStrategy):
         # Parámetros Cuantitativos
         self.sma_period = 50
         self.std_period = 50
-        self.z_threshold = 2.5 # Entrar cuando esté a 2.5 desviaciones de distancia
+        self.z_threshold = 2.5 # MANTENER RIGIDO: Modo OPTIMO para GBPUSD (según backtest)
         
         self.bars_needed = 200
 
