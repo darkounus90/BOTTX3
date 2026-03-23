@@ -113,14 +113,21 @@ class BollingerRSIStrategy(BaseStrategy):
         hour_est = datetime.now(ZoneInfo("America/New_York")).hour
         
         if "EUR" in self.symbol:
-            # EURUSD: Solo 3-7 AM EST (zona London Open, 69.4% WR backtested)
-            if hour_est < 3 or hour_est >= 7:
+            # EURUSD: 21:00 - 23:00 EST (Asian session stability)
+            if hour_est < 21 or hour_est >= 23:
                 return None
         elif "GBP" in self.symbol:
-            # GBPUSD: Solo 5 PM - 12 AM EST (zona Asia/Pacific, 63.3% WR backtested)
-            if hour_est < 17 and hour_est >= 0:
-                if not (hour_est >= 17 or hour_est < 1):
-                    return None
+            # GBPUSD: 15:00 - 17:00 EST (Late US / Asia transition)
+            if hour_est < 15 or hour_est >= 17:
+                return None
+
+        # --- FILTRO DE TENDENCIA H1 (High-Fidelity Match) ---
+        h1_rates = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_H1, 0, 250)
+        h1_trend = 0
+        if h1_rates is not None and len(h1_rates) > 200:
+            df_h1 = pd.DataFrame(h1_rates)
+            ema_200_h1 = df_h1['close'].ewm(span=200, adjust=False).mean()
+            h1_trend = 1 if df_h1['close'].iloc[-2] > ema_200_h1.iloc[-2] else -1
 
         # --- FILTRO DE SPREAD ---
         symbol_info = mt5.symbol_info(self.symbol)
@@ -167,14 +174,16 @@ class BollingerRSIStrategy(BaseStrategy):
         # BUY (Largo): Rechazo en zona de sobreventa
         if is_oversold and broke_lower_band:
             if lower_wick > (cuerpo * 1.0): # La mecha inferior debe ser igual o mayor al cuerpo
-                signal_type = "BUY"
-                reason = f"Institutional Rejection (Bottom) | RSI:{last_closed['rsi']:.1f}"
+                if h1_trend != -1: # No comprar en contratendencia bajista macro
+                    signal_type = "BUY"
+                    reason = f"Institutional Rejection (Bottom) | RSI:{last_closed['rsi']:.1f}"
             
         # SELL (Corto): Rechazo en zona de sobrecompra
         elif is_overbought and broke_upper_band:
             if upper_wick > (cuerpo * 1.0): # La mecha superior debe ser igual o mayor al cuerpo
-                signal_type = "SELL"
-                reason = f"Institutional Rejection (Top) | RSI:{last_closed['rsi']:.1f}"
+                if h1_trend != 1: # No vender en contratendencia alcista macro
+                    signal_type = "SELL"
+                    reason = f"Institutional Rejection (Top) | RSI:{last_closed['rsi']:.1f}"
             
         if not signal_type:
             return None

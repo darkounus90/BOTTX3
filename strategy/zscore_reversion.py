@@ -60,8 +60,16 @@ class ZScoreReversionStrategy(BaseStrategy):
         last = df.iloc[-2]
 
         is_volatile = last['atr'] > (df['atr_ma'].iloc[-1] * 0.8)
-        is_uptrend = last['close'] > last['ema_200']
-        is_downtrend = last['close'] < last['ema_200']
+        # --- FILTRO DE TENDENCIA H1 (High-Fidelity Match) ---
+        h1_rates = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_H1, 0, 250)
+        h1_trend = 0
+        if h1_rates is not None and len(h1_rates) > 200:
+            df_h1 = pd.DataFrame(h1_rates)
+            ema_200_h1 = df_h1['close'].ewm(span=200, adjust=False).mean()
+            h1_trend = 1 if df_h1['close'].iloc[-2] > ema_200_h1.iloc[-2] else -1
+
+        is_uptrend = h1_trend == 1
+        is_downtrend = h1_trend == -1
 
         signal_type = None
         reason = ""
