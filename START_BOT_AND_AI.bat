@@ -6,7 +6,7 @@ echo    🌌 TX3 PRO BOT - ARRANQUE INTELIGENTE AUTOMATIZADO
 echo ==========================================================
 echo.
 
-:: --- 1. DETECCIÓN DE PYTHON Y VENV ---
+:: --- 1. DETECCIÓN DE PYTHON (MÉTODO BRUTAL) ---
 echo [1/3] Detectando Entorno de Ejecución...
 
 set PY_EXE=python
@@ -15,22 +15,32 @@ if errorlevel 1 (
     set PY_EXE=python3
     where !PY_EXE! >nul 2>nul
     if errorlevel 1 (
-        if exist ".venv\Scripts\python.exe" (
+        :: Buscar en rutas comunes de Windows si no está en el PATH
+        if exist "%LOCALAPPDATA%\Programs\Python\Python314\python.exe" (
+            set PY_EXE="%LOCALAPPDATA%\Programs\Python\Python314\python.exe"
+        ) else if exist "%LOCALAPPDATA%\Programs\Python\Python313\python.exe" (
+            set PY_EXE="%LOCALAPPDATA%\Programs\Python\Python313\python.exe"
+        ) else if exist "%LOCALAPPDATA%\Programs\Python\Python312\python.exe" (
+            set PY_EXE="%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
+        ) else if exist "%LOCALAPPDATA%\Programs\Python\Python311\python.exe" (
+            set PY_EXE="%LOCALAPPDATA%\Programs\Python\Python311\python.exe"
+        ) else if exist "C:\Python312\python.exe" (
+            set PY_EXE="C:\Python312\python.exe"
+        ) else if exist "C:\Python311\python.exe" (
+            set PY_EXE="C:\Python311\python.exe"
+        ) else if exist ".venv\Scripts\python.exe" (
             set PY_EXE=".venv\Scripts\python.exe"
-            echo    - Usando Entorno Virtual (.venv^) detectado.
         ) else if exist ".venv2\Scripts\python.exe" (
             set PY_EXE=".venv2\Scripts\python.exe"
-            echo    - Usando Entorno Virtual (.venv2^) detectado.
         ) else (
-            echo    ❌ ERROR: No se encontró 'python' ni '.venv'. 
-            echo    Asegurate de tener Python instalado y en el PATH.
+            echo    ❌ ERROR: No se encontró Python en el sistema ni en el PATH.
+            echo    Por favor, instala Python o agrégalo a las variables de entorno.
             pause
             exit /b
         )
     )
 )
 
-:: Verificar PIP a través del ejecutable de python detectado
 echo    - Usando ejecutable: %PY_EXE%
 %PY_EXE% -m pip install -r requirements.txt
 if errorlevel 1 (
@@ -42,7 +52,6 @@ echo.
 echo [2/3] Verificando Memoria de Machine Learning...
 if not exist "data\rf_model_EURUSD.pkl" (
     echo    ! El Cerebro IA es nuevo y necesita ser entrenado por primera vez.
-    echo    - Ejecutando el Scanner y Entrenador Espacial - Esto tardará 1-2 minutos...
     %PY_EXE% scripts\train_ml_model.py
 ) else (
     echo    ✅ El Cerebro IA ya está cargado y en línea.
