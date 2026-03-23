@@ -6,38 +6,23 @@ echo    🌌 TX3 PRO BOT - ARRANQUE INTELIGENTE AUTOMATIZADO
 echo ==========================================================
 echo.
 
-:: --- 1. DETECCIÓN DE PYTHON (MÉTODO BRUTAL) ---
-echo [1/3] Detectando Entorno de Ejecución...
+:: --- 1. CONFIGURACIÓN DEL EJECUTABLE DETECTADO EN EL VPS ---
+echo [1/3] Configurando Python desde Venv Administrador...
 
-set PY_EXE=python
-where %PY_EXE% >nul 2>nul
-if errorlevel 1 (
-    set PY_EXE=python3
+:: Ruta oficial detectada en el VPS del usuario
+set PY_EXE="C:\Users\Administrator\venv\Scripts\python.exe"
+
+if not exist %PY_EXE% (
+    echo    ❌ ERROR CRITICO: No se halló el ejecutable en la ruta:
+    echo    ! %PY_EXE%
+    echo    - Intentando búsqueda alternativa en el PATH...
+    
+    set PY_EXE=python
     where !PY_EXE! >nul 2>nul
     if errorlevel 1 (
-        :: Buscar en rutas comunes de Windows si no está en el PATH
-        if exist "%LOCALAPPDATA%\Programs\Python\Python314\python.exe" (
-            set PY_EXE="%LOCALAPPDATA%\Programs\Python\Python314\python.exe"
-        ) else if exist "%LOCALAPPDATA%\Programs\Python\Python313\python.exe" (
-            set PY_EXE="%LOCALAPPDATA%\Programs\Python\Python313\python.exe"
-        ) else if exist "%LOCALAPPDATA%\Programs\Python\Python312\python.exe" (
-            set PY_EXE="%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
-        ) else if exist "%LOCALAPPDATA%\Programs\Python\Python311\python.exe" (
-            set PY_EXE="%LOCALAPPDATA%\Programs\Python\Python311\python.exe"
-        ) else if exist "C:\Python312\python.exe" (
-            set PY_EXE="C:\Python312\python.exe"
-        ) else if exist "C:\Python311\python.exe" (
-            set PY_EXE="C:\Python311\python.exe"
-        ) else if exist ".venv\Scripts\python.exe" (
-            set PY_EXE=".venv\Scripts\python.exe"
-        ) else if exist ".venv2\Scripts\python.exe" (
-            set PY_EXE=".venv2\Scripts\python.exe"
-        ) else (
-            echo    ❌ ERROR: No se encontró Python en el sistema ni en el PATH.
-            echo    Por favor, instala Python o agrégalo a las variables de entorno.
-            pause
-            exit /b
-        )
+        echo    ❌ FALLO TOTAL: Debe existir el entorno venv en Administrator para arrancar.
+        pause
+        exit /b
     )
 )
 
