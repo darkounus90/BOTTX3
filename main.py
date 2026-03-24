@@ -68,6 +68,12 @@ class TX3ProBot:
         self._watchdog_notified = False
         self._last_signal_found_timestamp = sleep_module.time() # Seguir rastro de última señal detectada
         self._in_hibernation = False # Modo ahorro de energía/logs
+        self._notified_disconnect = False
+        self._last_scan_log = {}
+        self._last_heartbeat_log = {}
+        self._last_cd_log = {}
+        self.last_mutation_day = 0
+        self.last_training_day = 0
 
         # ─── Inicializar componentes ─────────────────────────────────
         self.logger = BotLogger(name="TX3Bot")
@@ -892,6 +898,15 @@ class TX3ProBot:
                     continue
 
                 # ─── E. Loop por Símbolo (Diversificación) ─────────
+                # 🛡️ OPTIMIZACIÓN: Pedir historial de trades una vez por iteración (Previene desconexión del broker)
+                cooldown_deals = None
+                try:
+                    cooldown_mins = getattr(BotConfig, "REVENGE_COOLDOWN_MINUTES", 30)
+                    from_date_cd = datetime.now() - timedelta(minutes=cooldown_mins)
+                    cooldown_deals = mt5.history_deals_get(from_date_cd, datetime.now())
+                except Exception:
+                    pass
+
                 for symbol in BotConfig.WATCHLIST:
                     # Log de escaneo periódico (cada 5 min por símbolo para visibilidad)
                     now_ts = sleep_module.time()
@@ -957,13 +972,9 @@ class TX3ProBot:
                                         
                                     # e. Filtro ANTI-REVENGE (Protección del Cooldown)
                                     # Consultamos directo al Broker si este símbolo tuvo alguna transacción (Apertura o Cierre) hace poco.
-                                    from datetime import timedelta
-                                    cooldown_mins = getattr(BotConfig, "REVENGE_COOLDOWN_MINUTES", 30)
-                                    from_date = datetime.now() - timedelta(minutes=cooldown_mins)
-                                    deals = mt5.history_deals_get(from_date, datetime.now())
                                     in_cooldown = False
-                                    if deals:
-                                        for d in deals:
+                                    if cooldown_deals:
+                                        for d in cooldown_deals:
                                             # Solo contar CIERRES (entry=1 out, 2 reverse, 3 closeBy), NO aperturas (entry=0)
                                             if d.symbol == symbol and d.magic == BotConfig.MAGIC_NUMBER and d.entry in [1, 2, 3]:
                                                 in_cooldown = True
@@ -1002,23 +1013,34 @@ class TX3ProBot:
                                         tick_before = mt5.symbol_info_tick(symbol)
                                         price_before = tick_before.ask if signal['signal'] == 'BUY' else tick_before.bid
                                         
-                                        oracle_resp = self.oracle.evaluate_trade(
-                                            symbol=signal['symbol'],
-                                            signal_type=signal['signal'],
-                                            reason=signal.get('reason', 'Análisis Quant Base'),
-                                            adx=signal.get('adx', None)
-                                        )
-                                        
+                                        # 🛡️ CRASH GUARD: Envolver llamada a IA en try/except
+                                        oracle_resp = {}
+                                        try:
+                                            oracle_resp = self.oracle.evaluate_trade(
+                                                symbol=signal['symbol'],
+                                                signal_type=signal['signal'],
+                                                reason=signal.get('reason', 'Análisis Quant Base'),
+                                                adx=signal.get('adx', None)
+                                            )
+                                        except Exception as e:
+                                            self.logger.error(f"⚠️ IA OFFLINE: Error evaluando trade con Gemini: {e}. Abortando por seguridad institucional.")
+                                            continue
+                                            
                                         # 🛡️ LATENCY GUARD: Comprobar precio después de la IA
                                         tick_after = mt5.symbol_info_tick(symbol)
                                         price_after = tick_after.ask if signal['signal'] == 'BUY' else tick_after.bid
                                         
-                                        point = mt5.symbol_info(symbol).point
+                                        # 🛡️ DYNAMIC SLIPPAGE GUARD: Máximo de 2.5 pips o 2 veces el spread
+                                        symbol_info_meta = mt5.symbol_info(symbol)
+                                        point = symbol_info_meta.point
                                         pip_size = 10 * point
-                                        slippage_pips = abs(price_after - price_before) / pip_size
+                                        current_spread_pips = symbol_info_meta.spread * point / pip_size
                                         
-                                        if slippage_pips > 2.0:
-                                            self.logger.warning(f"⚠️ LATENCY ABORT: El precio se deslizó {slippage_pips:.1f} pips mientras la IA calculaba. Trade abortado para proteger Entry Price en FX.")
+                                        slippage_pips = abs(price_after - price_before) / pip_size
+                                        max_allowed_slip = max(2.5, current_spread_pips * 2.0)
+                                        
+                                        if slippage_pips > max_allowed_slip:
+                                            self.logger.warning(f"⚠️ LATENCY ABORT: El precio se deslizó {slippage_pips:.1f} pips (Max: {max_allowed_slip:.1f}) mientras la IA calculaba. Trade abortado.")
                                             continue
 
                                         if oracle_resp.get("decision") == "REJECTED":
