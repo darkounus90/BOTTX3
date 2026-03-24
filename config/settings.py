@@ -59,6 +59,7 @@ class BotConfig:
     """Configuración de comportamiento del bot"""
 
     TIMEZONE = "America/Bogota"          # Zona horaria para dashboard, logs y resets
+    MARKET_TIMEZONE = "America/New_York"  # 🔥 Zona horaria del mercado (NYSE) — Maneja DST automáticamente
     FTMO_TIMEZONE = "Europe/Prague"      # 🔥 Zona horaria oficial de FTMO (Sincronización Crítica)
 
     # ─── RISK MANAGEMENT (FTMO COMPLIANCE) ────────────────────────────

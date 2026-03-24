@@ -239,9 +239,9 @@ class PositionManager:
             
         from datetime import datetime
         from zoneinfo import ZoneInfo
-        now_est = datetime.now(ZoneInfo(BotConfig.TIMEZONE))
-        # Rollover bank reset (4:55 PM - 5:05 PM EST) ampliamos ventana de seguridad
-        if (now_est.hour == 16 and now_est.minute >= 50) or (now_est.hour == 17 and now_est.minute <= 10):
+        now_ny = datetime.now(ZoneInfo(BotConfig.MARKET_TIMEZONE))
+        # Rollover bank reset (4:55 PM - 5:05 PM NY Time) ampliamos ventana de seguridad
+        if (now_ny.hour == 16 and now_ny.minute >= 50) or (now_ny.hour == 17 and now_ny.minute <= 10):
             self.logger.critical(f"🛑 ZONA ROJA DE ROLLOVER: Abortando order_send real en {symbol} para proteger de gap de liquidez bancario.")
             return None
 

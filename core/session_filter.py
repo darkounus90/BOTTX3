@@ -86,7 +86,7 @@ class SessionFilter:
             'CLOSED'  - Fuera de horario
         """
         from config.settings import BotConfig
-        now = datetime.now(ZoneInfo(BotConfig.TIMEZONE))
+        now = datetime.now(ZoneInfo(BotConfig.MARKET_TIMEZONE))
         current_time = now.time()
         current_day = now.weekday()  # 0=Monday, 6=Sunday
 
@@ -143,7 +143,7 @@ class SessionFilter:
         Retorna información detallada de la sesión actual.
         """
         from config.settings import BotConfig
-        now = datetime.now(ZoneInfo(BotConfig.TIMEZONE))
+        now = datetime.now(ZoneInfo(BotConfig.MARKET_TIMEZONE))
         current_time = now.time()
         current_day = now.weekday()
 
@@ -210,7 +210,7 @@ class SessionFilter:
         Se ejecuta a la hora parametrizada en FRIDAY_FLAT_HOUR (Por defecto 12:00 PM EST).
         """
         from config.settings import BotConfig
-        now = datetime.now(ZoneInfo(BotConfig.TIMEZONE))
+        now = datetime.now(ZoneInfo(BotConfig.MARKET_TIMEZONE))
         # 4 = Viernes en Python datetime.weekday()
         if now.weekday() == 4:
             if now.hour >= getattr(SessionConfig, "FRIDAY_FLAT_HOUR", 12):
