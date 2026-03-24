@@ -108,12 +108,14 @@ class RiskManager:
 
         current_equity = account_info.equity
         
-        # ─── MÉTODO REAL: Calcular desde historial de MT5 ─────────
-        # El equity_inicio_dia puede ser incorrecto si el bot se reinició.
-        # Usamos el historial real de deals de hoy como fuente de verdad.
+        # ─── MÉTODO MÁS PRECISO: Calcular desde medianoche FTMO (Praga) ─────────
         from datetime import datetime, timedelta
-        today = datetime.now()
-        start_today = datetime(today.year, today.month, today.day)
+        from zoneinfo import ZoneInfo
+        from config.settings import BotConfig
+        
+        now_prague = datetime.now(ZoneInfo(BotConfig.FTMO_TIMEZONE))
+        midnight_prague = now_prague.replace(hour=0, minute=0, second=0, microsecond=0)
+        start_ftmo_day_local = datetime.fromtimestamp(midnight_prague.timestamp())
         
         closed_pnl_today = 0.0
         try:
@@ -311,20 +313,67 @@ class RiskManager:
             profit = pos.profit
             if profit < -hedge_threshold_amount:
                 self.logger.critical(f"🦢💥 CISNE NEGRO DETECTADO 💥🦢: Posición #{pos.ticket} perdiendo ${-profit:.2f}. "
-                                     f"Stop loss fallido o deslizamiento severo. Ejecutando HEDGE DE EMERGENCIA.")
-                self._emergency_hedge_position(pos)
+                                     f"Stop loss fallido o deslizamiento severo. Ejecutando PROTECCIÓN FTMO.")
+                self._emergency_protect_position(pos)
 
-    def _emergency_hedge_position(self, position):
-        """Abre una orden contraria idéntica para congelar el PnL"""
+    def _emergency_protect_position(self, position):
+        """
+        [FTMO COMPLIANT]
+        Intenta CERRAR la posición agresivamente primero para no generar flags de arbitraje.
+        Añade micro-retrasos aleatorios para simular pánico humano.
+        Si, y solo si, el cierre falla reiteradamente, ejecuta el Hedge como último recurso.
+        """
+        import time
+        import random
+        
         symbol_info = mt5.symbol_info(position.symbol)
         if not symbol_info: return
+        
+        # 1. Pánico Humano Simulado (Retraso aleatorio de 400ms a 1200ms)
+        delay = random.uniform(0.4, 1.2)
+        self.logger.warning(f"🧍‍♂️ Simulando reacción humana: Pausa de {delay:.2f}s antes del cierre agresivo...")
+        time.sleep(delay)
+        
+        # 2. INTENTO DE CIERRE AGRESIVO (Market Close)
+        for attempt, deviation in enumerate([30, 80, 150], 1):
+            tick = mt5.symbol_info_tick(position.symbol)
+            if not tick: continue
+                
+            close_type = mt5.ORDER_TYPE_SELL if position.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
+            price = tick.bid if close_type == mt5.ORDER_TYPE_SELL else tick.ask
+
+            request_close = {
+                "action": mt5.TRADE_ACTION_DEAL,
+                "symbol": position.symbol,
+                "volume": position.volume,
+                "type": close_type,
+                "position": position.ticket,
+                "price": price,
+                "deviation": deviation,
+                "magic": BotConfig.MAGIC_NUMBER,
+                "comment": "Panic Close FTMO",
+                "type_time": mt5.ORDER_TIME_GTC,
+                "type_filling": mt5.ORDER_FILLING_IOC,
+            }
+            
+            result = mt5.order_send(request_close)
+            if result and result.retcode == mt5.TRADE_RETCODE_DONE:
+                self.hedged_tickets.add(position.ticket) # Registrar para no reintentar
+                self.logger.success(f"✅ SALVACIÓN: Posición #{position.ticket} CERRADA agresivamente (Intento {attempt}, Dev {deviation}).")
+                return # Salimos, no se necesita Hedge
+            else:
+                self.logger.error(f"⚠️ Cierre agresivo fallido (Intento {attempt}): {result.comment if result else 'Unknown'}")
+                time.sleep(0.3) # Breve pausa entre intentos
+                
+        # 3. PLAN B: HEDGE DE SUPERVIVENCIA (Solo si el broker denegó el cierre)
+        self.logger.critical(f"🛑 Broker rechazó el cierre 3 veces. Ejecutando HEDGE DE SUPERVIVENCIA para #{position.ticket}")
         tick = mt5.symbol_info_tick(position.symbol)
         if not tick: return
         
         hedge_type = mt5.ORDER_TYPE_SELL if position.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
         price = tick.bid if hedge_type == mt5.ORDER_TYPE_SELL else tick.ask
         
-        request = {
+        request_hedge = {
             "action": mt5.TRADE_ACTION_DEAL,
             "symbol": position.symbol,
             "volume": position.volume,
@@ -337,14 +386,13 @@ class RiskManager:
             "type_filling": mt5.ORDER_FILLING_IOC,
         }
         
-        result = mt5.order_send(request)
+        result = mt5.order_send(request_hedge)
         if result and result.retcode == mt5.TRADE_RETCODE_DONE:
-            self.hedged_tickets.add(position.ticket) # El ticket original ahora está protegido
-            self.hedged_tickets.add(result.order) # Registrar la pata del hedge para evitar bucles
-            self.logger.success(f"🛡️ HEDGE EJECUTADO: Posición contraria #{result.order} abierta con {position.volume} lotes en {position.symbol}.")
+            self.hedged_tickets.add(position.ticket)
+            self.hedged_tickets.add(result.order)
+            self.logger.success(f"🛡️ HEDGE EJECUTADO COMO ÚLTIMO RECURSO: Posición contraria #{result.order} abierta.")
         else:
-            err = result.comment if result else "Unknown"
-            self.logger.error(f"Fallo crítico ejecutando Hedge para #{position.ticket}: {err}")
+            self.logger.error(f"💀 FALLO CRÍTICO TOTAL: No se pudo hacer set del Hedge para #{position.ticket}.")
 
     def emergency_close_all(self) -> int:
         """

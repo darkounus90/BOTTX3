@@ -59,6 +59,7 @@ class BotConfig:
     """Configuración de comportamiento del bot"""
 
     TIMEZONE = "America/Bogota"          # Zona horaria para dashboard, logs y resets
+    FTMO_TIMEZONE = "Europe/Prague"      # 🔥 Zona horaria oficial de FTMO (Sincronización Crítica)
 
     # ─── RISK MANAGEMENT (FTMO COMPLIANCE) ────────────────────────────
     MAX_RISK_PER_TRADE_PCT = 0.4                 # 0.4% = $200 base para cuenta 50K. Modo Conservador para Sobrevivir.
@@ -108,7 +109,7 @@ class BotConfig:
     MAX_SPREAD_PIPS = 4.0                # 🔥 MAX 4 PIPS: Si el broker cobra más, el bot NO opera. Cuida tu capital.
 
     # ─── TIMING ───────────────────────────────────────────────────────
-    LOOP_INTERVAL_SECONDS = 2            
+    LOOP_INTERVAL_SECONDS = 1            # Frecuencia agresiva (1 seg) para FTMO
     DAILY_RESET_HOUR_EST = 17
     DAILY_RESET_MINUTE_EST = 0
 

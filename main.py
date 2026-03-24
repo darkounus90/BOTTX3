@@ -48,6 +48,7 @@ from dashboard.app import run_dashboard, update_dashboard_data, add_dashboard_lo
 from utils.telegram_commands import TelegramCommandHandler
 from core.smc_scanner import SMCScanner
 from core.portfolio_manager import PortfolioManager
+from core.correlation_manager import CorrelationManager
 from strategy.q_learning_agent import QLearningAgent
 
 
@@ -96,6 +97,7 @@ class TX3ProBot:
         # Next-Gen Institutional features
         self.smc_scanner = SMCScanner(logger=self.logger)
         self.portfolio_manager = PortfolioManager(logger=self.logger)
+        self.correlation_manager = CorrelationManager(logger=self.logger)
         self.q_agent = QLearningAgent(logger=self.logger)
         
         # Estrategias (Backtest-Optimized: Solo las que demostraron rentabilidad)
@@ -278,7 +280,10 @@ class TX3ProBot:
             "equity": account["equity"] if account else 0,
             "daily_profit": self.phase_tracker.current_day_profit,
             "daily_dd": daily_dd["loss"],
+            "daily_dd_limit": daily_dd.get("limit", 2500),
             "overall_dd": overall_dd["loss"],
+            "overall_dd_limit": overall_dd.get("limit", 5000),
+            "oracle_reasoning_log": self.oracle.get_reasoning_history() if hasattr(self.oracle, 'get_reasoning_history') else [],
             "profit_target": self.phase_tracker.profit_target,
             "profitable_days": self.phase_tracker.profitable_days,
             "min_days": self.phase_tracker.min_trading_days,
@@ -302,6 +307,7 @@ class TX3ProBot:
             "live_exposures": live_exposures,
             "recent_trades": self.journal.get_recent_trades(limit=15),
             "last_oracle_narration": self.oracle.last_narration if hasattr(self, 'oracle') else "No disponible",
+            "correlation_exposure": self.correlation_manager.get_exposure_report() if hasattr(self, 'correlation_manager') else {},
             "last_update": datetime.now(ZoneInfo(BotConfig.TIMEZONE)).strftime("%H:%M:%S")
         }
         
@@ -943,8 +949,10 @@ class TX3ProBot:
                                         if not self.news_filter.is_safe_to_trade(symbol, signal['signal']):
                                             continue
                                     
-                                    # d. Verificar Escudo Anti-Correlación (Evitar pares múltiples muy atados)
-                                    if not self.position_manager.check_correlation_shield(symbol):
+                                    # d. Verificar Motor Anti-Correlación Institucional (Pearson + Net Exposure)
+                                    order_type_for_corr = mt5.ORDER_TYPE_BUY if signal['signal'] == 'BUY' else mt5.ORDER_TYPE_SELL
+                                    corr_allowed, corr_reason = self.correlation_manager.check_new_trade_allowed(symbol, order_type_for_corr)
+                                    if not corr_allowed:
                                         continue
                                         
                                     # e. Filtro ANTI-REVENGE (Protección del Cooldown)

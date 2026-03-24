@@ -194,15 +194,14 @@ class SessionFilter:
 
     def is_daily_reset_time(self) -> bool:
         """
-        Verifica si es hora del reset diario (5 PM EST).
-        Retorna True si estamos en el minuto del reset.
+        Verifica si es hora del reset diario de FTMO (00:00 Medianoche Praga).
+        Retorna True si estamos en el primer minuto del día en Praga.
         """
-        now = datetime.now()
         from config.settings import BotConfig
-        return (
-            now.hour == BotConfig.DAILY_RESET_HOUR_EST
-            and now.minute == BotConfig.DAILY_RESET_MINUTE_EST
-        )
+        from zoneinfo import ZoneInfo
+        now_prague = datetime.now(ZoneInfo(BotConfig.FTMO_TIMEZONE))
+        
+        return now_prague.hour == 0 and now_prague.minute == 0
 
     def is_friday_forced_close_time(self) -> bool:
         """

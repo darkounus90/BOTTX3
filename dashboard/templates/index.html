@@ -319,21 +319,31 @@
                 </div>
             </div>
 
-            <!-- Daily DD Card -->
+            <!-- Daily DD Card → FTMO PROGRESS BAR -->
             <div class="glass-panel p-6 relative overflow-hidden group">
                 <div
                     class="absolute -right-6 -top-6 w-24 h-24 bg-orange-500/10 rounded-full blur-2xl group-hover:bg-orange-500/20 transition-all">
                 </div>
                 <div class="flex justify-between items-start">
-                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Drawdown Diario</h3>
-                    <span class="text-[0.65rem] border border-gray-700 text-gray-400 px-2 py-0.5 rounded-md">LÍMITE
-                        5%</span>
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Drawdown Diario (FTMO)</h3>
+                    <span id="ftmo-dd-badge" class="text-[0.65rem] border border-emerald-700 text-emerald-400 px-2 py-0.5 rounded-md font-bold">SEGURO</span>
                 </div>
                 <div class="text-3xl font-bold text-orange-400 tracking-tight" id="daily-dd">$0.00</div>
+                <div class="mt-2 flex justify-between text-[0.6rem] text-gray-500 font-mono">
+                    <span>Colchón: <span id="ftmo-cushion" class="text-emerald-400 font-bold">$2,500</span></span>
+                    <span>Límite: <span id="ftmo-limit-val" class="text-red-400">$2,500</span></span>
+                </div>
                 <div
-                    class="mt-3 w-full bg-gray-800/80 rounded-full h-1.5 overflow-hidden border-t border-gray-800 pt-4">
-                    <div class="bg-gradient-to-r from-orange-400 to-red-500 h-1.5 rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(249,115,22,0.5)]"
+                    class="mt-1.5 w-full bg-gray-800/80 rounded-full h-2.5 overflow-hidden border border-gray-700/50 relative">
+                    <!-- Marcador de zona de peligro al 80% -->
+                    <div class="absolute top-0 bottom-0 w-px bg-yellow-500/60" style="left: 80%"></div>
+                    <div class="bg-gradient-to-r from-emerald-500 via-orange-400 to-red-500 h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(249,115,22,0.5)]"
                         style="width: 0%" id="daily-dd-bar"></div>
+                </div>
+                <div class="mt-1 flex justify-between text-[0.55rem] text-gray-600 font-mono">
+                    <span>0%</span>
+                    <span class="text-yellow-500/80">80%</span>
+                    <span class="text-red-500">100%</span>
                 </div>
             </div>
 
@@ -383,6 +393,24 @@
             <div class="mt-4 flex items-center gap-2 text-[0.65rem] text-indigo-400/60 font-mono relative z-10">
                 <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-ping"></span>
                 ESTADO: Chief Investment Officer analizando velas M5/H1 en tiempo real.
+            </div>
+        </div>
+
+        <!-- 🧠 MATRIX AI CONSOLE — Live Reasoning Feed -->
+        <div class="glass-panel p-6 relative overflow-hidden group border-cyan-500/10 bg-cyan-500/[0.02]">
+            <div class="absolute -left-10 -bottom-10 w-48 h-48 bg-cyan-500/5 rounded-full blur-3xl"></div>
+            <div class="flex items-center gap-3 mb-4 relative z-10">
+                <div class="w-8 h-8 rounded-lg bg-cyan-600/20 flex items-center justify-center border border-cyan-500/30">
+                    <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-sm font-bold text-cyan-300 uppercase tracking-widest">Consola Matrix — Razonamientos IA</h3>
+                <span class="ml-auto text-[0.6rem] px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 font-mono animate-pulse">NEURAL FEED</span>
+            </div>
+            <div id="matrix-console" class="relative z-10 bg-black/30 rounded-xl p-4 border border-cyan-500/10 max-h-[300px] overflow-y-auto custom-scrollbar space-y-2 font-mono text-xs">
+                <div class="text-gray-600 italic text-center py-6 uppercase tracking-widest">Esperando primera decisión del Oráculo...</div>
             </div>
         </div>
 
@@ -482,9 +510,16 @@
                         Esperando
                         datos...</div>
                 </div>
-            </div>
 
-            <!-- Active Trading Session Widget -->
+                <!-- 🔗 Net Currency Exposure Map (Correlation Engine) -->
+                <div class="mt-4 pt-4 border-t border-gray-800/50">
+                    <div id="correlation-exposure-map" class="space-y-2 relative z-10 w-full">
+                        <div class="text-xs text-gray-500 text-center uppercase tracking-widest font-mono italic py-4">
+                            Correlación: Esperando posiciones...
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="glass-panel p-5 relative overflow-hidden group">
                 <div class="absolute -right-6 -top-6 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl transition-all">
                 </div>
@@ -979,16 +1014,87 @@
                 dpEl.className = "text-3xl font-bold text-gray-500 tracking-tight";
             }
 
-            // Drawdowns
+            // Drawdowns — FTMO Progress Bar with Dynamic Limits
             document.getElementById('daily-dd').textContent = formatCurrency(data.daily_dd);
             document.getElementById('overall-dd').textContent = formatCurrency(data.overall_dd);
 
-            // Progress bars (Assumes Phase 1 limit of 2500 & 5000)
-            const dpt = ((data.daily_dd || 0) / 2500) * 100;
-            document.getElementById('daily-dd-bar').style.width = `${Math.min(dpt, 100)}%`;
+            // FTMO Daily DD Progress (Dynamic Limit from Backend)
+            const ddLimit = data.daily_dd_limit || 2500;
+            const ddLoss = data.daily_dd || 0;
+            const ddPct = Math.min(100, (ddLoss / ddLimit) * 100);
+            const ddCushion = Math.max(0, ddLimit - ddLoss);
+            
+            document.getElementById('daily-dd-bar').style.width = `${ddPct}%`;
+            document.getElementById('ftmo-cushion').textContent = formatCurrency(ddCushion);
+            document.getElementById('ftmo-limit-val').textContent = formatCurrency(ddLimit);
 
-            const opt = ((data.overall_dd || 0) / 5000) * 100;
+            // Dynamic FTMO Badge
+            const ftmoBadge = document.getElementById('ftmo-dd-badge');
+            if (ddPct >= 90) {
+                ftmoBadge.textContent = '🚨 CRÍTICO';
+                ftmoBadge.className = 'text-[0.65rem] border border-red-500 text-red-400 px-2 py-0.5 rounded-md font-bold bg-red-500/20 animate-pulse';
+            } else if (ddPct >= 70) {
+                ftmoBadge.textContent = '⚠️ PELIGRO';
+                ftmoBadge.className = 'text-[0.65rem] border border-orange-500 text-orange-400 px-2 py-0.5 rounded-md font-bold bg-orange-500/20';
+            } else if (ddPct >= 40) {
+                ftmoBadge.textContent = '⚡ ALERTA';
+                ftmoBadge.className = 'text-[0.65rem] border border-yellow-500 text-yellow-400 px-2 py-0.5 rounded-md font-bold bg-yellow-500/10';
+            } else {
+                ftmoBadge.textContent = '✅ SEGURO';
+                ftmoBadge.className = 'text-[0.65rem] border border-emerald-700 text-emerald-400 px-2 py-0.5 rounded-md font-bold bg-emerald-500/10';
+            }
+
+            // Overall DD Progress
+            const odLimit = data.overall_dd_limit || 5000;
+            const opt = ((data.overall_dd || 0) / odLimit) * 100;
             document.getElementById('overall-dd-bar').style.width = `${Math.min(opt, 100)}%`;
+
+            // ═══════════════════════════════════════════════════════════
+            // 🧠 MATRIX AI CONSOLE — Neural Reasoning Feed
+            // ═══════════════════════════════════════════════════════════
+            const matrixConsole = document.getElementById('matrix-console');
+            if (matrixConsole && data.oracle_reasoning_log && data.oracle_reasoning_log.length > 0) {
+                const rHash = JSON.stringify(data.oracle_reasoning_log);
+                if (window._lastReasoningHash !== rHash) {
+                    window._lastReasoningHash = rHash;
+                    matrixConsole.innerHTML = '';
+                    
+                    data.oracle_reasoning_log.forEach((entry, idx) => {
+                        const isApproved = entry.decision && entry.decision.toUpperCase() === 'APPROVED';
+                        const decColor = isApproved ? 'text-emerald-400' : 'text-rose-400';
+                        const decBg = isApproved ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20';
+                        const decIcon = isApproved ? '✅' : '🚫';
+                        
+                        const conf = entry.confidence || 0;
+                        let confColor = conf >= 80 ? 'bg-indigo-500' : (conf >= 60 ? 'bg-yellow-500' : 'bg-rose-500');
+                        
+                        const el = document.createElement('div');
+                        el.className = 'p-3 rounded-lg bg-gray-900/60 border border-gray-800/50 hover:border-cyan-500/20 transition-all';
+                        el.innerHTML = `
+                            <div class="flex justify-between items-center mb-1.5">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-gray-600">[${entry.timestamp}]</span>
+                                    <span class="px-1.5 py-0.5 rounded text-[0.6rem] ${decColor} ${decBg} border font-bold">${decIcon} ${entry.decision || 'N/A'}</span>
+                                    <span class="text-cyan-400/80">${entry.symbol || ''}</span>
+                                </div>
+                                <span class="text-gray-600 text-[0.6rem]">${entry.model || 'gemini'}</span>
+                            </div>
+                            <div class="text-gray-400 text-[0.7rem] leading-relaxed mb-2 border-l-2 border-cyan-500/20 pl-2">${entry.reason || 'Sin detalle'}</div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-gray-600 text-[0.55rem] uppercase">Confianza</span>
+                                <div class="flex-1 bg-gray-800/80 rounded-full h-1 overflow-hidden">
+                                    <div class="${confColor} h-full rounded-full transition-all" style="width: ${conf}%"></div>
+                                </div>
+                                <span class="text-gray-400 text-[0.6rem] font-bold">${conf}%</span>
+                            </div>
+                        `;
+                        matrixConsole.appendChild(el);
+                    });
+                    
+                    // Auto-scroll al final
+                    matrixConsole.scrollTop = matrixConsole.scrollHeight;
+                }
+            }
 
             // Advanced Stats
             if (data.profit_target) document.getElementById('stat-target').textContent = formatCurrency(data.profit_target);
@@ -1279,6 +1385,51 @@
                 }
             } else if (data.live_exposures && document.getElementById('exposures-container')) {
                 document.getElementById('exposures-container').innerHTML = `<div class="text-xs text-gray-500 text-center uppercase tracking-widest font-mono italic mt-8">0 Exposiciones Reales</div>`;
+            }
+
+            // ═══════════════════════════════════════════════════════════
+            // 🔗 NET CURRENCY EXPOSURE MAP (Pearson Correlation Engine)
+            // ═══════════════════════════════════════════════════════════
+            const corrData = data.correlation_exposure;
+            const corrContainer = document.getElementById('correlation-exposure-map');
+            if (corrContainer && corrData) {
+                if (corrData.status === 'EXPOSED' && corrData.currencies && Object.keys(corrData.currencies).length > 0) {
+                    let riskBadge = '';
+                    const rl = corrData.risk_level;
+                    if (rl === 'CRITICAL') riskBadge = '<span class="px-2 py-0.5 rounded text-[0.6rem] font-bold bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse">⚠️ CRÍTICO</span>';
+                    else if (rl === 'HIGH') riskBadge = '<span class="px-2 py-0.5 rounded text-[0.6rem] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/40">ALTO</span>';
+                    else if (rl === 'MEDIUM') riskBadge = '<span class="px-2 py-0.5 rounded text-[0.6rem] font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/40">MEDIO</span>';
+                    else riskBadge = '<span class="px-2 py-0.5 rounded text-[0.6rem] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">BAJO</span>';
+
+                    let html = `<div class="flex justify-between items-center mb-3"><span class="text-[0.65rem] text-gray-400 uppercase tracking-widest font-bold">Exposición Neta por Divisa</span>${riskBadge}</div>`;
+                    
+                    const limit = corrData.limit || 1.5;
+                    for (const [currency, amount] of Object.entries(corrData.currencies)) {
+                        const isLong = amount > 0;
+                        const absAmount = Math.abs(amount);
+                        const pct = Math.min(100, (absAmount / limit) * 100);
+                        const direction = isLong ? '🟢 Long' : '🔴 Short';
+                        const barColor = isLong 
+                            ? 'bg-gradient-to-r from-emerald-500 to-green-400 shadow-[0_0_6px_rgba(16,185,129,0.5)]' 
+                            : 'bg-gradient-to-r from-rose-500 to-red-400 shadow-[0_0_6px_rgba(244,63,94,0.5)]';
+                        const textColor = isLong ? 'text-emerald-400' : 'text-rose-400';
+
+                        html += `
+                            <div class="space-y-1 w-full mb-2">
+                                <div class="flex justify-between text-xs font-mono">
+                                    <span class="text-white font-bold">${currency}</span>
+                                    <span class="${textColor} font-bold">${direction} ${absAmount.toFixed(2)} lotes</span>
+                                </div>
+                                <div class="w-full bg-gray-800/80 rounded-full h-1.5 overflow-hidden">
+                                    <div class="${barColor} h-full rounded-full transition-all duration-700" style="width: ${pct}%"></div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    corrContainer.innerHTML = html;
+                } else {
+                    corrContainer.innerHTML = '<div class="text-xs text-gray-500 text-center uppercase tracking-widest font-mono italic py-4">Sin exposición activa — Portafolio diversificado ✅</div>';
+                }
             }
 
         }

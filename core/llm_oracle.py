@@ -64,6 +64,10 @@ class GeminiOracle:
         self._signal_cache = {}
         self._cooldown_cache = {} # Fatiga del Oráculo
         self.last_narration = "Esperando diagnóstico inicial..."
+        
+        # 🧠 Buffer de Razonamientos para la Consola Matrix del Dashboard
+        self._reasoning_history = []  # Últimas 10 decisiones con timestamp y razonamiento
+        self._max_reasoning_entries = 10
 
         if self.enabled:
             self._setup_system()
@@ -188,24 +192,26 @@ class GeminiOracle:
             return True
         return False
 
-    def _call_model(self, model_name: str, prompt: str, urgent=False, as_json=False):
+    def _call_model(self, model_name: str, prompt: str, urgent=False, as_json=False, timeout=30.0):
         """Wrapper con Rate Limit por modelo"""
         if not self.system_ready: return None
         
         if not self._get_token(model_name):
             if urgent:
+                import time
                 time.sleep(5)
                 # No reintentar infinitamente si es por RPD
                 if self.buckets[model_name]["rpd_count"] < self.buckets[model_name]["rpd_limit"]:
-                    return self._call_model(model_name, prompt, urgent, as_json)
+                    return self._call_model(model_name, prompt, urgent, as_json, timeout)
             return None
 
         model = self.models_instances.get(model_name)
         if not model: return None
 
-        # Reintento exponencial simple
+        # Reintento exponencial simple (excepto si timeout es estricto < 5s)
+        max_attempts = 1 if timeout < 5.0 else 2
         last_error = "UNKNOWN_ERROR"
-        for attempt in range(2):
+        for attempt in range(max_attempts):
             try:
                 # Round-Robin API Keys para distribuir consumo si hay múltiples
                 if len(self.api_keys) > 1:
@@ -213,9 +219,8 @@ class GeminiOracle:
                     self.api_key = self.api_keys[self.current_key_idx]
                     genai.configure(api_key=self.api_key)
 
-                # Gemma-3 requiere prompts más directos, limpiamos posibles instrucciones conflictivas
-                # Generar contenido con timeout de seguridad (30s) y soporte JSON nativo
-                kwargs = {"request_options": {"timeout": 30.0}}
+                # Generar contenido con timeout dinámico
+                kwargs = {"request_options": {"timeout": timeout}}
                 if as_json:
                     kwargs["generation_config"] = {"response_mime_type": "application/json"}
                 
@@ -225,6 +230,9 @@ class GeminiOracle:
                     # Si no es JSON (es narrativo), guardamos para el dashboard
                     if not txt.startswith("{"):
                         self.last_narration = txt
+                    else:
+                        # Capturar decisiones JSON para la Consola Matrix
+                        self._capture_reasoning(txt, model_name=model_name)
                     return txt
                 return None
             except Exception as e:
@@ -439,7 +447,8 @@ class GeminiOracle:
         )
 
         # En lugar de usar la Cascada pesada (Gemini), utilizamos a GEMMA-3 directamente para evaluar salidas (Ahorro de API).
-        resp_text = self._call_model(self.target_light, prompt, urgent=False, as_json=True)
+        # FTMO COMPLIANT: Timeout estricto de 1.5s para no bloquear el Trailing Stop.
+        resp_text = self._call_model(self.target_light, prompt, urgent=False, as_json=True, timeout=1.5)
 
         if not resp_text or resp_text.startswith("ERROR_"):
             return {"decision": "HOLD", "reason": "Oráculo Gemma cansado, mantenemos regla técnica"}
@@ -525,3 +534,39 @@ class GeminiOracle:
         except Exception as e:
             self.logger.error(f"Error en re-init del Oráculo: {e}")
             return False
+
+    def _capture_reasoning(self, json_text: str, model_name: str = "unknown"):
+        """
+        🧠 Captura decisiones JSON del Oráculo para la Consola Matrix del Dashboard.
+        Almacena las últimas N decisiones con timestamp, modelo, y razonamiento completo.
+        """
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        from config.settings import BotConfig
+        
+        try:
+            import json
+            parsed = json.loads(json_text)
+            
+            entry = {
+                "timestamp": datetime.now(ZoneInfo(BotConfig.TIMEZONE)).strftime("%H:%M:%S"),
+                "model": model_name,
+                "decision": parsed.get("decision", "N/A"),
+                "confidence": parsed.get("confidence", 0),
+                "reason": parsed.get("reason", "Sin razonamiento disponible"),
+                "symbol": parsed.get("symbol", parsed.get("pair", "N/A")),
+                "action": parsed.get("action", parsed.get("signal", "N/A")),
+            }
+            
+            self._reasoning_history.append(entry)
+            
+            # Mantener solo las últimas N entradas (buffer circular)
+            if len(self._reasoning_history) > self._max_reasoning_entries:
+                self._reasoning_history.pop(0)
+                
+        except (json.JSONDecodeError, Exception):
+            pass  # Ignorar silenciosamente si no es JSON válido
+
+    def get_reasoning_history(self) -> list:
+        """Devuelve el historial de razonamientos para el Dashboard Matrix Console."""
+        return list(self._reasoning_history)
