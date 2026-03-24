@@ -139,11 +139,24 @@ def sim_bollinger_rsi(df, df_h1, symbol, adx_thresh=30.0):
             res.add_trade(pnl, h, signal, sl, tp)
     return res
 
-def sim_ema_cross(df, df_h1, symbol):
-    res = BacktestResult("Dynamic Momentum (EMA Cross)")
+def sim_ema_cross(df, df_h1, symbol, adx_thresh=30.0):
+    res = BacktestResult(f"EMA Cross Regime (ADX>{adx_thresh})")
     df['fast'] = df['close'].ewm(span=20, adjust=False).mean()
     df['slow'] = df['close'].ewm(span=50, adjust=False).mean()
-    df['atr'] = (df['high'] - df['low']).rolling(14).mean()
+    
+    # --- ADX (Tendential Regime Filter) ---
+    up_move = df['high'] - df['high'].shift(1)
+    down_move = df['low'].shift(1) - df['low']
+    plus_dm = np.where((up_move > down_move) & (up_move > 0), up_move, 0.0)
+    minus_dm = np.where((down_move > up_move) & (down_move > 0), down_move, 0.0)
+    tr = pd.concat([df['high'] - df['low'], abs(df['high'] - df['close'].shift(1)), abs(df['low'] - df['close'].shift(1))], axis=1).max(axis=1)
+    
+    atr_adx = tr.ewm(alpha=1/14, adjust=False).mean()
+    plus_di = 100 * (pd.Series(plus_dm, index=df.index).ewm(alpha=1/14, adjust=False).mean() / atr_adx)
+    minus_di = 100 * (pd.Series(minus_dm, index=df.index).ewm(alpha=1/14, adjust=False).mean() / atr_adx)
+    dx = 100 * (np.abs(plus_di - minus_di) / (plus_di + minus_di + 1e-9))
+    df['adx'] = dx.ewm(alpha=1/14, adjust=False).mean()
+    df['atr'] = tr.rolling(14).mean()
     
     m_fast = df['close'].ewm(span=12, adjust=False).mean()
     m_slow = df['close'].ewm(span=26, adjust=False).mean()
@@ -159,6 +172,11 @@ def sim_ema_cross(df, df_h1, symbol):
         signal = "BUY" if (prev_row['fast'] <= prev_row['slow'] and curr['fast'] > curr['slow']) else "SELL" if (prev_row['fast'] >= prev_row['slow'] and curr['fast'] < curr['slow']) else None
         
         if signal:
+            # Filtro de Régimen: Solo operar en Días Tendenciales (ADX > Umbral)
+            if curr['adx'] < adx_thresh:
+                res.filtered += 1
+                continue
+
             # Filtro SLOPE
             slow_prev = df['slow'].iloc[i-5]
             slope = (curr['slow'] - slow_prev) / slow_prev * 10000
@@ -172,8 +190,8 @@ def sim_ema_cross(df, df_h1, symbol):
                 continue
 
             sl = max(round(curr['atr']*1.5 / pip / 10, 1), 20)
-            tp = max(round(curr['atr']*3.0 / pip / 10, 1), 40)
-            pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+50].to_dict('records'), symbol)
+            tp = max(round(curr['atr']*3.0 / pip / 10, 1), 60) # Target más largo en tendencia
+            pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+100].to_dict('records'), symbol)
             res.add_trade(pnl, h, signal, sl, tp)
     return res
 
