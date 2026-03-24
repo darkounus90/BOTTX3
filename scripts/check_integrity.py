@@ -19,6 +19,12 @@ except ImportError:
     mt5.TRADE_ACTION_DEAL = 1
     mt5.ORDER_TYPE_BUY = 0
     mt5.ORDER_TYPE_SELL = 1
+    # ─── Mock de Cuenta para comparaciones matematicas ───
+    class MockAcc:
+        balance = 50000.0
+        equity = 50000.0
+        profit = 0.0
+    mt5.account_info.return_value = MockAcc()
     sys.modules["MetaTrader5"] = mt5
 
 # Mock Numpy
