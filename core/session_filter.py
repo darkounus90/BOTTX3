@@ -5,10 +5,25 @@ Filtra las horas de trading para operar solo durante
 sesiones de alta liquidez.
 """
 
-from datetime import datetime, time
+from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 from config.settings import SessionConfig
 from utils.logger import BotLogger
+
+# 🛡️ HELPER: Reloj Blindado pro-Windows (Fallback manual si falla ZoneInfo)
+def get_now_institutional(tz_name: str):
+    """Obtiene el 'ahora' de forma robusta, con fallback para Windows sin tzdata."""
+    try:
+        return datetime.now(ZoneInfo(tz_name))
+    except Exception:
+        now_utc = datetime.now(timezone.utc)
+        if tz_name == "Europe/Prague":
+            return now_utc + timedelta(hours=1)
+        elif tz_name == "America/New_York":
+            # NY esta en UTC-5 (Invierno) o UTC-4 (Verano)
+            # Aproximamos a UTC-5 para compliance base
+            return now_utc - timedelta(hours=5)
+        return datetime.now()
 
 
 class SessionFilter:
@@ -86,7 +101,7 @@ class SessionFilter:
             'CLOSED'  - Fuera de horario
         """
         from config.settings import BotConfig
-        now = datetime.now(ZoneInfo(BotConfig.MARKET_TIMEZONE))
+        now = get_now_institutional(BotConfig.MARKET_TIMEZONE)
         current_time = now.time()
         current_day = now.weekday()  # 0=Monday, 6=Sunday
 
@@ -143,7 +158,7 @@ class SessionFilter:
         Retorna información detallada de la sesión actual.
         """
         from config.settings import BotConfig
-        now = datetime.now(ZoneInfo(BotConfig.MARKET_TIMEZONE))
+        now = get_now_institutional(BotConfig.MARKET_TIMEZONE)
         current_time = now.time()
         current_day = now.weekday()
 

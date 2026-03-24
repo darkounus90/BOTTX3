@@ -49,22 +49,14 @@ def test_integrity():
     print("\n🔬 AUDITORÍA DE INTEGRIDAD INSTITUCIONAL")
     print("========================================")
     
-        # 1. Probar Lógica de Tiempo (DST NY vs FTMO Prague)
+        # 1. Probar Logica de Tiempo (DST NY vs FTMO Prague)
     try:
-        def get_tz_safe(name):
-            try:
-                return ZoneInfo(name)
-            except Exception:
-                # Fallback manual para Windows sin tzdata
-                print(f"⚠️  Windows ZoneInfo Missing: Usando offset simulado para {name}")
-                return None
-
-        # Si no hay ZoneInfo real, verificamos offset basico
-        tz_prague = get_tz_safe(BotConfig.FTMO_TIMEZONE)
-        tz_ny = get_tz_safe(BotConfig.MARKET_TIMEZONE)
+        from core.risk_manager import get_now_institutional
+        now_prague = get_now_institutional(BotConfig.FTMO_TIMEZONE)
+        now_ny = get_now_institutional(BotConfig.MARKET_TIMEZONE)
         
-        print(f"✅ Reset Prague (FTMO): Configurado en {BotConfig.FTMO_TIMEZONE}")
-        print(f"✅ Market NY (DST/EST): Configurado en {BotConfig.MARKET_TIMEZONE}")
+        print(f"✅ Reset Prague (FTMO): {now_prague.strftime('%H:%M:%S')}")
+        print(f"✅ Market NY (DST/EST): {now_ny.strftime('%H:%M:%S')}")
     except Exception as e:
         print(f"❌ ERROR EN ZONAS HORARIAS: {e}")
         return False

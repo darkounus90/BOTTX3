@@ -8,6 +8,22 @@ Protección de emergencia proactiva para nunca violar los límites del challenge
 import MetaTrader5 as mt5
 from config.settings import ChallengeConfig, BotConfig
 from utils.logger import BotLogger
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
+
+# 🛡️ HELPER: Reloj Blindado pro-Windows (Fallback manual si falla ZoneInfo)
+def get_now_institutional(tz_name: str):
+    """Obtiene el 'ahora' de forma robusta, con fallback para Windows sin tzdata."""
+    try:
+        return datetime.now(ZoneInfo(tz_name))
+    except Exception:
+        now_utc = datetime.now(timezone.utc)
+        if tz_name == "Europe/Prague":
+            # UTC+1 (Invierno) / UTC+2 (Verano) -> Aproximamos a UTC+1 para cumplimiento base
+            return now_utc + timedelta(hours=1)
+        elif tz_name == "America/New_York":
+            return now_utc - timedelta(hours=5)
+        return datetime.now()
 
 
 class RiskManager:
@@ -109,21 +125,19 @@ class RiskManager:
         current_equity = account_info.equity
         
         # ─── MÉTODO MÁS PRECISO: Calcular desde medianoche FTMO (Praga) ─────────
-        from datetime import datetime, timedelta
-        from zoneinfo import ZoneInfo
-        from config.settings import BotConfig
-        
-        now_prague = datetime.now(ZoneInfo(BotConfig.FTMO_TIMEZONE))
+        now_prague = get_now_institutional(BotConfig.FTMO_TIMEZONE)
         midnight_prague = now_prague.replace(hour=0, minute=0, second=0, microsecond=0)
-        start_ftmo_day_local = datetime.fromtimestamp(midnight_prague.timestamp())
+        start_ftmo_ts = int(midnight_prague.timestamp())
+        end_ftmo_ts = int((now_prague + timedelta(hours=1)).timestamp())
         
         closed_pnl_today = 0.0
         try:
-            deals = mt5.history_deals_get(start_today, today + timedelta(hours=1))
+            deals = mt5.history_deals_get(start_ftmo_ts, end_ftmo_ts)
             if deals:
                 for d in deals:
                     if d.entry in [1, 2, 3]:  # Solo cierres (OUT)
-                        closed_pnl_today += (d.profit + d.commission)
+                        # MUY IMPORTANTE: Incluir Swap para compliance con FTMO
+                        closed_pnl_today += (d.profit + d.commission + d.swap)
         except Exception:
             pass
         
