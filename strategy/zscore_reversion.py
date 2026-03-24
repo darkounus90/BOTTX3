@@ -29,6 +29,11 @@ class ZScoreReversionStrategy(BaseStrategy):
         return f"Z-Score Reversion ({self.symbol})"
 
     def generate_signal(self) -> dict | None:
+        # 🚫 KILL-SWITCH ESTADÍSTICO: El Z-Score tiene Profit Factor < 1 en el EURUSD.
+        # Operarlo sería regalar dinero. Se bloquea rígidamente.
+        if "EUR" in (self.symbol or ""):
+            return None
+            
         rates = mt5.copy_rates_from_pos(self.symbol, self.timeframe, 0, self.bars_needed)
         if rates is None or len(rates) < self.bars_needed:
             return None

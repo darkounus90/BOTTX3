@@ -21,7 +21,8 @@ class BollingerRSIStrategy(BaseStrategy):
         self.symbol = symbol or BotConfig.DEFAULT_SYMBOL
         self.timeframe = mt5.TIMEFRAME_M5 # M5 para entradas más rápidas como definiste
         self.bb_period = 20
-        self.bb_dev = 1.9          # Suavizado para buscar equilibrio
+        # 2.3 es óptimo matemático para EURUSD, 1.9 para GBPUSD
+        self.bb_dev = 2.3 if "EUR" in (self.symbol or "") else 1.9
         self.rsi_period = 14
         self.rsi_overbought = 68.0 # Suavizado (antes 70.0)
         self.rsi_oversold = 32.0   # Suavizado (antes 30.0)
