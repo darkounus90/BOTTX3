@@ -108,7 +108,7 @@ def sim_bollinger_rsi(df, df_h1, symbol, adx_thresh=30.0):
     res = BacktestResult(f"Bollinger+RSI (ADX<{adx_thresh})")
     df['sma20'] = df['close'].rolling(20).mean()
     df['std20'] = df['close'].rolling(20).std()
-    mult = 2.1 if "EUR" in symbol else 1.9
+    mult = 2.3 if "EUR" in symbol else 1.9
     df['up'] = df['sma20'] + df['std20'] * mult
     df['low'] = df['sma20'] - df['std20'] * mult
     
@@ -139,63 +139,8 @@ def sim_bollinger_rsi(df, df_h1, symbol, adx_thresh=30.0):
             res.add_trade(pnl, h, signal, sl, tp)
     return res
 
-def sim_ema_cross(df, df_h1, symbol, adx_thresh=30.0):
-    res = BacktestResult(f"EMA Cross Regime (ADX>{adx_thresh})")
-    df['fast'] = df['close'].ewm(span=20, adjust=False).mean()
-    df['slow'] = df['close'].ewm(span=50, adjust=False).mean()
-    
-    # --- ADX (Tendential Regime Filter) ---
-    up_move = df['high'] - df['high'].shift(1)
-    down_move = df['low'].shift(1) - df['low']
-    plus_dm = np.where((up_move > down_move) & (up_move > 0), up_move, 0.0)
-    minus_dm = np.where((down_move > up_move) & (down_move > 0), down_move, 0.0)
-    tr = pd.concat([df['high'] - df['low'], abs(df['high'] - df['close'].shift(1)), abs(df['low'] - df['close'].shift(1))], axis=1).max(axis=1)
-    
-    atr_adx = tr.ewm(alpha=1/14, adjust=False).mean()
-    plus_di = 100 * (pd.Series(plus_dm, index=df.index).ewm(alpha=1/14, adjust=False).mean() / atr_adx)
-    minus_di = 100 * (pd.Series(minus_dm, index=df.index).ewm(alpha=1/14, adjust=False).mean() / atr_adx)
-    dx = 100 * (np.abs(plus_di - minus_di) / (plus_di + minus_di + 1e-9))
-    df['adx'] = dx.ewm(alpha=1/14, adjust=False).mean()
-    df['atr'] = tr.rolling(14).mean()
-    
-    m_fast = df['close'].ewm(span=12, adjust=False).mean()
-    m_slow = df['close'].ewm(span=26, adjust=False).mean()
-    df['m_hist'] = (m_fast - m_slow) - (m_fast - m_slow).ewm(span=9, adjust=False).mean()
-    
-    pip = 0.01 if "JPY" in symbol else 0.0001
-    for i in range(55, len(df)-50):
-        curr, prev_row = df.iloc[i], df.iloc[i-1]
-        h = (pd.Timestamp(curr['time']).hour - 5) % 24
-        if "EUR" in symbol and (h < 21 or h >= 23): continue
-        if "GBP" in symbol and not (h >= 15 and h < 17): continue
-
-        signal = "BUY" if (prev_row['fast'] <= prev_row['slow'] and curr['fast'] > curr['slow']) else "SELL" if (prev_row['fast'] >= prev_row['slow'] and curr['fast'] < curr['slow']) else None
-        
-        if signal:
-            # Filtro de Régimen: Solo operar en Días Tendenciales (ADX > Umbral)
-            if curr['adx'] < adx_thresh:
-                res.filtered += 1
-                continue
-
-            # Filtro SLOPE
-            slow_prev = df['slow'].iloc[i-5]
-            slope = (curr['slow'] - slow_prev) / slow_prev * 10000
-            if abs(slope) < 5.0:
-                res.filtered += 1
-                continue
-
-            trend = get_h1_trend(df_h1, curr['time'])
-            if (signal=="BUY" and (trend!=1 or curr['m_hist']<=0)) or (signal=="SELL" and (trend!=-1 or curr['m_hist']>=0)):
-                res.filtered += 1
-                continue
-
-            sl = max(round(curr['atr']*1.5 / pip / 10, 1), 20)
-            tp = max(round(curr['atr']*3.0 / pip / 10, 1), 60) # Target más largo en tendencia
-            pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+100].to_dict('records'), symbol)
-            res.add_trade(pnl, h, signal, sl, tp)
-    return res
-
 def sim_zscore_reversion(df, df_h1, symbol, z_thresh=2.5):
+    if "EUR" in symbol: z_thresh = 2.8 # Estrangulamiento de Z-Score para EUR
     res = BacktestResult(f"Z-Score Reversion (Z>{z_thresh})")
     df['sma'] = df['close'].rolling(50).mean()
     df['std'] = df['close'].rolling(50).std()
@@ -235,7 +180,7 @@ def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=30):
     mt5.shutdown()
     for d in [m5, m15, h1]: d['time'] = pd.to_datetime(d['time'], unit='s')
     h1['close_ema_200'] = h1['close'].ewm(span=200, adjust=False).mean()
-    results = [sim_bollinger_rsi(m5.copy(), h1, symbol, adx), sim_ema_cross(m5.copy(), h1, symbol), sim_zscore_reversion(m15.copy(), h1, symbol, z)]
+    results = [sim_bollinger_rsi(m5.copy(), h1, symbol, adx), sim_zscore_reversion(m15.copy(), h1, symbol, z)]
     print(f"\n[+] {symbol} - Reporte:")
     for r in results:
         rep = r.get_report()
