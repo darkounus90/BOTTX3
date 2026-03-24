@@ -166,10 +166,20 @@ def sim_ema_cross(df, df_h1, symbol, adx_thresh=30.0):
     for i in range(55, len(df)-50):
         curr, prev_row = df.iloc[i], df.iloc[i-1]
         h = (pd.Timestamp(curr['time']).hour - 5) % 24
-        if "EUR" in symbol and (h < 21 or h >= 23): continue
-        if "GBP" in symbol and not (h >= 15 and h < 17): continue
+        
+        # Eliminar las Killzones para esta estrategia. 
+        # El ADX > 30 (Volatilidad Masiva) es el único filtro de horario necesario.
 
-        signal = "BUY" if (prev_row['fast'] <= prev_row['slow'] and curr['fast'] > curr['slow']) else "SELL" if (prev_row['fast'] >= prev_row['slow'] and curr['fast'] < curr['slow']) else None
+        # Estrategia de Pullback en Tendencia (Regime Switching)
+        # En vez de esperar un cruce lento (que nunca ocurre durante ADX > 30),
+        # buscamos un rebote a favor de la tendencia sobre el EMA 20 (Dinámico).
+        signal = None
+        if curr['fast'] > curr['slow']:
+            if prev_row['close'] < prev_row['fast'] and curr['close'] > curr['fast']:
+                signal = "BUY"
+        elif curr['fast'] < curr['slow']:
+            if prev_row['close'] > prev_row['fast'] and curr['close'] < curr['fast']:
+                signal = "SELL"
         
         if signal:
             # Filtro de Régimen: Solo operar en Días Tendenciales (ADX > Umbral)
@@ -184,8 +194,9 @@ def sim_ema_cross(df, df_h1, symbol, adx_thresh=30.0):
                 res.filtered += 1
                 continue
 
+            # H1 Macro Trend Filter
             trend = get_h1_trend(df_h1, curr['time'])
-            if (signal=="BUY" and (trend!=1 or curr['m_hist']<=0)) or (signal=="SELL" and (trend!=-1 or curr['m_hist']>=0)):
+            if (signal=="BUY" and trend!=1) or (signal=="SELL" and trend!=-1):
                 res.filtered += 1
                 continue
 
