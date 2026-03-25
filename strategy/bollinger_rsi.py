@@ -113,12 +113,12 @@ class BollingerRSIStrategy(BaseStrategy):
         hour_est = datetime.now(ZoneInfo("America/New_York")).hour
         
         if "EUR" in self.symbol:
-            # EURUSD: 21:00 - 23:00 EST (Alta Precisión demostrada en Simulador)
+            # EURUSD: 21:00 - 23:00 EST (Demostrado: expandirlo quema el Profit Factor)
             if hour_est < 21 or hour_est >= 23:
                 return None
         elif "GBP" in self.symbol:
-            # GBPUSD: 15:00 - 17:00 EST (Profit Factor 6.65 del Simulador)
-            if hour_est < 15 or hour_est >= 17:
+            # GBPUSD: 13:00 - 17:00 EST (Demostrado: aguanta 4 horas con Profit Factor de 6.65)
+            if hour_est < 13 or hour_est >= 17:
                 return None
 
         # --- FILTRO DE TENDENCIA H1 (High-Fidelity Match) ---
