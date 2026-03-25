@@ -59,6 +59,13 @@ def login_required(f):
 @socketio.on("connect")
 def handle_connect():
     """Envía datos actuales inmediatamente al conectarse un cliente"""
+    # 🔴 FIX DE SEGURIDAD CRÍTICA (Unknown Unknown):
+    # La ruta "/" estaba protegida, pero el WebSocket estaba desnudo al internet.
+    # Cualquiera con un script podía conectarse a tu IP y espiar tu balance y trades en vivo.
+    if not session.get("logged_in"):
+        logger.warning("Fuga de datos prevenida: Cierre forzoso de WS por falta de sesión.")
+        return False # Rechazar conexión
+
     socketio.emit("update", dashboard_data)
     # Enviar logs existentes
     for log_entry in dashboard_data.get("logs", []):
