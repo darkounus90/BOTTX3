@@ -22,12 +22,12 @@ class BollingerRSIStrategy(BaseStrategy):
         self.timeframe = mt5.TIMEFRAME_M5 # M5 para entradas más rápidas como definiste
         self.bb_period = 20
         # 2.3 es óptimo matemático para EURUSD, 1.9 para GBPUSD
-        self.bb_dev = 2.3 if "EUR" in (self.symbol or "") else 1.9
+        self.bb_dev = 2.1 if "EUR" in (self.symbol or "") else 1.9
         self.rsi_period = 14
         self.rsi_overbought = 68.0 # Suavizado (antes 70.0)
         self.rsi_oversold = 32.0   # Suavizado (antes 30.0)
         self.adx_period = 14
-        self.adx_threshold = 30.0  # OPTIMIZADO: Modo EQUILIBRADO (según backtest)
+        self.adx_threshold = 35.0  # OPTIMIZADO: Modo EQUILIBRADO (según backtest)
         self.bars_needed = 100
 
     def get_name(self) -> str:
@@ -114,12 +114,12 @@ class BollingerRSIStrategy(BaseStrategy):
         hour_est = datetime.now(ZoneInfo("America/New_York")).hour
         
         if "EUR" in self.symbol:
-            # EURUSD: 21:00 - 23:00 EST (Asian session stability)
-            if hour_est < 21 or hour_est >= 23:
+            # EURUSD: 19:00 - 01:00 EST (Asian session stability)
+            if hour_est >= 1 and hour_est < 19:
                 return None
         elif "GBP" in self.symbol:
-            # GBPUSD: 15:00 - 17:00 EST (Late US / Asia transition)
-            if hour_est < 15 or hour_est >= 17:
+            # GBPUSD: 13:00 - 17:00 EST (Late US / Asia transition)
+            if hour_est < 13 or hour_est >= 17:
                 return None
 
         # --- FILTRO DE TENDENCIA H1 (High-Fidelity Match) ---
@@ -174,14 +174,14 @@ class BollingerRSIStrategy(BaseStrategy):
         
         # BUY (Largo): Rechazo en zona de sobreventa
         if is_oversold and broke_lower_band:
-            if lower_wick > (cuerpo * 1.0): # La mecha inferior debe ser igual o mayor al cuerpo
+            if lower_wick > (cuerpo * 0.8): # La mecha inferior debe ser igual o mayor al cuerpo
                 if h1_trend != -1: # No comprar en contratendencia bajista macro
                     signal_type = "BUY"
                     reason = f"Institutional Rejection (Bottom) | RSI:{last_closed['rsi']:.1f}"
             
         # SELL (Corto): Rechazo en zona de sobrecompra
         elif is_overbought and broke_upper_band:
-            if upper_wick > (cuerpo * 1.0): # La mecha superior debe ser igual o mayor al cuerpo
+            if upper_wick > (cuerpo * 0.8): # La mecha superior debe ser igual o mayor al cuerpo
                 if h1_trend != 1: # No vender en contratendencia alcista macro
                     signal_type = "SELL"
                     reason = f"Institutional Rejection (Top) | RSI:{last_closed['rsi']:.1f}"
