@@ -113,11 +113,12 @@ class BollingerRSIStrategy(BaseStrategy):
         hour_est = datetime.now(ZoneInfo("America/New_York")).hour
         
         if "EUR" in self.symbol:
-            # EURUSD: 21:00 - 23:00 EST (Demostrado: expandirlo quema el Profit Factor)
-            if hour_est < 21 or hour_est >= 23:
+            # EURUSD: 19:00 - 01:00 EST (Macro Sesión Asiática completa)
+            # Evitamos el "Curve Fitting" dejando que el ADX y el Oráculo filtren el ruido dinámicamente.
+            if hour_est >= 1 and hour_est < 19:
                 return None
         elif "GBP" in self.symbol:
-            # GBPUSD: 13:00 - 17:00 EST (Demostrado: aguanta 4 horas con Profit Factor de 6.65)
+            # GBPUSD: 13:00 - 17:00 EST (Transición segura demostrada por la macroeconomía)
             if hour_est < 13 or hour_est >= 17:
                 return None
 
