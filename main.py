@@ -323,7 +323,8 @@ class TX3ProBot:
             try:
                 si = mt5.symbol_info(sym)
                 if si:
-                    sp = si.spread * (10 if si.digits == 3 or si.digits == 5 else 1) / 10.0
+                    # Fix matemático visual (Dashboard)
+                    sp = si.spread / 10.0
                     spreads_data[sym] = {
                         "spread": round(sp, 1),
                         "ok": sp <= BotConfig.MAX_SPREAD_PIPS
