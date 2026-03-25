@@ -121,7 +121,8 @@ class PositionManager:
 
         # ─── 4. CÁLCULO DE LOTAJE (CONTEMPLANDO COMISIONES) ───
         si = mt5.symbol_info(symbol)
-        pip_size = 0.01 if "JPY" in symbol else 0.0001
+        # 🔴 REFACTOR: Dinámico para que Soporte ORO (XAUUSD) y no explote el margen asumiendo que es Forex
+        pip_size = si.point * (10 if si.digits in [3, 5] else 1)
         # Pip Value formula: (PipSize / TickSize) * TickValue
         pip_val_lot = (pip_size / si.trade_tick_size) * si.trade_tick_value
         
