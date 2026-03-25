@@ -122,8 +122,8 @@ def sim_bollinger_rsi(df, df_h1, symbol, adx_thresh=30.0):
     for i in range(50, len(df)-50):
         row = df.iloc[i]
         h = (pd.Timestamp(row['time']).hour - 5) % 24
-        if "EUR" in symbol and (h < 21 or h >= 23): continue
-        if "GBP" in symbol and not (h >= 15 and h < 17): continue
+        if "EUR" in symbol and not (h >= 19 or h < 1): continue
+        if "GBP" in symbol and not (h >= 13 and h < 17): continue
         
         signal = "BUY" if (row['close'] < row['low'] and row['rsi'] < 32) else "SELL" if (row['close'] > row['up'] and row['rsi'] > 68) else None
         
@@ -152,7 +152,8 @@ def sim_zscore_reversion(df, df_h1, symbol, z_thresh=2.5):
     for i in range(250, len(df)-50):
         curr, prev_row = df.iloc[i], df.iloc[i-1]
         h = (pd.Timestamp(curr['time']).hour - 5) % 24
-        
+        if "EUR" in symbol and not (h >= 19 or h < 1): continue
+        if "GBP" in symbol and not (h >= 13 and h < 17): continue
         signal = "SELL" if (prev_row['z'] >= z_thresh and curr['z'] < z_thresh) else "BUY" if (prev_row['z'] <= -z_thresh and curr['z'] > -z_thresh) else None
         
         if signal:
