@@ -135,8 +135,10 @@ class BollingerRSIStrategy(BaseStrategy):
         if symbol_info is None:
             return None
         
-        spread_pips = symbol_info.spread * (10 if symbol_info.digits == 3 or symbol_info.digits == 5 else 1) / 10.0 # Ajuste pips
-        if spread_pips > getattr(BotConfig, "MAX_SPREAD_PIPS", 3.0):
+        # mt5.spread está en puntos. Para cuentas de 5 dígitos (FTMO), 1 pip = 10 puntos.
+        spread_pips = symbol_info.spread / 10.0
+        
+        if spread_pips > getattr(BotConfig, "MAX_SPREAD_PIPS", 4.0):
             import time
             now_ts = time.time()
             if not hasattr(self, '_last_spread_log') or now_ts - self._last_spread_log > 300:
