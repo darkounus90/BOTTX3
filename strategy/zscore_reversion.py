@@ -38,6 +38,16 @@ class ZScoreReversionStrategy(BaseStrategy):
         if rates is None or len(rates) < self.bars_needed:
             return None
 
+        # --- FILTRO HORARIO (Alineado a Macro-Sesiones Seguras) ---
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        hour_est = datetime.now(ZoneInfo("America/New_York")).hour
+        
+        if "GBP" in self.symbol:
+            # GBPUSD: Solo opera en la ventana segura (13:00 a 17:00 EST)
+            if hour_est < 13 or hour_est >= 17:
+                return None
+
         df = pd.DataFrame(rates)
         df['time'] = pd.to_datetime(df['time'], unit='s')
 
