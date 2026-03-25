@@ -171,7 +171,7 @@ class SessionConfig:
 
     NY_START_HOUR = 8
     NY_START_MINUTE = 0
-    NY_END_HOUR = 13                   # Parar a la 1 PM EST (Evitar la muerte del volumen de las tardes)
+    NY_END_HOUR = 17                   # ⚠️ CORREGIDO: Ampliado a las 5 PM EST para integrar el filtro propio de GBPUSD
     NY_END_MINUTE = 0
     
     TOKYO_START_HOUR = 19
