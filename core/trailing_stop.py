@@ -252,6 +252,7 @@ class TrailingStopManager:
         symbol_info = mt5.symbol_info(position.symbol)
         lot_step = symbol_info.volume_step
         close_volume = round(close_volume / lot_step) * lot_step
+        close_volume = round(close_volume, 2) # 🔴 FIX: Normalización de volumen estricta para MT5
         
         if close_volume < symbol_info.volume_min:
             self.partial_closes_done.add(position.ticket) # Es muy pequeño para dividir
@@ -283,12 +284,16 @@ class TrailingStopManager:
 
     def _modify_sl(self, position, new_sl: float, current_profit_pips: float):
         """Modifica el stop loss de una posición"""
+        symbol_info = mt5.symbol_info(position.symbol)
+        if not symbol_info:
+            return
+            
         request = {
             "action": mt5.TRADE_ACTION_SLTP,
             "symbol": position.symbol,
             "position": position.ticket,
-            "sl": new_sl,
-            "tp": position.tp,  # Mantener TP original
+            "sl": round(new_sl, symbol_info.digits), # 🔴 FIX: Flotantes de SL Normalizados
+            "tp": round(position.tp, symbol_info.digits) if position.tp > 0 else 0.0, # Normalizar TP
             "deviation": BotConfig.DEVIATION,
             "magic": BotConfig.MAGIC_NUMBER,
         }
