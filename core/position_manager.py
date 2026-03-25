@@ -37,8 +37,9 @@ class PositionManager:
         
         atr_points = sum(tr_list) / len(tr_list)
         # Convertir a pips
-        point = mt5.symbol_info(symbol).point
-        pip_size = 0.01 if "JPY" in symbol else 0.0001
+        # Convertir a pips de manera dinámica sin hardcodear forex (Soporta Metales)
+        si = mt5.symbol_info(symbol)
+        pip_size = si.point * (10 if si.digits in [3, 5] else 1)
         return (atr_points / pip_size) if pip_size > 0 else 20.0
 
     def calculate_position_size(self, symbol: str, stop_loss_pips: float, probability: float = None, portfolio_weight: float = 1.0) -> float | None:
@@ -144,7 +145,7 @@ class PositionManager:
         # 🛡️ MITIGACIÓN RIESGO 5: Redondeo estricto hacia ABAJO usando floor para EVITAR volúmenes inválidos o pasarse del riesgo
         steps = math.floor(lotes_raw / si.volume_step)
         lotes = steps * si.volume_step
-        lotes = max(si.volume_min, min(lotes, si.volume_max))
+        lotes = round(max(si.volume_min, min(lotes, si.volume_max)), 2) # 🔴 FIX: Normalización de volumen estricta
 
         # ─── 5. LÍMITE DURO DE SEGURIDAD (PROPORCIONAL AL BALANCE) ───
         # Límite máximo absoluto de lotes para evitar que un stop loss 
@@ -211,22 +212,21 @@ class PositionManager:
         if volume is None:
             return None
 
+        symbol_info = mt5.symbol_info(symbol)
+        if symbol_info is None:
+            self.logger.error(f"No se pudo obtener info de {symbol}")
+            return None
+
         # ─── Obtener precio actual ───────────────────────────────────
         tick = mt5.symbol_info_tick(symbol)
         if tick is None:
             self.logger.error(f"No se pudo obtener precio de {symbol}")
             return None
 
-        symbol_info = mt5.symbol_info(symbol)
-        if symbol_info is None:
-            self.logger.error(f"No se pudo obtener info de {symbol}")
-            return None
-
         point = symbol_info.point
 
-        # ─── Calcular SL y TP ────────────────────────────────────────
-        # 1 pip = 10 points para pares de 5 dígitos
-        pip_in_points = 10 * point
+        # ─── Calcular SL y TP (Escalado Universal) ───────────────────
+        pip_in_points = point * (10 if symbol_info.digits in [3, 5] else 1)
 
         # ─── Validar Spread Dinámico y Killzones (Rollover) ──────────
         current_spread_pips = (tick.ask - tick.bid) / pip_in_points
@@ -242,18 +242,18 @@ class PositionManager:
         now_ny = datetime.now(ZoneInfo(BotConfig.MARKET_TIMEZONE))
         # Rollover bank reset (4:55 PM - 5:05 PM NY Time) ampliamos ventana de seguridad
         if (now_ny.hour == 16 and now_ny.minute >= 50) or (now_ny.hour == 17 and now_ny.minute <= 10):
-            self.logger.critical(f"🛑 ZONA ROJA DE ROLLOVER: Abortando order_send real en {symbol} para proteger de gap de liquidez bancario.")
+            self.logger.critical(f"🛑 ZONA ROJA DE ROLLOVER: Abortando order_send real en {symbol}.")
             return None
 
         if order_type == mt5.ORDER_TYPE_BUY:
-            price = tick.ask
-            sl = price - (stop_loss_pips * pip_in_points)
-            tp = price + (take_profit_pips * pip_in_points)
+            price = round(tick.ask, symbol_info.digits)
+            sl = round(price - (stop_loss_pips * pip_in_points), symbol_info.digits)
+            tp = round(price + (take_profit_pips * pip_in_points), symbol_info.digits)
             order_type_str = "BUY"
         elif order_type == mt5.ORDER_TYPE_SELL:
-            price = tick.bid
-            sl = price + (stop_loss_pips * pip_in_points)
-            tp = price - (take_profit_pips * pip_in_points)
+            price = round(tick.bid, symbol_info.digits)
+            sl = round(price + (stop_loss_pips * pip_in_points), symbol_info.digits)
+            tp = round(price - (take_profit_pips * pip_in_points), symbol_info.digits)
             order_type_str = "SELL"
         else:
             self.logger.error(f"Tipo de orden inválido: {order_type}")
@@ -290,6 +290,18 @@ class PositionManager:
         # ─── Crear y enviar request (con REINTENTOS Anti-Requote) ────
         import time as sleep_module
         
+        # 🔴 FIX: Refrescar el Tíck Milisegundos antes del envío para evitar slippage ocasionado por latencia IA / Internet.
+        fresh_tick = mt5.symbol_info_tick(symbol)
+        if fresh_tick:
+            if order_type == mt5.ORDER_TYPE_BUY:
+                price = round(fresh_tick.ask, symbol_info.digits)
+                sl = round(price - (stop_loss_pips * pip_in_points), symbol_info.digits)
+                tp = round(price + (take_profit_pips * pip_in_points), symbol_info.digits)
+            else:
+                price = round(fresh_tick.bid, symbol_info.digits)
+                sl = round(price + (stop_loss_pips * pip_in_points), symbol_info.digits)
+                tp = round(price - (take_profit_pips * pip_in_points), symbol_info.digits)
+        
         request = {
             "action": mt5.TRADE_ACTION_DEAL,
             "symbol": symbol,
@@ -323,12 +335,16 @@ class PositionManager:
                 self.logger.warning(f"⚠️ Requote/Busy del Broker (code: {result.retcode}). Reintentando {attempt+1}/{retries}...")
                 sleep_module.sleep(1.0) # Esperar 1s y reintentar
                 
-                # Actualizar precio por si cambió brutalmente en ese segundo
+                # Actualizar precio por si cambió brutalmente en ese segundo y REDONDEARLO
                 tick = mt5.symbol_info_tick(symbol)
-                new_price = tick.ask if order_type == mt5.ORDER_TYPE_BUY else tick.bid
+                new_price = round(tick.ask if order_type == mt5.ORDER_TYPE_BUY else tick.bid, symbol_info.digits)
                 request["price"] = new_price
-                request["sl"] = new_price - (stop_loss_pips * pip_in_points) if order_type == mt5.ORDER_TYPE_BUY else new_price + (stop_loss_pips * pip_in_points)
-                request["tp"] = new_price + (take_profit_pips * pip_in_points) if order_type == mt5.ORDER_TYPE_BUY else new_price - (take_profit_pips * pip_in_points)
+                if order_type == mt5.ORDER_TYPE_BUY:
+                    request["sl"] = round(new_price - (stop_loss_pips * pip_in_points), symbol_info.digits)
+                    request["tp"] = round(new_price + (take_profit_pips * pip_in_points), symbol_info.digits)
+                else:
+                    request["sl"] = round(new_price + (stop_loss_pips * pip_in_points), symbol_info.digits)
+                    request["tp"] = round(new_price - (take_profit_pips * pip_in_points), symbol_info.digits)
                 continue
             else:
                 break # Otro tipo de error fatal, no reintentamos
