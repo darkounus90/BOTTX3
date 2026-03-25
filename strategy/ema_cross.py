@@ -161,19 +161,15 @@ class EMACrossStrategy(BaseStrategy):
         if prev['adx'] < adx_limit:
             return None
 
-        # --- FILTRO HORARIO QUIRÚRGICO (Backtest-Driven) ---
-        # Solo operamos en las horas donde el backtest demostró WR > 60%.
+        # --- CAZADOR DE TENDENCIAS DE NUEVA YORK (NY Session) ---
+        # Esta estrategia está diseñada para surfear momentum. Se activa SOLAMENTE
+        # durante la inyección de liquidez de Wall Street (8:00 AM a 12:00 PM EST)
         from zoneinfo import ZoneInfo
         hour_est = datetime.now(ZoneInfo("America/New_York")).hour
         
-        if "EUR" in self.symbol:
-            # EURUSD: Solo 9-11 PM EST (zona pre-Asia, 81.8% WR backtested)
-            if hour_est < 21 or hour_est >= 23:
-                return None
-        elif "GBP" in self.symbol:
-            # GBPUSD: Solo 3-5 PM EST (75% WR backtested)
-            if hour_est < 15 or hour_est >= 17:
-                return None
+        # Ambos pares pueden surfear momentum mañanero.
+        if hour_est < 8 or hour_est >= 12:
+            return None
 
         # Condiciones Fundamentales de Estructura de Corto Plazo
         uptrend_base = prev['ema_fast'] > prev['ema_slow']
