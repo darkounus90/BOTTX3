@@ -172,6 +172,50 @@ def sim_zscore_reversion(df, df_h1, symbol, z_thresh=2.5):
             res.add_trade(pnl, h, signal, sl, tp)
     return res
 
+def sim_ict_breakout(df, df_h1, symbol):
+    res = BacktestResult(f"ICT/SMC Breakout (NY)")
+    pip = 0.01 if "JPY" in symbol else 0.0001
+    
+    for i in range(150, len(df)-50):
+        curr, prev = df.iloc[i], df.iloc[i-1]
+        h = (pd.Timestamp(curr['time']).hour - 5) % 24
+        
+        if h < 8 or h >= 11:
+            continue
+            
+        window = df.iloc[i-100:i-2]
+        asian_high = window['high'].max()
+        asian_low = window['low'].min()
+        
+        signal = None
+        if prev['low'] < asian_low and prev['close'] > asian_low:
+            body = abs(prev['close'] - prev['open'])
+            total = prev['high'] - prev['low']
+            if body > total * 0.4 and prev['close'] > prev['open']:
+                signal = "BUY"
+                
+        elif prev['high'] > asian_high and prev['close'] < asian_high:
+            body = abs(prev['close'] - prev['open'])
+            total = prev['high'] - prev['low']
+            if body > total * 0.4 and prev['close'] < prev['open']:
+                signal = "SELL"
+                
+        if signal:
+            trend = get_h1_trend(df_h1, curr['time'])
+            if (signal == "BUY" and trend == -1) or (signal == "SELL" and trend == 1):
+                res.filtered += 1
+                continue
+                
+            atr_14 = (df['high'].iloc[i-15:i-1] - df['low'].iloc[i-15:i-1]).mean()
+            atr_pips = (atr_14 / pip / 10)
+            
+            sl = max(8.0, round(atr_pips * 0.5, 1))
+            tp = max(25.0, round(sl * 3.0, 1))
+            pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+100].to_dict('records'), symbol)
+            res.add_trade(pnl, h, signal, sl, tp)
+            
+    return res
+
 def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=30):
     if not mt5.initialize(): return []
     m5 = pd.DataFrame(mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M5, 0, days*24*12))
@@ -180,7 +224,11 @@ def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=30):
     mt5.shutdown()
     for d in [m5, m15, h1]: d['time'] = pd.to_datetime(d['time'], unit='s')
     h1['close_ema_200'] = h1['close'].ewm(span=200, adjust=False).mean()
-    results = [sim_bollinger_rsi(m5.copy(), h1, symbol, adx), sim_zscore_reversion(m15.copy(), h1, symbol, z)]
+    results = [
+        sim_bollinger_rsi(m5.copy(), h1, symbol, adx), 
+        sim_zscore_reversion(m15.copy(), h1, symbol, z),
+        sim_ict_breakout(m5.copy(), h1, symbol)
+    ]
     print(f"\n[+] {symbol} - Reporte:")
     for r in results:
         rep = r.get_report()
