@@ -217,6 +217,62 @@ def sim_ict_breakout(df, df_h1, symbol):
             
     return res
 
+def sim_ema_cross(df, df_h1, symbol):
+    res = StrategyResult("EMA Momentum (NY 8-12)", symbol)
+    df['ema_fast'] = df['close'].ewm(span=20, adjust=False).mean()
+    df['ema_slow'] = df['close'].ewm(span=50, adjust=False).mean()
+    
+    macd_line = df['close'].ewm(span=12, adjust=False).mean() - df['close'].ewm(span=26, adjust=False).mean()
+    macd_signal = macd_line.ewm(span=9, adjust=False).mean()
+    df['macd_hist'] = macd_line - macd_signal
+    
+    delta = df['close'].diff()
+    gain = delta.where(delta > 0, 0)
+    loss = -delta.where(delta < 0, 0)
+    avg_gain = gain.ewm(alpha=1/14, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1/14, adjust=False).mean()
+    df['rsi'] = 100 - (100 / (1 + (avg_gain / avg_loss)))
+    
+    tr = pd.concat([df['high'] - df['low'], abs(df['high'] - df['close'].shift()), abs(df['low'] - df['close'].shift())], axis=1).max(axis=1)
+    df['atr'] = tr.rolling(14).mean()
+    
+    pip = 0.01 if "JPY" in symbol else 0.0001
+    
+    for i in range(200, len(df)-50):
+        curr, prev, prev2 = df.iloc[i], df.iloc[i-1], df.iloc[i-2]
+        h = (pd.Timestamp(curr['time']).hour - 5) % 24
+        
+        # Filtro NY Morning
+        if h < 8 or h >= 12: continue
+        
+        uptrend = prev['ema_fast'] > prev['ema_slow']
+        downtrend = prev['ema_fast'] < prev['ema_slow']
+        
+        b_cross = uptrend and prev2['ema_fast'] <= prev2['ema_slow']
+        s_cross = downtrend and prev2['ema_fast'] >= prev2['ema_slow']
+        
+        b_pull = uptrend and prev2['close'] < prev2['ema_fast'] and prev['close'] > prev['ema_fast'] and 40 < prev['rsi'] < 70
+        s_pull = downtrend and prev2['close'] > prev2['ema_fast'] and prev['close'] < prev['ema_fast'] and 30 < prev['rsi'] < 60
+        
+        signal = None
+        if (b_cross or b_pull) and prev['macd_hist'] > 0: signal = "BUY"
+        elif (s_cross or s_pull) and prev['macd_hist'] < 0: signal = "SELL"
+        
+        if signal:
+            trend = get_h1_trend(df_h1, curr['time'])
+            if (signal == "BUY" and trend == -1) or (signal == "SELL" and trend == 1):
+                res.filtered += 1
+                continue
+                
+            atr_pips = prev['atr'] / pip / 10
+            # Riesgo Asimétrico (1:2) que usa el script en vivo
+            sl = max(15.0, round(atr_pips * 1.5, 1))
+            tp = max(25.0, round(atr_pips * 3.0, 1))
+            pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+100].to_dict('records'), symbol)
+            res.add_trade(pnl, h, signal, sl, tp)
+            
+    return res
+
 def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=30):
     if not mt5.initialize(): return []
     m5 = pd.DataFrame(mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M5, 0, days*24*12))
@@ -228,7 +284,8 @@ def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=30):
     results = [
         sim_bollinger_rsi(m5.copy(), h1, symbol, adx), 
         sim_zscore_reversion(m15.copy(), h1, symbol, z),
-        sim_ict_breakout(m5.copy(), h1, symbol)
+        sim_ict_breakout(m5.copy(), h1, symbol),
+        sim_ema_cross(m15.copy(), h1, symbol) # Añadido el Cazador de Tendencias M15
     ]
     print(f"\n[+] {symbol} - Reporte:")
     for r in results:
