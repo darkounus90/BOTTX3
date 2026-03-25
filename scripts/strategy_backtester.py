@@ -218,7 +218,7 @@ def sim_ict_breakout(df, df_h1, symbol):
     return res
 
 def sim_ema_cross(df, df_h1, symbol):
-    res = StrategyResult("EMA Momentum (NY 8-12)", symbol)
+    res = BacktestResult("EMA Momentum (NY 8-12)")
     df['ema_fast'] = df['close'].ewm(span=20, adjust=False).mean()
     df['ema_slow'] = df['close'].ewm(span=50, adjust=False).mean()
     
