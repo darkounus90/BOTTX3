@@ -290,13 +290,10 @@ def sim_ttm_squeeze(df, df_h1, symbol):
     
     df['squeeze_on'] = (df['bb_upper'] < df['kc_upper']) & (df['bb_lower'] > df['kc_lower'])
     
-    # True TTM Momentum (Carter)
-    midline = (df['high'].rolling(20).max() + df['low'].rolling(20).min()) / 2
-    avg_price = (df['close'] + midline) / 2
-    df['mom_smoothed'] = (df['close'] - avg_price).ewm(span=20, adjust=False).mean()
-    df['momentum_bull'] = df['mom_smoothed'] > 0
-    df['momentum_bear'] = df['mom_smoothed'] < 0
-    df['vol_avg'] = df['tick_volume'].rolling(20).mean()
+    df['ema_8'] = df['close'].ewm(span=8, adjust=False).mean()
+    df['ema_34'] = df['close'].ewm(span=34, adjust=False).mean()
+    df['momentum_bull'] = df['ema_8'] > df['ema_34']
+    df['momentum_bear'] = df['ema_8'] < df['ema_34']
     
     pip = 0.01 if "JPY" in symbol else 0.0001
     
@@ -308,10 +305,9 @@ def sim_ttm_squeeze(df, df_h1, symbol):
         
         was_squeezed = prev2['squeeze_on'] or prev3['squeeze_on']
         is_firing = not prev['squeeze_on']
-        vol_spike = prev['tick_volume'] > (prev['vol_avg'] * 1.5)
         
         signal = None
-        if was_squeezed and is_firing and vol_spike:
+        if was_squeezed and is_firing:
             if prev['momentum_bull'] and prev['close'] > prev['kc_upper']: signal = "BUY"
             elif prev['momentum_bear'] and prev['close'] < prev['kc_lower']: signal = "SELL"
             
@@ -323,7 +319,7 @@ def sim_ttm_squeeze(df, df_h1, symbol):
                 
             atr_pips = prev['atr'] / pip / 10
             sl = max(15.0, round(atr_pips * 1.5, 1))
-            tp = max(35.0, round(atr_pips * 4.5, 1)) # Squeeze Extendido
+            tp = max(30.0, round(atr_pips * 4.0, 1))
             pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+100].to_dict('records'), symbol)
             res.add_trade(pnl, h, signal, sl, tp)
             
