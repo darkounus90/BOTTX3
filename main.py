@@ -122,12 +122,11 @@ class TX3ProBot:
                 ]
                 self.logger.info(f"✅ Estrategias ELITE cargadas: [Z-Score + Bollinger + TTM Squeeze] → {symbol}")
             elif symbol == "EURUSD":
-                # 🥇 EURUSD: Bollinger+RSI + TTM Squeeze Pro
+                # 🥇 EURUSD: TTM Squeeze Pro (Exclusivo Mañana)
                 self.strategies[symbol] = [
-                    BollingerRSIStrategy(logger=self.logger, symbol=symbol),
                     TTMSqueezeStrategy(logger=self.logger, symbol=symbol)
                 ]
-                self.logger.info(f"✅ Estrategias RENTABLES cargadas: [Bollinger + TTM Squeeze] → {symbol}")
+                self.logger.info(f"✅ Estrategias RENTABLES cargadas: [TTM Squeeze] → {symbol}")
             else:
                 self.strategies[symbol] = []
 
