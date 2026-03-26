@@ -113,20 +113,18 @@ class TX3ProBot:
         self.strategies = {}
         for symbol in BotConfig.WATCHLIST:
             if symbol == "GBPUSD":
-                # 🏆 GBPUSD: Z-Score (PF 1.77) + Bollinger Sniper (PF 6.09) + NY EMA Cross
+                # 🏆 GBPUSD: Z-Score (PF 1.77) + Bollinger Sniper (PF 6.09)
                 self.strategies[symbol] = [
                     ZScoreReversionStrategy(logger=self.logger, symbol=symbol),
-                    BollingerRSIStrategy(logger=self.logger, symbol=symbol),
-                    EMACrossStrategy(logger=self.logger, symbol=symbol)
+                    BollingerRSIStrategy(logger=self.logger, symbol=symbol)
                 ]
-                self.logger.info(f"✅ Estrategias ELITE cargadas: [Z-Score + Bollinger + EMA NY] → {symbol}")
+                self.logger.info(f"✅ Estrategias ELITE cargadas: [Z-Score + Bollinger] → {symbol}")
             elif symbol == "EURUSD":
-                # 🥇 EURUSD: Bollinger+RSI (PF 1.66) + NY EMA Cross
+                # 🥇 EURUSD: Bollinger+RSI (PF 1.66)
                 self.strategies[symbol] = [
-                    BollingerRSIStrategy(logger=self.logger, symbol=symbol),
-                    EMACrossStrategy(logger=self.logger, symbol=symbol)
+                    BollingerRSIStrategy(logger=self.logger, symbol=symbol)
                 ]
-                self.logger.info(f"✅ Estrategias RENTABLES cargadas: [Bollinger + EMA NY] → {symbol}")
+                self.logger.info(f"✅ Estrategias RENTABLES cargadas: [Bollinger] → {symbol}")
             else:
                 self.strategies[symbol] = []
 
