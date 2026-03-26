@@ -271,6 +271,8 @@ def sim_ema_cross(df, df_h1, symbol):
             pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+100].to_dict('records'), symbol)
             res.add_trade(pnl, h, signal, sl, tp)
             
+    return res
+
 def sim_ttm_squeeze(df, df_h1, symbol):
     res = BacktestResult("TTM Squeeze Pro (LND/NY)")
     
