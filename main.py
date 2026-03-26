@@ -277,7 +277,11 @@ class TX3ProBot:
         # O usar el mayor entre el journal y el de memoria
         total_trades_display = max(trades_hoy, self.position_manager.trades_today)
 
+        is_trading_now = self.session_filter.is_trading_allowed() if hasattr(self, 'session_filter') else False
+        bot_status = "🟢 OPERACIONAL" if is_trading_now else "💤 ZONA MUERTA"
+        
         data = {
+            "bot_status": bot_status,
             "status": "PAUSED" if self.is_paused else ("RUNNING" if self.running else "STOPPED"),
             "mode": bot_mode,
             "sim_mode": "DEMO" if self.dry_run else "LIVE",
