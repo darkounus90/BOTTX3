@@ -335,9 +335,15 @@ class GeminiOracle:
             # Contexto de Filtro de Noticias
             from core.news_filter import NewsFilter
             nf = NewsFilter(self.logger)
-            upcoming = nf.get_upcoming_events(hours_ahead=2)
+            upcoming = nf.get_upcoming_events(hours_ahead=1)
             if upcoming:
-                news_context = f"¡ATENCIÓN! Noticias inminentes en <2h: " + ", ".join([f"{n['title']} ({n['currency']})" for n in upcoming])
+                # Solo marcar como CRÍTICO si la noticia es en menos de 30 minutos
+                from datetime import datetime as dt_now
+                minutes_to_closest = min([(n['time'] - dt_now.now()).total_seconds() / 60 for n in upcoming if n.get('time')], default=999)
+                if minutes_to_closest <= 30:
+                    news_context = f"⚠️ NOTICIA INMINENTE en {minutes_to_closest:.0f} min: " + ", ".join([f"{n['title']} ({n['currency']})" for n in upcoming])
+                else:
+                    news_context = f"📰 Noticias programadas en ~{minutes_to_closest:.0f} min: " + ", ".join([f"{n['title']} ({n['currency']})" for n in upcoming]) + " (margen suficiente para operar)"
             
         except: pass
 
@@ -351,7 +357,7 @@ class GeminiOracle:
             f"- ZONA ROJA: Rebote y rechazo MÁS ABAJO -> VENDE (Solo si tendencia H1 es Bajista).\n"
             f"- ZONA VERDE: Rompimiento MÁS ABAJO asustando a la masa -> COMPRA el rebote falso sin dudar.\n"
             f"- CORRELACIÓN: Si el Dólar (USDCHF/DXY) va en contra agresiva de nuestro trade, actúa con máxima cautela (Beta si hay riesgo institucional).\n"
-            f"- NOTICIAS: Si hay noticias inminentes, sé extremadamente conservador y veta si la estructura no es perfecta.\n\n"
+            f"- NOTICIAS: Solo veta por noticias si faltan MENOS de 30 minutos para el evento. Si faltan más de 30 min y la estructura técnica es sólida, APRUEBA el trade. No seas paranoico con noticias lejanas.\n\n"
             f"Analiza paso a paso (Chain of Thought) si esta técnica ({signal_type}) respeta la Marea H1, la correlación Macro y caza trampas institucionales.\n"
             f"ESTRUCTURA JSON REQUERIDA EXACTA:\n"
             f"{{\n"
