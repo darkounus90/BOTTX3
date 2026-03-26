@@ -39,6 +39,7 @@ from core.llm_oracle import GeminiOracle
 from strategy.bollinger_rsi import BollingerRSIStrategy
 from strategy.ema_cross import EMACrossStrategy
 from strategy.zscore_reversion import ZScoreReversionStrategy
+from strategy.ttm_squeeze import TTMSqueezeStrategy
 from utils.logger import BotLogger
 from utils.mt5_connector import MT5Connector
 from utils.telegram_notifier import TelegramNotifier
@@ -113,18 +114,20 @@ class TX3ProBot:
         self.strategies = {}
         for symbol in BotConfig.WATCHLIST:
             if symbol == "GBPUSD":
-                # 🏆 GBPUSD: Z-Score (PF 1.77) + Bollinger Sniper (PF 6.09)
+                # 🏆 GBPUSD: Z-Score + Bollinger Sniper + TTM Squeeze Pro
                 self.strategies[symbol] = [
                     ZScoreReversionStrategy(logger=self.logger, symbol=symbol),
-                    BollingerRSIStrategy(logger=self.logger, symbol=symbol)
+                    BollingerRSIStrategy(logger=self.logger, symbol=symbol),
+                    TTMSqueezeStrategy(logger=self.logger, symbol=symbol)
                 ]
-                self.logger.info(f"✅ Estrategias ELITE cargadas: [Z-Score + Bollinger] → {symbol}")
+                self.logger.info(f"✅ Estrategias ELITE cargadas: [Z-Score + Bollinger + TTM Squeeze] → {symbol}")
             elif symbol == "EURUSD":
-                # 🥇 EURUSD: Bollinger+RSI (PF 1.66)
+                # 🥇 EURUSD: Bollinger+RSI + TTM Squeeze Pro
                 self.strategies[symbol] = [
-                    BollingerRSIStrategy(logger=self.logger, symbol=symbol)
+                    BollingerRSIStrategy(logger=self.logger, symbol=symbol),
+                    TTMSqueezeStrategy(logger=self.logger, symbol=symbol)
                 ]
-                self.logger.info(f"✅ Estrategias RENTABLES cargadas: [Bollinger] → {symbol}")
+                self.logger.info(f"✅ Estrategias RENTABLES cargadas: [Bollinger + TTM Squeeze] → {symbol}")
             else:
                 self.strategies[symbol] = []
 
