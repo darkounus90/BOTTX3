@@ -337,8 +337,9 @@ class TX3ProBot:
         data["max_spread"] = BotConfig.MAX_SPREAD_PIPS
         
         # ─── Log de Resumen al Dashboard (cada 60s) ────────
-        if not hasattr(self, '_last_dash_summary') or (datetime.now() - self._last_dash_summary).total_seconds() >= 60:
-            self._last_dash_summary = datetime.now()
+        now_dt = datetime.now()
+        if self._last_dash_summary is None or (now_dt - self._last_dash_summary).total_seconds() >= 60:
+            self._last_dash_summary = now_dt
             session_info = self.session_filter.get_session_info() if hasattr(self, 'session_filter') else {}
             session_name = session_info.get('session', 'Desconocida')
             open_pos = self.position_manager.get_open_positions_count()
@@ -705,6 +706,11 @@ class TX3ProBot:
         self.running = True
         self._notified_disconnect = False
         reconnect_attempts = 0
+        
+        # Estado Interno
+        self._last_dash_summary = None
+        
+        # Suscribir al sistema de Journaling ─────────────────────────
         
         # Iniciar Watchdog Thread (Independiente del loop principal)
         watchdog_thread = threading.Thread(target=self._run_watchdog_loop, daemon=True)

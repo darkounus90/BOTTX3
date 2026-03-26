@@ -259,6 +259,10 @@
 
         <!-- System Health Row -->
         <div class="flex flex-wrap gap-4 text-xs font-mono mb-2">
+            <div id="health-bot-status"
+                class="flex items-center gap-2 bg-gray-900/40 px-3 py-1.5 rounded-md border border-gray-800 text-gray-500 transition-all">
+                <span class="w-2 h-2 rounded-full bg-gray-500 transition-all"></span> <span id="bot-status-text">CARGANDO...</span>
+            </div>
             <div id="health-mt5"
                 class="flex items-center gap-2 bg-gray-900/40 px-3 py-1.5 rounded-md border border-gray-800 text-gray-500 transition-all">
                 <span class="w-2 h-2 rounded-full bg-gray-500 transition-all"></span> MT5 BROKER
@@ -996,6 +1000,22 @@
                 statusEl.className = "px-4 py-1.5 rounded-lg text-sm font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.1)]";
             } else {
                 statusEl.className = "px-4 py-1.5 rounded-lg text-sm font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30";
+            }
+
+            // 🟢 Bot Operational Status Indicator
+            const botStatusEl = document.getElementById('health-bot-status');
+            const botStatusText = document.getElementById('bot-status-text');
+            if (botStatusEl && botStatusText && data.bot_status) {
+                const isOperational = data.bot_status.includes('OPERACIONAL');
+                botStatusText.textContent = data.bot_status;
+                const dot = botStatusEl.querySelector('span.rounded-full');
+                if (isOperational) {
+                    botStatusEl.className = 'flex items-center gap-2 bg-emerald-500/10 px-3 py-1.5 rounded-md border border-emerald-500/30 text-emerald-400 transition-all shadow-[0_0_12px_rgba(16,185,129,0.15)]';
+                    if (dot) { dot.className = 'w-2 h-2 rounded-full bg-emerald-400 glow-dot animate-pulse transition-all'; }
+                } else {
+                    botStatusEl.className = 'flex items-center gap-2 bg-gray-900/40 px-3 py-1.5 rounded-md border border-gray-700 text-gray-500 transition-all';
+                    if (dot) { dot.className = 'w-2 h-2 rounded-full bg-gray-600 transition-all'; }
+                }
             }
 
             // Financial KPIs
