@@ -271,6 +271,56 @@ def sim_ema_cross(df, df_h1, symbol):
             pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+100].to_dict('records'), symbol)
             res.add_trade(pnl, h, signal, sl, tp)
             
+def sim_ttm_squeeze(df, df_h1, symbol):
+    res = BacktestResult("TTM Squeeze Pro (LND/NY)")
+    
+    tr = pd.concat([df['high'] - df['low'], abs(df['high'] - df['close'].shift()), abs(df['low'] - df['close'].shift())], axis=1).max(axis=1)
+    df['atr'] = tr.rolling(20).mean()
+    
+    sma_20 = df['close'].rolling(20).mean()
+    std_20 = df['close'].rolling(20).std()
+    df['bb_upper'] = sma_20 + (std_20 * 2.0)
+    df['bb_lower'] = sma_20 - (std_20 * 2.0)
+    
+    ema_20 = df['close'].ewm(span=20, adjust=False).mean()
+    df['kc_upper'] = ema_20 + (df['atr'] * 1.5)
+    df['kc_lower'] = ema_20 - (df['atr'] * 1.5)
+    
+    df['squeeze_on'] = (df['bb_upper'] < df['kc_upper']) & (df['bb_lower'] > df['kc_lower'])
+    
+    df['ema_8'] = df['close'].ewm(span=8, adjust=False).mean()
+    df['ema_34'] = df['close'].ewm(span=34, adjust=False).mean()
+    df['momentum_bull'] = df['ema_8'] > df['ema_34']
+    df['momentum_bear'] = df['ema_8'] < df['ema_34']
+    
+    pip = 0.01 if "JPY" in symbol else 0.0001
+    
+    for i in range(200, len(df)-50):
+        curr, prev, prev2, prev3 = df.iloc[i], df.iloc[i-1], df.iloc[i-2], df.iloc[i-3]
+        h = (pd.Timestamp(curr['time']).hour - 5) % 24
+        
+        if h < 3 or h >= 13: continue
+        
+        was_squeezed = prev2['squeeze_on'] or prev3['squeeze_on']
+        is_firing = not prev['squeeze_on']
+        
+        signal = None
+        if was_squeezed and is_firing:
+            if prev['momentum_bull'] and prev['close'] > prev['kc_upper']: signal = "BUY"
+            elif prev['momentum_bear'] and prev['close'] < prev['kc_lower']: signal = "SELL"
+            
+        if signal:
+            trend = get_h1_trend(df_h1, curr['time'])
+            if (signal == "BUY" and trend == -1) or (signal == "SELL" and trend == 1):
+                res.filtered += 1
+                continue
+                
+            atr_pips = prev['atr'] / pip / 10
+            sl = max(15.0, round(atr_pips * 1.5, 1))
+            tp = max(30.0, round(atr_pips * 4.0, 1))
+            pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+100].to_dict('records'), symbol)
+            res.add_trade(pnl, h, signal, sl, tp)
+            
     return res
 
 def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=30):
@@ -285,7 +335,8 @@ def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=30):
         sim_bollinger_rsi(m5.copy(), h1, symbol, adx), 
         sim_zscore_reversion(m15.copy(), h1, symbol, z),
         sim_ict_breakout(m5.copy(), h1, symbol),
-        sim_ema_cross(m15.copy(), h1, symbol) # Añadido el Cazador de Tendencias M15
+        sim_ema_cross(m15.copy(), h1, symbol),
+        sim_ttm_squeeze(m15.copy(), h1, symbol) # Nuevo: TTM Squeeze
     ]
     print(f"\n[+] {symbol} - Reporte:")
     for r in results:
