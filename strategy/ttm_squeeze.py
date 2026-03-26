@@ -76,11 +76,13 @@ class TTMSqueezeStrategy(BaseStrategy):
         # Estado del Squeeze
         df['squeeze_on'] = (df['bb_upper'] < df['kc_upper']) & (df['bb_lower'] > df['kc_lower'])
         
-        # Momentum (Dirección)
-        df['ema_8'] = df['close'].ewm(span=8, adjust=False).mean()
-        df['ema_34'] = df['close'].ewm(span=34, adjust=False).mean()
-        df['momentum_bull'] = df['ema_8'] > df['ema_34']
-        df['momentum_bear'] = df['ema_8'] < df['ema_34']
+        # True TTM Momentum (Carter)
+        midline = (df['high'].rolling(self.length).max() + df['low'].rolling(self.length).min()) / 2
+        avg_price = (df['close'] + midline) / 2
+        df['mom_smoothed'] = (df['close'] - avg_price).ewm(span=self.length, adjust=False).mean()
+        df['momentum_bull'] = df['mom_smoothed'] > 0
+        df['momentum_bear'] = df['mom_smoothed'] < 0
+        df['vol_avg'] = df['tick_volume'].rolling(self.length).mean()
 
         # H1 Macro Trend Filter
         h1_rates = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_H1, 0, 200)
@@ -97,13 +99,13 @@ class TTMSqueezeStrategy(BaseStrategy):
         prev3 = df.iloc[-4]
 
         # Lógica Firing (Disparo) del Squeeze
-        # Ocurre cuando estábamos en Squeeze (compresión) en la vela pasada, y en la vela 'prev' se rompe hacia afuera.
         was_squeezed = prev2['squeeze_on'] or prev3['squeeze_on']
         is_firing = not prev['squeeze_on']
+        vol_spike = prev['tick_volume'] > (prev['vol_avg'] * 1.5)
 
         signal_type = None
         
-        if was_squeezed and is_firing:
+        if was_squeezed and is_firing and vol_spike:
             if prev['momentum_bull'] and is_uptrend_h1 and prev['close'] > prev['kc_upper']:
                 signal_type = "BUY"
             elif prev['momentum_bear'] and is_downtrend_h1 and prev['close'] < prev['kc_lower']:
@@ -117,12 +119,12 @@ class TTMSqueezeStrategy(BaseStrategy):
         atr_val = prev['atr']
         point = pip_size / 10
 
-        # SL en la base de la ruptura (1.5 ATR), TP enorme (4.0 ATR) porque es tendencia
+        # SL en la base de la ruptura (1.5 ATR), TP enorme (4.5 ATR) porque es tendencia
         sl_pips = round((atr_val * 1.5) / (10 * point), 1)
-        tp_pips = round((atr_val * 4.0) / (10 * point), 1)
+        tp_pips = round((atr_val * 4.5) / (10 * point), 1)
         
         sl_pips = max(sl_pips, 15.0)
-        tp_pips = max(tp_pips, 30.0)
+        tp_pips = max(tp_pips, 35.0)
 
         ts_signal = {
             "signal": signal_type,
