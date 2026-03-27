@@ -36,10 +36,9 @@ from core.session_filter import SessionFilter
 from core.news_filter import NewsFilter
 from core.trailing_stop import TrailingStopManager
 from core.llm_oracle import GeminiOracle
-from strategy.bollinger_rsi import BollingerRSIStrategy
-from strategy.ema_cross import EMACrossStrategy
 from strategy.zscore_reversion import ZScoreReversionStrategy
 from strategy.ttm_squeeze import TTMSqueezeStrategy
+from strategy.liquidity_sweep import LiquiditySweepStrategy
 from utils.logger import BotLogger
 from utils.mt5_connector import MT5Connector
 from utils.telegram_notifier import TelegramNotifier
@@ -114,19 +113,20 @@ class TX3ProBot:
         self.strategies = {}
         for symbol in BotConfig.WATCHLIST:
             if symbol == "GBPUSD":
-                # 🏆 GBPUSD: Z-Score + Bollinger Sniper + TTM Squeeze Pro
+                # 🏆 GBPUSD: Z-Score + ILS Sweep + TTM Squeeze Pro
                 self.strategies[symbol] = [
                     ZScoreReversionStrategy(logger=self.logger, symbol=symbol),
-                    BollingerRSIStrategy(logger=self.logger, symbol=symbol),
+                    LiquiditySweepStrategy(logger=self.logger, symbol=symbol),
                     TTMSqueezeStrategy(logger=self.logger, symbol=symbol)
                 ]
-                self.logger.info(f"✅ Estrategias ELITE cargadas: [Z-Score + Bollinger + TTM Squeeze] → {symbol}")
+                self.logger.info(f"✅ Estrategias ELITE cargadas: [Z-Score + ILS Sweep + TTM Squeeze] → {symbol}")
             elif symbol == "EURUSD":
-                # 🥇 EURUSD: TTM Squeeze Pro (Exclusivo Mañana)
+                # 🥇 EURUSD: TTM Squeeze Pro + ILS Sweep
                 self.strategies[symbol] = [
-                    TTMSqueezeStrategy(logger=self.logger, symbol=symbol)
+                    TTMSqueezeStrategy(logger=self.logger, symbol=symbol),
+                    LiquiditySweepStrategy(logger=self.logger, symbol=symbol)
                 ]
-                self.logger.info(f"✅ Estrategias RENTABLES cargadas: [TTM Squeeze] → {symbol}")
+                self.logger.info(f"✅ Estrategias RENTABLES cargadas: [TTM Squeeze + ILS Sweep] → {symbol}")
             else:
                 self.strategies[symbol] = []
 
