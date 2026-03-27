@@ -223,6 +223,66 @@ def sim_zscore_reversion(df, df_h1, symbol, z_thresh=2.5):
 
 # Eliminadas estrategias antiguas perdedoras (Bollinger, ICT, EMA Cross)
 
+def sim_institutional_flow(df_m5, df_m15, symbol):
+    """Simulador de la nueva estrategia IFS SMC 2.0 (Inbalance + Mitigation)"""
+    res = BacktestResult("IFS SMC 2.0 (M15 FVG)")
+    pip = 0.0001 if "JPY" not in symbol else 0.01
+    
+    def find_fvgs(df):
+        fvgs = []
+        for i in range(1, len(df)-2):
+            if df.iloc[i+2]['low'] > df.iloc[i]['high']:
+                fvgs.append({'type': 'BULLISH', 'top': df.iloc[i+2]['low'], 'bottom': df.iloc[i]['high'], 'mid': (df.iloc[i+2]['low'] + df.iloc[i]['high']) / 2})
+            elif df.iloc[i+2]['high'] < df.iloc[i]['low']:
+                fvgs.append({'type': 'BEARISH', 'top': df.iloc[i]['low'], 'bottom': df.iloc[i+2]['high'], 'mid': (df.iloc[i]['low'] + df.iloc[i+2]['high']) / 2})
+        return fvgs
+
+    # ATR para SL/TP
+    tr = pd.concat([df_m5['high'] - df_m5['low'], (df_m5['high'] - df_m5['close'].shift()).abs(), (df_m5['low'] - df_m5['close'].shift()).abs()], axis=1).max(axis=1)
+    df_m5['atr'] = tr.rolling(14).mean()
+    df_m5['ma10'] = df_m5['close'].rolling(10).mean()
+
+    for i in range(100, len(df_m5)-50):
+        curr = df_m5.iloc[i]
+        prev = df_m5.iloc[i-1]
+        ts = curr['time']
+        h = (pd.Timestamp(ts).hour - 5) % 24
+        
+        # Filtro Sesión (Institucional)
+        if h < 2 or h > 16: continue
+        
+        # Buscar contexto en M15
+        mask = (df_m15['time'] < ts)
+        m15_window = df_m15[mask].iloc[-50:]
+        if len(m15_window) < 5: continue
+        
+        fvgs = find_fvgs(m15_window)
+        if not fvgs: continue
+        
+        last_fvg = fvgs[-1]
+        signal = None
+        
+        # Caso Bullish FVG
+        if last_fvg['type'] == 'BULLISH':
+            # El precio toca la zona de mitigación
+            if curr['close'] < last_fvg['top'] and curr['close'] > last_fvg['bottom']:
+                if curr['close'] > prev['high'] and curr['close'] > curr['ma10']:
+                    signal = "BUY"
+                    
+        # Caso Bearish FVG
+        elif last_fvg['type'] == 'BEARISH':
+            if curr['close'] > last_fvg['bottom'] and curr['close'] < last_fvg['top']:
+                if curr['close'] < prev['low'] and curr['close'] < curr['ma10']:
+                    signal = "SELL"
+                    
+        if signal:
+            sl = max(round(curr['atr']*1.2 / pip / 10, 1), 10.0)
+            tp = max(round(curr['atr']*3.5 / pip / 10, 1), 30.0) # 1:3 RR
+            pnl = calculate_pnl(signal, curr['close'], sl, tp, df_m5.iloc[i+1:i+100].to_dict('records'), symbol)
+            res.add_trade(pnl, h, signal, sl, tp)
+            
+    return res
+
 def sim_ttm_squeeze(df, df_h1, symbol):
     res = BacktestResult("TTM Squeeze Pro (LND/NY)")
     
@@ -286,9 +346,10 @@ def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=45):
     
     # ═══════ EQUIPO DE ÉLITE TX3 PRO ═══════
     results = [
-        sim_liquidity_sweep(m5.copy(), h1, symbol),     # NUEVA: ILS Sweep
-        sim_ttm_squeeze(m15.copy(), h1, symbol),        # REY: Squeeze Pro
-        sim_zscore_reversion(m15.copy(), h1, symbol, z) # ESTABLE: Z-Score
+        sim_institutional_flow(m5.copy(), m15.copy(), symbol), # NUEVA: IFS SMC 2.0
+        sim_liquidity_sweep(m5.copy(), h1, symbol),            # REY REVERSIÓN: ILS Sweep
+        sim_ttm_squeeze(m15.copy(), h1, symbol),               # REY MOMENTUM: Squeeze
+        sim_zscore_reversion(m15.copy(), h1, symbol, z)        # ESTABLE: Z-Score
     ]
     print(f"\n{'='*100}")
     print(f"  [+] {symbol} - REPORTE OPERATIVO (ESTRATEGIAS ACTIVAS)")
