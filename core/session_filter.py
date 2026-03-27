@@ -132,26 +132,59 @@ class SessionFilter:
 
         return self.CLOSED
 
+    def get_operative_phase_info(self) -> dict:
+        """
+        Determina la fase estratégica específica basada en el arsenal del bot.
+        """
+        from config.settings import BotConfig
+        now = get_now_institutional(BotConfig.MARKET_TIMEZONE)
+        h = now.hour
+        
+        if 2 <= h < 3:
+            return {
+                "id": "PRE_LONDON",
+                "name": "🕵️ PRE-LONDON (Liquidity Sweeps)",
+                "active_strats": ["ILS Sweep"]
+            }
+        elif 3 <= h < 13:
+            return {
+                "id": "PRIME",
+                "name": "🌪️ PRIME MOMENTUM (Londres + Mañana NY)",
+                "active_strats": ["TTM Squeeze", "ILS Sweep"]
+            }
+        elif 13 <= h < 17:
+            return {
+                "id": "REVERSION",
+                "name": "🔬 AFTERNOON REVERSION (Tarde NY)",
+                "active_strats": ["Z-Score (GBP)", "ILS Sweep"]
+            }
+        else:
+            return {
+                "id": "HIBERNATION",
+                "name": "💤 HIBERNACIÓN (Mercado Cerrado / Rollover)",
+                "active_strats": []
+            }
+
     def is_trading_allowed(self) -> bool:
         """
-        Verifica si se permite tradear en este momento.
+        Verifica si se permite tradear y loguea la fase operativa.
         """
         session = self.get_current_session()
+        phase = self.get_operative_phase_info()
         
-        # Solo loguear si la sesión cambió para evitar spam en el loop
-        if not hasattr(self, '_last_notified_session'):
-            self._last_notified_session = None
+        # Solo loguear si la sesión o la fase cambió
+        if not hasattr(self, '_last_notified_phase'):
+            self._last_notified_phase = None
 
-        if session != self._last_notified_session:
-            if session == self.CLOSED:
-                self.logger.info("🕐 Mercado cerrado — Fuera de horario de trading")
-            elif session == self.OVERLAP:
-                self.logger.info("🟢 Sesión OVERLAP activa (London + NY)")
-            elif session == self.ACTIVE:
-                self.logger.info("🟡 Sesión activa")
-            self._last_notified_session = session
+        if phase["id"] != self._last_notified_phase:
+            if session == self.CLOSED or phase["id"] == "HIBERNATION":
+                self.logger.info(f"🕐 {phase['name']} — No se buscan nuevas entradas")
+            else:
+                strats = ", ".join(phase["active_strats"])
+                self.logger.success(f"🚀 FASE: {phase['name']} | Estrategias: [{strats}]")
+            self._last_notified_phase = phase["id"]
 
-        return session != self.CLOSED
+        return session != self.CLOSED and phase["id"] != "HIBERNATION"
 
     def get_session_info(self) -> dict:
         """
