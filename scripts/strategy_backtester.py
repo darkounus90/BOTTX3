@@ -271,7 +271,7 @@ def sim_silver_bullet(df, df_h1, symbol):
                 
         if signal:
             disp_pips = abs(curr['close'] - df.iloc[i-5]['open']) / (10 * pip)
-            # if disp_pips < 4.5: continue # <-- DESACTIVADO PARA DEPURAR SMC
+            if disp_pips < 6.0: continue # Escudo Reactivado: Filtra el ruido y evita pérdidas
             
             last_trade_day = day
             sl = max(12.0, round(disp_pips * 0.7, 1))
@@ -346,7 +346,7 @@ def sim_london_purge(df, symbol):
                  
         if signal:
             disp_pips = abs(curr['close'] - df.iloc[i-5]['open']) / (10 * pip)
-            # if disp_pips < 5.0: continue # <-- DESACTIVADO PARA DEPURAR SMC
+            if disp_pips < 7.0: continue # Escudo Reactivado: Protege cuenta de $50k del ruido de M5
             
             last_trade_day = day
             sl = max(12.0, round(disp_pips * 0.8, 1))
