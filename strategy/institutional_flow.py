@@ -102,10 +102,10 @@ class InstitutionalFlowStrategy:
 
             return {
                 "symbol": self.symbol,
-                "type": signal,
+                "signal": signal,
                 "reason": reason,
-                "sl_pips": max(round(atr * 1.2 / pip / 10, 1), 10.0), # SL más ajustado por ser SMC
-                "tp_pips": max(round(atr * 3.5 / pip / 10, 1), 30.0), # Target estirado 1:3+
+                "stop_loss_pips": max(round(atr * 1.2 / pip / 10, 1), 10.0), # SL más ajustado por ser SMC
+                "take_profit_pips": max(round(atr * 3.5 / pip / 10, 1), 30.0), # Target estirado 1:3+
                 "strategy": "IFS_SMC_2.0"
             }
 

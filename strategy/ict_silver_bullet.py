@@ -29,7 +29,7 @@ class SilverBulletStrategy(BaseStrategy):
         self.start_hour = 10 
         self.end_hour = 11   
         self.fvg_lookback = 10
-        self.min_displacement_pips = 8.0  
+        self.min_displacement_pips = 6.0 # Ajuste Elite: Captura más Balas de Plata
         self.last_trade_date = None
 
     def get_name(self) -> str:
@@ -121,8 +121,8 @@ class SilverBulletStrategy(BaseStrategy):
                 "symbol": self.symbol,
                 "signal": signal,
                 "reason": reason,
-                "sl_pips": sl,
-                "tp_pips": tp,
+                "stop_loss_pips": sl,
+                "take_profit_pips": tp,
                 "strategy": "SilverBullet_ICT_Elite"
             }
 

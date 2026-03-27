@@ -29,7 +29,7 @@ class LondonOpenPurgeStrategy(BaseStrategy):
         self.london_start_hour = 3 # 3 AM EST (London Start)
         self.london_end_hour = 5   # 5 AM EST (End of Purge Window)
         
-        self.min_displacement_pips = 7.0
+        self.min_displacement_pips = 5.5 # Ajuste Institucional: Captura más Londres
         self.last_trade_date = None
 
     def get_name(self) -> str:
@@ -40,9 +40,9 @@ class LondonOpenPurgeStrategy(BaseStrategy):
         return datetime.now(ZoneInfo("America/New_York"))
 
     def _get_session_range(self, df):
-        """Identifica el máximo y mínimo del rango asiático"""
-        # Filtramos por horas de Asia
-        df['dt'] = pd.to_datetime(df['time'], unit='s', utc=True).dt.tz_convert("America/New_York")
+        """Identifica el máximo y mínimo del rango asiático (SMC Workflow)"""
+        # Sincronizamos con el servidor del broker (Praga -> NY)
+        df['dt'] = pd.to_datetime(df['time'], unit='s').dt.tz_localize(BotConfig.FTMO_TIMEZONE).dt.tz_convert("America/New_York")
         asia_mask = (df['dt'].dt.hour >= self.asia_start_hour) | (df['dt'].dt.hour < self.asia_end_hour)
         asia_df = df[asia_mask]
         
@@ -115,8 +115,8 @@ class LondonOpenPurgeStrategy(BaseStrategy):
                 "symbol": self.symbol,
                 "signal": signal,
                 "reason": reason,
-                "sl_pips": sl,
-                "tp_pips": tp,
+                "stop_loss_pips": sl,
+                "take_profit_pips": tp,
                 "strategy": "LondonPurge_SMC21"
             }
 
