@@ -39,6 +39,7 @@ from core.llm_oracle import GeminiOracle
 from strategy.zscore_reversion import ZScoreReversionStrategy
 from strategy.ttm_squeeze import TTMSqueezeStrategy
 from strategy.liquidity_sweep import LiquiditySweepStrategy
+from strategy.institutional_flow import InstitutionalFlowStrategy
 from utils.logger import BotLogger
 from utils.mt5_connector import MT5Connector
 from utils.telegram_notifier import TelegramNotifier
@@ -113,13 +114,14 @@ class TX3ProBot:
         self.strategies = {}
         for symbol in BotConfig.WATCHLIST:
             if symbol == "GBPUSD":
-                # 🏆 GBPUSD: Z-Score + ILS Sweep + TTM Squeeze Pro
+                # 🏆 GBPUSD: ELITE TEAM (The Big Four)
                 self.strategies[symbol] = [
                     ZScoreReversionStrategy(logger=self.logger, symbol=symbol),
                     LiquiditySweepStrategy(logger=self.logger, symbol=symbol),
-                    TTMSqueezeStrategy(logger=self.logger, symbol=symbol)
+                    TTMSqueezeStrategy(logger=self.logger, symbol=symbol),
+                    InstitutionalFlowStrategy(symbol=symbol)
                 ]
-                self.logger.info(f"✅ Estrategias ELITE cargadas: [Z-Score + ILS Sweep + TTM Squeeze] → {symbol}")
+                self.logger.info(f"✅ ESTRATEGIAS ELITE CARGADAS: [Z-Score + ILS + Squeeze + IFS SMC] → {symbol}")
             elif symbol == "EURUSD":
                 # 🥇 EURUSD: TTM Squeeze Pro (Pure Momentum)
                 self.strategies[symbol] = [
