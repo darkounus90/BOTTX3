@@ -495,12 +495,7 @@ def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=45):
     if symbol == "EURUSD":
         # En EURUSD solo corremos lo que tiene sentido matemático comprobado
         results = [
-            sim_ttm_squeeze(m15.copy(), h1, symbol),        # El Rey del Euro
-            sim_zscore_reversion(m15.copy(), h1, symbol, z),# Asiático Z-Score
-            sim_liquidity_sweep(m5.copy(), h1, symbol),     # Escáner LS (4h)
-            sim_institutional_flow(m5.copy(), m15.copy(), symbol), # SMC Avanzado
-            sim_silver_bullet(m5.copy(), h1, symbol),       # ICT Silver Bullet HTF Filter
-            sim_london_purge(m5.copy(), h1, symbol)         # London Purge HTF Filter
+            sim_ttm_squeeze(m15.copy(), h1, symbol)         # El Rey del Euro (Momentum Puro)
         ]
     elif symbol == "GBPUSD":
         # En GBPUSD corremos el Arsenal Completo
