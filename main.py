@@ -40,6 +40,7 @@ from strategy.zscore_reversion import ZScoreReversionStrategy
 from strategy.ttm_squeeze import TTMSqueezeStrategy
 from strategy.liquidity_sweep import LiquiditySweepStrategy
 from strategy.institutional_flow import InstitutionalFlowStrategy
+from strategy.london_open_purge import LondonOpenPurgeStrategy
 from utils.logger import BotLogger
 from utils.mt5_connector import MT5Connector
 from utils.telegram_notifier import TelegramNotifier
@@ -123,9 +124,10 @@ class TX3ProBot:
                 ]
                 self.logger.info(f"✅ ESTRATEGIAS ELITE CARGADAS: [Z-Score + ILS + Squeeze + IFS SMC] → {symbol}")
             elif symbol == "EURUSD":
-                # 🥇 EURUSD: TTM Squeeze Pro (Pure Momentum)
+                # 🥇 EURUSD: ELITE SETUP (Momentum + London Purge)
                 self.strategies[symbol] = [
-                    TTMSqueezeStrategy(logger=self.logger, symbol=symbol)
+                    TTMSqueezeStrategy(logger=self.logger, symbol=symbol),
+                    LondonOpenPurgeStrategy(logger=self.logger, symbol=symbol)
                 ]
                 self.logger.info(f"✅ Estrategias RENTABLES cargadas: [TTM Squeeze] → {symbol}")
             else:

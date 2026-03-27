@@ -113,7 +113,7 @@ class LondonOpenPurgeStrategy(BaseStrategy):
             
             return {
                 "symbol": self.symbol,
-                "type": signal,
+                "signal": signal,
                 "reason": reason,
                 "sl_pips": sl,
                 "tp_pips": tp,
