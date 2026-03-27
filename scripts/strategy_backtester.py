@@ -121,68 +121,57 @@ def _calculate_adx(df, period=14):
     return dx.ewm(alpha=1/period, adjust=False).mean()
 
 
-def sim_bollinger_rsi(df, df_h1, symbol, adx_thresh=45.0, sl_min=8.0, tp_min=15.0, use_wick=True):
-    label = f"Boll+RSI ADX<{int(adx_thresh)} SL{int(sl_min)}/TP{int(tp_min)}"
-    if not use_wick: label += " noWick"
-    res = BacktestResult(label)
-    df['sma20'] = df['close'].rolling(20).mean()
-    df['std20'] = df['close'].rolling(20).std()
-    mult = 2.3 if "EUR" in symbol else 1.9
-    df['up'] = df['sma20'] + df['std20'] * mult
-    df['dn'] = df['sma20'] - df['std20'] * mult
+def sim_liquidity_sweep(df, df_h1, symbol):
+    """Simulador de la nueva estrategia Institutional Liquidity Sweep (ILS)"""
+    res = BacktestResult("ILS Liquidity Sweep (4h)")
+    pip = 0.0001 if "JPY" not in symbol else 0.01
     
-    delta = df['close'].diff()
-    gain = delta.where(delta > 0, 0).ewm(alpha=1/14, adjust=False).mean()
-    loss = (-delta.where(delta < 0, 0)).ewm(alpha=1/14, adjust=False).mean()
-    df['rsi'] = 100 - (100 / (1 + gain/loss))
-    df['atr'] = (df['high'] - df['low']).rolling(14).mean()
-    df['adx'] = _calculate_adx(df, 14)
-    pip = 0.01 if "JPY" in symbol else 0.0001
+    # 1. LSMA para confirmación de reversión
+    def calculate_lsma(s, p):
+        weights = np.arange(1, p + 1)
+        return s.rolling(window=p).apply(lambda x: np.polyfit(weights, x, 1)[0] * p + np.polyfit(weights, x, 1)[1], raw=True)
+    
+    df['lsma'] = calculate_lsma(df['close'], 25)
+    tr = pd.concat([df['high'] - df['low'], (df['high'] - df['close'].shift()).abs(), (df['low'] - df['close'].shift()).abs()], axis=1).max(axis=1)
+    df['atr'] = tr.rolling(14).mean()
 
-    for i in range(50, len(df)-50):
-        row = df.iloc[i]
-        h = (pd.Timestamp(row['time']).hour - 5) % 24
-        if "EUR" in symbol and not (h >= 19 or h < 1): continue
-        if "GBP" in symbol and not (h >= 13 and h < 17): continue
+    for i in range(100, len(df)-50):
+        curr, prev = df.iloc[i], df.iloc[i-1]
+        ts = curr['time']
+        h = (pd.Timestamp(ts).hour - 5) % 24
         
-        # --- FILTRO ADX ---
-        if pd.notna(row['adx']) and row['adx'] > adx_thresh:
-            res.filtered += 1
-            continue
+        # Filtro Sesión (Londres + NY)
+        if h < 2 or h > 16: continue
         
-        signal = "BUY" if (row['close'] <= row['dn'] and row['rsi'] <= 32) else \
-                 "SELL" if (row['close'] >= row['up'] and row['rsi'] >= 68) else None
+        # Obtener rango 4h previo desde H1
+        mask = (df_h1['time'] < ts)
+        h1_window = df_h1[mask].iloc[-4:]
+        if len(h1_window) < 4: continue
         
-        if not signal:
-            continue
+        liq_high = h1_window['high'].max()
+        liq_low = h1_window['low'].min()
         
-        # --- FILTRO WICK REJECTION ---
-        if use_wick:
-            if row['open'] < row['close']:
-                lower_wick = row['open'] - row['low']
-                upper_wick = row['high'] - row['close']
-            else:
-                lower_wick = row['close'] - row['low']
-                upper_wick = row['high'] - row['open']
-            cuerpo = abs(row['close'] - row['open'])
+        signal = None
+        # Sell: Sweep High + Close below level + Close below LSMA
+        if prev['high'] > liq_high and (prev['high'] - liq_high) < (8.0 * pip):
+            if curr['close'] < liq_high and curr['close'] < curr['lsma']:
+                signal = "SELL"
+        # Buy: Sweep Low + Close above level + Close above LSMA
+        elif prev['low'] < liq_low and (liq_low - prev['low']) < (8.0 * pip):
+            if curr['close'] > liq_low and curr['close'] > curr['lsma']:
+                signal = "BUY"
+                
+        if signal:
+            trend = get_h1_trend(df_h1, ts)
+            if (signal == "BUY" and trend == -1) or (signal == "SELL" and trend == 1):
+                res.filtered += 1
+                continue
+                
+            sl = max(round(curr['atr']*1.5 / pip / 10, 1), 10.0)
+            tp = max(round(curr['atr']*3.0 / pip / 10, 1), 20.0)
+            pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+50].to_dict('records'), symbol)
+            res.add_trade(pnl, h, signal, sl, tp)
             
-            if signal == "BUY" and not (lower_wick > cuerpo * 0.8):
-                res.filtered += 1
-                continue
-            if signal == "SELL" and not (upper_wick > cuerpo * 0.8):
-                res.filtered += 1
-                continue
-        
-        # --- FILTRO H1 TREND ---
-        trend = get_h1_trend(df_h1, row['time'])
-        if (signal == "BUY" and trend == -1) or (signal == "SELL" and trend == 1):
-            res.filtered += 1
-            continue
-        
-        sl = max(round(row['atr']*1.5 / pip / 10, 1), sl_min)
-        tp = max(round(row['atr']*2.0 / pip / 10, 1), tp_min)
-        pnl = calculate_pnl(signal, row['close'], sl, tp, df.iloc[i+1:i+50].to_dict('records'), symbol)
-        res.add_trade(pnl, h, signal, sl, tp)
     return res
 
 def sim_zscore_reversion(df, df_h1, symbol, z_thresh=2.5):
@@ -219,105 +208,7 @@ def sim_zscore_reversion(df, df_h1, symbol, z_thresh=2.5):
             res.add_trade(pnl, h, signal, sl, tp)
     return res
 
-def sim_ict_breakout(df, df_h1, symbol):
-    res = BacktestResult(f"ICT/SMC Breakout (NY)")
-    pip = 0.01 if "JPY" in symbol else 0.0001
-    
-    for i in range(150, len(df)-50):
-        curr, prev = df.iloc[i], df.iloc[i-1]
-        h = (pd.Timestamp(curr['time']).hour - 5) % 24
-        
-        if h < 8 or h >= 11:
-            continue
-            
-        window = df.iloc[i-100:i-2]
-        asian_high = window['high'].max()
-        asian_low = window['low'].min()
-        
-        signal = None
-        if prev['low'] < asian_low and prev['close'] > asian_low:
-            body = abs(prev['close'] - prev['open'])
-            total = prev['high'] - prev['low']
-            if body > total * 0.4 and prev['close'] > prev['open']:
-                signal = "BUY"
-                
-        elif prev['high'] > asian_high and prev['close'] < asian_high:
-            body = abs(prev['close'] - prev['open'])
-            total = prev['high'] - prev['low']
-            if body > total * 0.4 and prev['close'] < prev['open']:
-                signal = "SELL"
-                
-        if signal:
-            trend = get_h1_trend(df_h1, curr['time'])
-            if (signal == "BUY" and trend == -1) or (signal == "SELL" and trend == 1):
-                res.filtered += 1
-                continue
-                
-            atr_14 = (df['high'].iloc[i-15:i-1] - df['low'].iloc[i-15:i-1]).mean()
-            atr_pips = (atr_14 / pip / 10)
-            
-            sl = max(8.0, round(atr_pips * 0.5, 1))
-            tp = max(25.0, round(sl * 3.0, 1))
-            pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+100].to_dict('records'), symbol)
-            res.add_trade(pnl, h, signal, sl, tp)
-            
-    return res
-
-def sim_ema_cross(df, df_h1, symbol):
-    res = BacktestResult("EMA Momentum (NY 8-12)")
-    df['ema_fast'] = df['close'].ewm(span=20, adjust=False).mean()
-    df['ema_slow'] = df['close'].ewm(span=50, adjust=False).mean()
-    
-    macd_line = df['close'].ewm(span=12, adjust=False).mean() - df['close'].ewm(span=26, adjust=False).mean()
-    macd_signal = macd_line.ewm(span=9, adjust=False).mean()
-    df['macd_hist'] = macd_line - macd_signal
-    
-    delta = df['close'].diff()
-    gain = delta.where(delta > 0, 0)
-    loss = -delta.where(delta < 0, 0)
-    avg_gain = gain.ewm(alpha=1/14, adjust=False).mean()
-    avg_loss = loss.ewm(alpha=1/14, adjust=False).mean()
-    df['rsi'] = 100 - (100 / (1 + (avg_gain / avg_loss)))
-    
-    tr = pd.concat([df['high'] - df['low'], abs(df['high'] - df['close'].shift()), abs(df['low'] - df['close'].shift())], axis=1).max(axis=1)
-    df['atr'] = tr.rolling(14).mean()
-    
-    pip = 0.01 if "JPY" in symbol else 0.0001
-    
-    for i in range(200, len(df)-50):
-        curr, prev, prev2 = df.iloc[i], df.iloc[i-1], df.iloc[i-2]
-        h = (pd.Timestamp(curr['time']).hour - 5) % 24
-        
-        # Filtro NY Morning
-        if h < 8 or h >= 12: continue
-        
-        uptrend = prev['ema_fast'] > prev['ema_slow']
-        downtrend = prev['ema_fast'] < prev['ema_slow']
-        
-        b_cross = uptrend and prev2['ema_fast'] <= prev2['ema_slow']
-        s_cross = downtrend and prev2['ema_fast'] >= prev2['ema_slow']
-        
-        b_pull = uptrend and prev2['close'] < prev2['ema_fast'] and prev['close'] > prev['ema_fast'] and 40 < prev['rsi'] < 70
-        s_pull = downtrend and prev2['close'] > prev2['ema_fast'] and prev['close'] < prev['ema_fast'] and 30 < prev['rsi'] < 60
-        
-        signal = None
-        if (b_cross or b_pull) and prev['macd_hist'] > 0: signal = "BUY"
-        elif (s_cross or s_pull) and prev['macd_hist'] < 0: signal = "SELL"
-        
-        if signal:
-            trend = get_h1_trend(df_h1, curr['time'])
-            if (signal == "BUY" and trend == -1) or (signal == "SELL" and trend == 1):
-                res.filtered += 1
-                continue
-                
-            atr_pips = prev['atr'] / pip / 10
-            # Riesgo Asimétrico (1:2) que usa el script en vivo
-            sl = max(15.0, round(atr_pips * 1.5, 1))
-            tp = max(25.0, round(atr_pips * 3.0, 1))
-            pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+100].to_dict('records'), symbol)
-            res.add_trade(pnl, h, signal, sl, tp)
-            
-    return res
+# Eliminadas estrategias antiguas perdedoras (Bollinger, ICT, EMA Cross)
 
 def sim_ttm_squeeze(df, df_h1, symbol):
     res = BacktestResult("TTM Squeeze Pro (LND/NY)")
@@ -380,26 +271,14 @@ def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=45):
     for d in [m5, m15, h1]: d['time'] = pd.to_datetime(d['time'], unit='s')
     h1['close_ema_200'] = h1['close'].ewm(span=200, adjust=False).mean()
     
-    # ═══════ LABORATORIO BOLLINGER+RSI ═══════
+    # ═══════ EQUIPO DE ÉLITE TX3 PRO ═══════
     results = [
-        # Variante 1: SL8/TP15 + ADX35 + Wick (bot actual con ADX viejo)
-        sim_bollinger_rsi(m5.copy(), h1, symbol, 35, sl_min=8, tp_min=15, use_wick=True),
-        # Variante 2: SL8/TP15 + ADX45 + Wick (bot actual con ADX nuevo)
-        sim_bollinger_rsi(m5.copy(), h1, symbol, 45, sl_min=8, tp_min=15, use_wick=True),
-        # Variante 3: SL15/TP25 + ADX45 + Wick (SL/TP anchos + wick)
-        sim_bollinger_rsi(m5.copy(), h1, symbol, 45, sl_min=15, tp_min=25, use_wick=True),
-        # Variante 4: SL15/TP25 + ADX45 + SIN Wick (como el backtest viejo)
-        sim_bollinger_rsi(m5.copy(), h1, symbol, 45, sl_min=15, tp_min=25, use_wick=False),
-        # Variante 5: SL15/TP25 + SIN ADX + SIN Wick (backtest original puro)
-        sim_bollinger_rsi(m5.copy(), h1, symbol, 999, sl_min=15, tp_min=25, use_wick=False),
-        # Variante 6: SL15/TP25 + SIN ADX + CON Wick 
-        sim_bollinger_rsi(m5.copy(), h1, symbol, 999, sl_min=15, tp_min=25, use_wick=True),
-        # ═══════ OTRAS ESTRATEGIAS ═══════
-        sim_zscore_reversion(m15.copy(), h1, symbol, z),
-        sim_ttm_squeeze(m15.copy(), h1, symbol)
+        sim_liquidity_sweep(m5.copy(), h1, symbol),     # NUEVA: ILS Sweep
+        sim_ttm_squeeze(m15.copy(), h1, symbol),        # REY: Squeeze Pro
+        sim_zscore_reversion(m15.copy(), h1, symbol, z) # ESTABLE: Z-Score
     ]
     print(f"\n{'='*100}")
-    print(f"  [+] {symbol} - LABORATORIO BOLLINGER+RSI (¿Qué parámetro mata la rentabilidad?)")
+    print(f"  [+] {symbol} - REPORTE OPERATIVO (ESTRATEGIAS ACTIVAS)")
     print(f"{'='*100}")
     for r in results:
         rep = r.get_report()
