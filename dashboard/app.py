@@ -31,6 +31,7 @@ dashboard_data = {
     "open_positions": [],
     "live_exposures": {},
     "last_update": "",
+    "latency_ms": 0.0,
     "logs": [],
 }
 

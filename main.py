@@ -325,6 +325,7 @@ class TX3ProBot:
             "recent_trades": self.journal.get_recent_trades(limit=15),
             "last_oracle_narration": self.oracle.last_narration if hasattr(self, 'oracle') else "No disponible",
             "correlation_exposure": self.correlation_manager.get_exposure_report() if hasattr(self, 'correlation_manager') else {},
+            "latency_ms": getattr(mt5.terminal_info(), "ping_last", 0) / 1000.0 if mt5.terminal_info() else 0,
             "last_update": datetime.now(ZoneInfo(BotConfig.TIMEZONE)).strftime("%H:%M:%S")
         }
         

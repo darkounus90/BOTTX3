@@ -267,6 +267,11 @@
                 class="flex items-center gap-2 bg-gray-900/40 px-3 py-1.5 rounded-md border border-gray-800 text-gray-500 transition-all">
                 <span class="w-2 h-2 rounded-full bg-gray-500 transition-all"></span> MT5 BROKER
             </div>
+            <div id="health-latency"
+                class="flex items-center gap-1.5 bg-gray-900/40 px-3 py-1.5 rounded-md border border-gray-800 text-gray-400 font-bold transition-all">
+                <span id="latency-dot" class="w-2 h-2 rounded-full bg-gray-500 transition-all shadow-[0_0_8px_currentColor]"></span>
+                <span id="latency-val" class="font-mono">--</span> <span class="text-[0.6rem] opacity-50">ms</span>
+            </div>
             <div id="health-oracle"
                 class="flex items-center gap-2 bg-gray-900/40 px-3 py-1.5 rounded-md border border-gray-800 text-gray-500 transition-all">
                 <span class="w-2 h-2 rounded-full bg-gray-500 transition-all"></span> GEMINI ORACLE
@@ -1380,6 +1385,28 @@
                         hfragment.appendChild(row);
                     });
                     hbody.appendChild(hfragment);
+                }
+            }
+
+            // Update Latency Monitor
+            if (data.latency_ms !== undefined) {
+                const latVal = document.getElementById('latency-val');
+                const latDot = document.getElementById('latency-dot');
+                if (latVal && latDot) {
+                    const ms = parseFloat(data.latency_ms);
+                    latVal.textContent = ms.toFixed(1);
+                    
+                    // Categoría de latencia (Lógica de Fondo de Inversión)
+                    if (ms < 30) {
+                        latDot.className = 'w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]';
+                        latVal.className = 'font-mono text-emerald-400';
+                    } else if (ms < 100) {
+                        latDot.className = 'w-2 h-2 rounded-full bg-yellow-500 shadow-[0_0_8px_#f59e0b]';
+                        latVal.className = 'font-mono text-yellow-400';
+                    } else {
+                        latDot.className = 'w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e] animate-pulse';
+                        latVal.className = 'font-mono text-rose-400';
+                    }
                 }
             }
 
