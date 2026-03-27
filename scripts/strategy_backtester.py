@@ -140,7 +140,7 @@ def sim_liquidity_sweep(df, df_h1, symbol):
         curr = df.iloc[i]
         prev = df.iloc[i-1]
         ts = curr['time']
-        h = (pd.Timestamp(ts).hour - 5) % 24
+        h = (pd.Timestamp(ts).hour - 6) % 24 # Sincronizado con FTMO
         
         if h < 2 or h > 16: continue
         
@@ -199,7 +199,7 @@ def sim_zscore_reversion(df, df_h1, symbol, z_thresh=2.5):
     pip = 0.01 if "JPY" in symbol else 0.0001
     for i in range(250, len(df)-50):
         curr, prev_row = df.iloc[i], df.iloc[i-1]
-        h = (pd.Timestamp(curr['time']).hour - 5) % 24
+        h = (pd.Timestamp(curr['time']).hour - 6) % 24  # Sincronizado con FTMO
         if "EUR" in symbol and not (h >= 19 or h < 1): continue
         if "GBP" in symbol and not (h >= 13 and h < 17): continue
         signal = "SELL" if (prev_row['z'] >= z_thresh and curr['z'] < z_thresh) else "BUY" if (prev_row['z'] <= -z_thresh and curr['z'] > -z_thresh) else None
@@ -241,7 +241,7 @@ def sim_silver_bullet(df, df_h1, symbol):
         curr = df.iloc[i]
         ts = curr['time']
         day = ts.date()
-        h = (pd.Timestamp(ts).hour - 5) % 24
+        h = (pd.Timestamp(ts).hour - 6) % 24 # Sincronizado con FTMO
         
         if h != 10 or day == last_trade_day: continue
         
@@ -271,7 +271,7 @@ def sim_silver_bullet(df, df_h1, symbol):
                 
         if signal:
             disp_pips = abs(curr['close'] - df.iloc[i-5]['open']) / (10 * pip)
-            if disp_pips < 6.0: continue # La realidad del Euro: 6 pips
+            if disp_pips < 4.5: continue # Relajado para EURUSD (Elite NY)
             
             last_trade_day = day
             sl = max(12.0, round(disp_pips * 0.7, 1))
@@ -298,7 +298,7 @@ def sim_london_purge(df, symbol):
         found = False
         
         for _, row in window.iterrows():
-            h = (pd.Timestamp(row['time']).hour - 5) % 24
+            h = (pd.Timestamp(row['time']).hour - 6) % 24 # Sincronizado con FTMO
             if h >= 19 or h < 2:
                 asia_high = max(asia_high, row['high'])
                 asia_low = min(asia_low, row['low'])
@@ -309,7 +309,7 @@ def sim_london_purge(df, symbol):
         curr = df.iloc[i]
         ts = curr['time']
         day = ts.date()
-        h = (pd.Timestamp(ts).hour - 5) % 24
+        h = (pd.Timestamp(ts).hour - 6) % 24 # Sincronizado con FTMO
         
         # Ventana de Apertura de Londres (3-5 AM EST)
         if h < 3 or h > 5 or day == last_trade_day: continue
@@ -339,7 +339,7 @@ def sim_london_purge(df, symbol):
                  
         if signal:
             disp_pips = abs(curr['close'] - df.iloc[i-5]['open']) / (10 * pip)
-            if disp_pips < 7.0: continue # Filtro de fuerza 
+            if disp_pips < 5.5: continue # Relajado para capturar más Londres 
             
             last_trade_day = day
             sl = max(12.0, round(disp_pips * 0.8, 1))
@@ -374,7 +374,7 @@ def sim_institutional_flow(df_m5, df_m15, symbol):
         curr = df_m5.iloc[i]
         prev = df_m5.iloc[i-1]
         ts = curr['time']
-        h = (pd.Timestamp(ts).hour - 5) % 24
+        h = (pd.Timestamp(ts).hour - 6) % 24 # Sincronizado con FTMO
         
         # Filtro Sesión (Institucional)
         if h < 2 or h > 16: continue
@@ -437,7 +437,7 @@ def sim_ttm_squeeze(df, df_h1, symbol):
     
     for i in range(200, len(df)-50):
         curr, prev, prev2, prev3 = df.iloc[i], df.iloc[i-1], df.iloc[i-2], df.iloc[i-3]
-        h = (pd.Timestamp(curr['time']).hour - 5) % 24
+        h = (pd.Timestamp(curr['time']).hour - 6) % 24 # Sincronizado con FTMO
         
         if h < 3 or h >= 13: continue
         
