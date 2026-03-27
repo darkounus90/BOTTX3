@@ -122,11 +122,10 @@ def _calculate_adx(df, period=14):
 
 
 def sim_liquidity_sweep(df, df_h1, symbol):
-    """Simulador de la nueva estrategia Institutional Liquidity Sweep (ILS)"""
+    """Simulador mejorado de ILS Sweep (detecta 1-candle sweeps)"""
     res = BacktestResult("ILS Liquidity Sweep (4h)")
     pip = 0.0001 if "JPY" not in symbol else 0.01
     
-    # 1. LSMA para confirmación de reversión
     def calculate_lsma(s, p):
         weights = np.arange(1, p + 1)
         return s.rolling(window=p).apply(lambda x: np.polyfit(weights, x, 1)[0] * p + np.polyfit(weights, x, 1)[1], raw=True)
@@ -135,15 +134,16 @@ def sim_liquidity_sweep(df, df_h1, symbol):
     tr = pd.concat([df['high'] - df['low'], (df['high'] - df['close'].shift()).abs(), (df['low'] - df['close'].shift()).abs()], axis=1).max(axis=1)
     df['atr'] = tr.rolling(14).mean()
 
+    potential_signals = 0
+
     for i in range(100, len(df)-50):
-        curr, prev = df.iloc[i], df.iloc[i-1]
+        curr = df.iloc[i]
+        prev = df.iloc[i-1]
         ts = curr['time']
         h = (pd.Timestamp(ts).hour - 5) % 24
         
-        # Filtro Sesión (Londres + NY)
         if h < 2 or h > 16: continue
         
-        # Obtener rango 4h previo desde H1
         mask = (df_h1['time'] < ts)
         h1_window = df_h1[mask].iloc[-4:]
         if len(h1_window) < 4: continue
@@ -152,26 +152,39 @@ def sim_liquidity_sweep(df, df_h1, symbol):
         liq_low = h1_window['low'].min()
         
         signal = None
-        # Sell: Sweep High + Close below level + Close below LSMA
-        if prev['high'] > liq_high and (prev['high'] - liq_high) < (8.0 * pip):
-            if curr['close'] < liq_high and curr['close'] < curr['lsma']:
+        
+        # --- NUEVA LÓGICA: SENSIVILIDAD AUMENTADA ---
+        # Caso A: Barrido y rechazo en UNA sola vela (mecha larga)
+        if curr['high'] > liq_high and curr['close'] < liq_high:
+            if (curr['high'] - liq_high) < (15.0 * pip): # Barrido < 15 pips
                 signal = "SELL"
-        # Buy: Sweep Low + Close above level + Close above LSMA
-        elif prev['low'] < liq_low and (liq_low - prev['low']) < (8.0 * pip):
-            if curr['close'] > liq_low and curr['close'] > curr['lsma']:
+        
+        # Caso B: Barrido en vela previa, cierre en la actual
+        elif prev['high'] > liq_high and curr['close'] < liq_high:
+            if (prev['high'] - liq_high) < (15.0 * pip):
+                signal = "SELL"
+
+        # Simétrico para BUY
+        if curr['low'] < liq_low and curr['close'] > liq_low:
+            if (liq_low - curr['low']) < (15.0 * pip):
+                signal = "BUY"
+        elif prev['low'] < liq_low and curr['close'] > liq_low:
+            if (liq_low - prev['low']) < (15.0 * pip):
                 signal = "BUY"
                 
         if signal:
-            trend = get_h1_trend(df_h1, ts)
-            if (signal == "BUY" and trend == -1) or (signal == "SELL" and trend == 1):
-                res.filtered += 1
-                continue
+            potential_signals += 1
+            # Mantener filtro de tendencia pero menos agresivo (usando LSMA M5)
+            if signal == "SELL" and curr['close'] > curr['lsma']: continue
+            if signal == "BUY" and curr['close'] < curr['lsma']: continue
                 
-            sl = max(round(curr['atr']*1.5 / pip / 10, 1), 10.0)
-            tp = max(round(curr['atr']*3.0 / pip / 10, 1), 20.0)
+            sl = max(round(curr['atr']*1.5 / pip / 10, 1), 12.0)
+            tp = max(round(curr['atr']*3.0 / pip / 10, 1), 24.0)
             pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+50].to_dict('records'), symbol)
             res.add_trade(pnl, h, signal, sl, tp)
             
+    if res.trades:
+        print(f"  [DEBUG] {symbol} ILS: {potential_signals} barridos detectados -> {len(res.trades)} trades ejecutados.")
     return res
 
 def sim_zscore_reversion(df, df_h1, symbol, z_thresh=2.5):
