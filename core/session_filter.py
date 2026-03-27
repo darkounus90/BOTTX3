@@ -150,13 +150,13 @@ class SessionFilter:
             return {
                 "id": "PRIME",
                 "name": "🌪️ PRIME MOMENTUM (Londres + Mañana NY)",
-                "active_strats": ["TTM Squeeze", "ILS Sweep"]
+                "active_strats": ["TTM Squeeze", "ILS Sweep", "IFS SMC"]
             }
         elif 13 <= h < 17:
             return {
                 "id": "REVERSION",
                 "name": "🔬 AFTERNOON REVERSION (Tarde NY)",
-                "active_strats": ["Z-Score (GBP)", "ILS Sweep"]
+                "active_strats": ["Z-Score (GBP)", "ILS Sweep", "IFS SMC"]
             }
         else:
             return {

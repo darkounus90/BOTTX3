@@ -13,11 +13,11 @@ import logging
 from datetime import datetime
 
 class InstitutionalFlowStrategy:
-    def __init__(self, symbol, timeframe=mt5.TIMEFRAME_M5):
+    def __init__(self, symbol, timeframe=mt5.TIMEFRAME_M5, logger=None):
         self.symbol = symbol
         self.entry_tf = timeframe
         self.context_tf = mt5.TIMEFRAME_M15
-        self.logger = logging.getLogger("InstitutionalFlow")
+        self.logger = logger or logging.getLogger("InstitutionalFlow")
         
         # Parámetros SMC
         self.fvg_lookback = 50 

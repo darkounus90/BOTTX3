@@ -121,60 +121,6 @@ def _calculate_adx(df, period=14):
     return dx.ewm(alpha=1/period, adjust=False).mean()
 
 
-def sim_golden_zone(df, symbol):
-    """Simulador de la nueva estrategia EURUSD Golden Zone (Fib 61.8%)"""
-    res = BacktestResult("Golden Zone Reversion (F61.8)")
-    pip = 0.0001 if "JPY" not in symbol else 0.01
-    
-    # ATR para SL/TP
-    tr = pd.concat([df['high'] - df['low'], (df['high'] - df['close'].shift()).abs(), (df['low'] - df['close'].shift()).abs()], axis=1).max(axis=1)
-    df['atr'] = tr.rolling(14).mean()
-    
-    lookback = 36 # 3 horas impulsivos
-    
-    for i in range(100, len(df)-50):
-        window = df.iloc[i-lookback:i]
-        if len(window) < lookback: continue
-        
-        highest = window['high'].max()
-        lowest = window['low'].min()
-        high_idx = window['high'].idxmax()
-        low_idx = window['low'].idxmin()
-        
-        impulse_pips = (highest - lowest) / (10 * pip)
-        if impulse_pips < 10.0: continue # Bajamos a 10 pips para más acción
-        
-        curr = df.iloc[i]
-        ts = curr['time']
-        h = (pd.Timestamp(ts).hour - 5) % 24
-        if h < 2 or h > 16: continue 
-        
-        # Definir Zona Dorada Institucional (0.50 a 0.786)
-        signal = None
-        if high_idx > low_idx: # Impulso alcista
-            fib_50 = highest - (highest - lowest) * 0.50
-            fib_78 = highest - (highest - lowest) * 0.786
-            # Si cualquiera de las últimas 3 velas tocó esta zona
-            past_3 = df.iloc[i-2:i+1]
-            if (past_3['low'] <= fib_50).any() and (past_3['low'] >= fib_78).any():
-                if curr['close'] > curr['open'] and curr['close'] > df.iloc[i-1]['close']:
-                    signal = "BUY"
-        elif low_idx > high_idx: # Impulso bajista
-            fib_50 = lowest + (highest - lowest) * 0.50
-            fib_78 = lowest + (highest - lowest) * 0.786
-            past_3 = df.iloc[i-2:i+1]
-            if (past_3['high'] >= fib_50).any() and (past_3['high'] <= fib_78).any():
-                if curr['close'] < curr['open'] and curr['close'] < df.iloc[i-1]['close']:
-                    signal = "SELL"
-                    
-        if signal:
-            sl = max(round(curr['atr']*1.5 / pip / 10, 1), 12.0)
-            tp = max(round(curr['atr']*3.0 / pip / 10, 1), 24.0)
-            pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+100].to_dict('records'), symbol)
-            res.add_trade(pnl, h, signal, sl, tp)
-            
-    return res
-
 def sim_liquidity_sweep(df, df_h1, symbol):
     """Simulador mejorado de ILS Sweep (detecta 1-candle sweeps)"""
     res = BacktestResult("ILS Liquidity Sweep (4h)")
@@ -402,8 +348,7 @@ def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=45):
     if symbol == "EURUSD":
         # En EURUSD solo corremos lo que tiene sentido estadístico
         results = [
-            sim_ttm_squeeze(m15.copy(), h1, symbol),        # El Rey del Euro
-            sim_golden_zone(m5.copy(), symbol)              # El Candidato (Fib)
+            sim_ttm_squeeze(m15.copy(), h1, symbol)         # El Rey del Euro
         ]
     elif symbol == "GBPUSD":
         # En GBPUSD corremos el Arsenal Completo

@@ -119,7 +119,7 @@ class TX3ProBot:
                     ZScoreReversionStrategy(logger=self.logger, symbol=symbol),
                     LiquiditySweepStrategy(logger=self.logger, symbol=symbol),
                     TTMSqueezeStrategy(logger=self.logger, symbol=symbol),
-                    InstitutionalFlowStrategy(symbol=symbol)
+                    InstitutionalFlowStrategy(symbol=symbol, logger=self.logger)
                 ]
                 self.logger.info(f"✅ ESTRATEGIAS ELITE CARGADAS: [Z-Score + ILS + Squeeze + IFS SMC] → {symbol}")
             elif symbol == "EURUSD":
