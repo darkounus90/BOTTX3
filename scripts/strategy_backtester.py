@@ -481,11 +481,9 @@ def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=45):
     
     # ═══════ SELECCIÓN ESTRATÉGICA POR SÍMBOLO ═══════
     if symbol == "EURUSD":
-        # En EURUSD solo corremos lo que tiene sentido estadístico
+        # En EURUSD solo corremos lo que tiene sentido matemático comprobado
         results = [
-            sim_ttm_squeeze(m15.copy(), h1, symbol),        # El Rey del Euro
-            sim_silver_bullet(m5.copy(), h1, symbol),       # ICT Silver Bullet ELITE
-            sim_london_purge(m5.copy(), symbol)             # SMC 2.1: London Open Purge
+            sim_ttm_squeeze(m15.copy(), h1, symbol)         # El Rey del Euro
         ]
     elif symbol == "GBPUSD":
         # En GBPUSD corremos el Arsenal Completo
