@@ -104,19 +104,37 @@ def get_h1_trend(df_h1, timestamp):
 #  SIMULADORES
 # ═══════════════════════════════════════════════════════════════
 
-def sim_bollinger_rsi(df, df_h1, symbol, adx_thresh=30.0):
+def _calculate_adx(df, period=14):
+    """Calcula ADX real (idéntico al bot en producción)"""
+    high, low, close = df['high'], df['low'], df['close']
+    plus_dm = (high - high.shift(1)).clip(lower=0)
+    minus_dm = (low.shift(1) - low).clip(lower=0)
+    # Solo el mayor prevalece
+    plus_dm = plus_dm.where(plus_dm > minus_dm, 0)
+    minus_dm = minus_dm.where(minus_dm > plus_dm, 0)
+    
+    tr = pd.concat([high - low, (high - close.shift()).abs(), (low - close.shift()).abs()], axis=1).max(axis=1)
+    atr = tr.ewm(alpha=1/period, adjust=False).mean()
+    plus_di = 100 * (plus_dm.ewm(alpha=1/period, adjust=False).mean() / (atr + 1e-10))
+    minus_di = 100 * (minus_dm.ewm(alpha=1/period, adjust=False).mean() / (atr + 1e-10))
+    dx = (abs(plus_di - minus_di) / (plus_di + minus_di + 1e-10)) * 100
+    return dx.ewm(alpha=1/period, adjust=False).mean()
+
+
+def sim_bollinger_rsi(df, df_h1, symbol, adx_thresh=45.0):
     res = BacktestResult(f"Bollinger+RSI (ADX<{adx_thresh})")
     df['sma20'] = df['close'].rolling(20).mean()
     df['std20'] = df['close'].rolling(20).std()
     mult = 2.3 if "EUR" in symbol else 1.9
     df['up'] = df['sma20'] + df['std20'] * mult
-    df['low'] = df['sma20'] - df['std20'] * mult
+    df['dn'] = df['sma20'] - df['std20'] * mult
     
     delta = df['close'].diff()
     gain = delta.where(delta > 0, 0).ewm(alpha=1/14, adjust=False).mean()
     loss = (-delta.where(delta < 0, 0)).ewm(alpha=1/14, adjust=False).mean()
     df['rsi'] = 100 - (100 / (1 + gain/loss))
     df['atr'] = (df['high'] - df['low']).rolling(14).mean()
+    df['adx'] = _calculate_adx(df, 14)
     pip = 0.01 if "JPY" in symbol else 0.0001
 
     for i in range(50, len(df)-50):
@@ -125,18 +143,43 @@ def sim_bollinger_rsi(df, df_h1, symbol, adx_thresh=30.0):
         if "EUR" in symbol and not (h >= 19 or h < 1): continue
         if "GBP" in symbol and not (h >= 13 and h < 17): continue
         
-        signal = "BUY" if (row['close'] < row['low'] and row['rsi'] < 32) else "SELL" if (row['close'] > row['up'] and row['rsi'] > 68) else None
+        # --- FILTRO ADX (fiel al bot) ---
+        if pd.notna(row['adx']) and row['adx'] > adx_thresh:
+            res.filtered += 1
+            continue
         
-        if signal:
-            trend = get_h1_trend(df_h1, row['time'])
-            if (signal == "BUY" and trend == -1) or (signal == "SELL" and trend == 1):
-                res.filtered += 1
-                continue
-            
-            sl = max(round(row['atr']*1.5 / pip / 10, 1), 15)
-            tp = max(round(row['atr']*2.0 / pip / 10, 1), 25)
-            pnl = calculate_pnl(signal, row['close'], sl, tp, df.iloc[i+1:i+50].to_dict('records'), symbol)
-            res.add_trade(pnl, h, signal, sl, tp)
+        signal = "BUY" if (row['close'] <= row['dn'] and row['rsi'] <= 32) else \
+                 "SELL" if (row['close'] >= row['up'] and row['rsi'] >= 68) else None
+        
+        if not signal:
+            continue
+        
+        # --- FILTRO WICK REJECTION (fiel al bot) ---
+        if row['open'] < row['close']:
+            lower_wick = row['open'] - row['low']
+            upper_wick = row['high'] - row['close']
+        else:
+            lower_wick = row['close'] - row['low']
+            upper_wick = row['high'] - row['open']
+        cuerpo = abs(row['close'] - row['open'])
+        
+        if signal == "BUY" and not (lower_wick > cuerpo * 0.8):
+            res.filtered += 1
+            continue
+        if signal == "SELL" and not (upper_wick > cuerpo * 0.8):
+            res.filtered += 1
+            continue
+        
+        # --- FILTRO H1 TREND ---
+        trend = get_h1_trend(df_h1, row['time'])
+        if (signal == "BUY" and trend == -1) or (signal == "SELL" and trend == 1):
+            res.filtered += 1
+            continue
+        
+        sl = max(round(row['atr']*1.5 / pip / 10, 1), 8.0)
+        tp = max(round(row['atr']*2.0 / pip / 10, 1), 15.0)
+        pnl = calculate_pnl(signal, row['close'], sl, tp, df.iloc[i+1:i+50].to_dict('records'), symbol)
+        res.add_trade(pnl, h, signal, sl, tp)
     return res
 
 def sim_zscore_reversion(df, df_h1, symbol, z_thresh=2.5):
@@ -325,7 +368,7 @@ def sim_ttm_squeeze(df, df_h1, symbol):
             
     return res
 
-def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=30):
+def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=45):
     if not mt5.initialize(): return []
     m5 = pd.DataFrame(mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M5, 0, days*24*12))
     m15 = pd.DataFrame(mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M15, 0, days*24*4))
@@ -333,17 +376,22 @@ def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=30):
     mt5.shutdown()
     for d in [m5, m15, h1]: d['time'] = pd.to_datetime(d['time'], unit='s')
     h1['close_ema_200'] = h1['close'].ewm(span=200, adjust=False).mean()
+    
+    # Comparativa ADX 35 vs 45 para Bollinger+RSI
     results = [
-        sim_bollinger_rsi(m5.copy(), h1, symbol, adx), 
+        sim_bollinger_rsi(m5.copy(), h1, symbol, 35),   # ANTES
+        sim_bollinger_rsi(m5.copy(), h1, symbol, 45),   # AHORA
         sim_zscore_reversion(m15.copy(), h1, symbol, z),
         sim_ict_breakout(m5.copy(), h1, symbol),
         sim_ema_cross(m15.copy(), h1, symbol),
-        sim_ttm_squeeze(m15.copy(), h1, symbol) # Nuevo: TTM Squeeze
+        sim_ttm_squeeze(m15.copy(), h1, symbol)
     ]
-    print(f"\n[+] {symbol} - Reporte:")
+    print(f"\n[+] {symbol} - Reporte (con ADX real + Wick Rejection):")
     for r in results:
         rep = r.get_report()
-        print(f"  - {rep['name']:30s} | Trades: {rep['trades']:3d} | Filtramos {rep['filtered']} basura | PnL: ${rep['total_pnl']:+8.2f}")
+        pf_str = f"PF:{rep['profit_factor']:.2f}" if rep['profit_factor'] else "PF:N/A"
+        wr_str = f"WR:{rep['win_rate']}%" if rep['win_rate'] else "WR:N/A"
+        print(f"  - {rep['name']:30s} | Trades: {rep['trades']:3d} | {wr_str:>8} | {pf_str:>7} | Filtramos {rep['filtered']} | PnL: ${rep['total_pnl']:+8.2f} | MaxDD: ${rep['max_drawdown']:,.2f} | {rep['verdict']}")
     return [r.get_report() for r in results]
 
 if __name__ == "__main__":
