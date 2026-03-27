@@ -13,10 +13,10 @@ import logging
 from datetime import datetime
 
 class LiquiditySweepStrategy:
-    def __init__(self, symbol, timeframe=mt5.TIMEFRAME_M5):
+    def __init__(self, logger, symbol, timeframe=mt5.TIMEFRAME_M5):
+        self.logger = logger
         self.symbol = symbol
         self.timeframe = timeframe
-        self.logger = logging.getLogger("LiquiditySweep")
         
         # Parámetros Optimización
         self.lookback_hours = 4     # Rango de liquidez
