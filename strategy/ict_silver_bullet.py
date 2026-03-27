@@ -61,25 +61,36 @@ class SilverBulletStrategy(BaseStrategy):
         return fvgs
 
     def generate_signal(self) -> dict | None:
-        # 1. Filtro estricto de Tiempo (Silver Bullet Window)
+        # 1. Filtro estricto de Tiempo + Un solo tiro
         ny_now = self._get_ny_time()
-        if ny_now.hour != self.start_hour:
+        today = ny_now.date()
+        if ny_now.hour != self.start_hour or self.last_trade_date == today:
             return None
 
-        # 2. Descargar datos M5
-        rates = mt5.copy_rates_from_pos(self.symbol, self.timeframe, 0, 100)
-        if rates is None or len(rates) < 50: return None
+        # 2. Obtener Liquidez H1 (Últimas 4h)
+        h1_rates = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_H1, 1, 4)
+        if h1_rates is None or len(h1_rates) < 4: return None
+        liq_high = max([r['high'] for r in h1_rates])
+        liq_low = min([r['low'] for r in h1_rates])
+
+        # 3. Descargar datos M5
+        rates = mt5.copy_rates_from_pos(self.symbol, self.timeframe, 0, 50)
+        if rates is None or len(rates) < 20: return None
         df = pd.DataFrame(rates)
         
-        # 3. Identificar Desplazamiento (Cuerpo de vela > Mechas)
+        # 4. Verificar Barrido de Liquidez previo (Sweep)
         curr = df.iloc[-1]
         prev = df.iloc[-2]
         pip = 0.0001 if "JPY" not in self.symbol else 0.01
         
+        has_swept_high = df['high'].iloc[-10:].max() > liq_high
+        has_swept_low = df['low'].iloc[-10:].min() < liq_low
+        
+        # 5. Desplazamiento e Impulso
         move_pips = abs(curr['close'] - df.iloc[-5]['open']) / (10 * pip)
         if move_pips < self.min_displacement_pips: return None
         
-        # 4. Buscar FVGs activos en el desplazamiento
+        # 6. Buscar FVGs
         fvgs = self._find_fvgs(df)
         if not fvgs: return None
         
@@ -87,22 +98,22 @@ class SilverBulletStrategy(BaseStrategy):
         signal = None
         reason = ""
         
-        # 5. Entrada en Mitigación
-        if last_fvg['type'] == 'BULLISH' and curr['close'] > last_fvg['mid']:
-            # Esperar a que el precio 'toque' el FVG
+        # COMPRA: El precio barrió el bajo (Low Sweep) y ahora mitiga un Bullish FVG
+        if has_swept_low and last_fvg['type'] == 'BULLISH':
             if curr['low'] <= last_fvg['top'] and curr['close'] > last_fvg['mid']:
                 signal = "BUY"
-                reason = "Silver Bullet: Mitigation of Bullish FVG in NY Window"
+                reason = "S.B. Precision: Post-Sweep Bullish FVG Mitigation"
                 
-        elif last_fvg['type'] == 'BEARISH' and curr['close'] < last_fvg['mid']:
+        # VENTA: El precio barrió el alto (High Sweep) y ahora mitiga un Bearish FVG
+        elif has_swept_high and last_fvg['type'] == 'BEARISH':
             if curr['high'] >= last_fvg['bottom'] and curr['close'] < last_fvg['mid']:
                 signal = "SELL"
-                reason = "Silver Bullet: Mitigation of Bearish FVG in NY Window"
+                reason = "S.B. Precision: Post-Sweep Bearish FVG Mitigation"
 
         if signal:
-            # SL detrás del FVG o el Swing Low anterior
-            sl = max(12.0, round(move_pips * 0.8, 1))
-            tp = max(24.0, sl * 2.5) # R:R 1:2.5 mínimo
+            self.last_trade_date = today # Lock
+            sl = max(10.0, round(move_pips * 0.7, 1))
+            tp = max(25.0, sl * 3.0) # Apuntamos a un 1:3 RR para compensar
             
             return {
                 "symbol": self.symbol,
@@ -110,7 +121,7 @@ class SilverBulletStrategy(BaseStrategy):
                 "reason": reason,
                 "sl_pips": sl,
                 "tp_pips": tp,
-                "strategy": "SilverBullet_ICT"
+                "strategy": "SilverBullet_ICT_Elite"
             }
 
         return None

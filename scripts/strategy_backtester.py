@@ -221,10 +221,11 @@ def sim_zscore_reversion(df, df_h1, symbol, z_thresh=2.5):
             res.add_trade(pnl, h, signal, sl, tp)
     return res
 
-def sim_silver_bullet(df, symbol):
-    """Simulador ICT Silver Bullet NY (10:00 - 11:00 AM EST)"""
-    res = BacktestResult("ICT Silver Bullet (NY 10am)")
+def sim_silver_bullet(df, df_h1, symbol):
+    """Simulador ICT Silver Bullet NY ELITE (10:00 - 11:00 AM EST)"""
+    res = BacktestResult("ICT Silver Bullet (NY Elite)")
     pip = 0.0001 if "JPY" not in symbol else 0.01
+    last_trade_day = None
     
     def find_fvgs(df_window):
         fvgs = []
@@ -239,32 +240,42 @@ def sim_silver_bullet(df, symbol):
     for i in range(100, len(df)-50):
         curr = df.iloc[i]
         ts = curr['time']
+        day = ts.date()
         h = (pd.Timestamp(ts).hour - 5) % 24
         
-        # Solo ventana 10:00 - 11:00 AM NY (Silver Bullet)
-        if h != 10: continue
+        if h != 10 or day == last_trade_day: continue
         
-        # Detectar FVG en los últimos 20 minutos (4 velas M5)
-        window = df.iloc[i-20:i+1]
+        # 1. Obtener Sweep H1
+        mask = df_h1['time'] < ts
+        h1_window = df_h1[mask].iloc[-4:] # Últimas 4h
+        liq_high = h1_window['high'].max()
+        liq_low = h1_window['low'].min()
+        
+        has_swept_high = df['high'].iloc[i-10:i+1].max() > liq_high
+        has_swept_low = df['low'].iloc[i-10:i+1].min() < liq_low
+
+        # 2. Detectar FVG
+        window = df.iloc[i-15:i+1]
         fvgs = find_fvgs(window)
         if not fvgs: continue
         
         last_fvg = fvgs[0]
         signal = None
         
-        # Entrada en toque de mitigación
-        if last_fvg['type'] == 'BULLISH':
+        if has_swept_low and last_fvg['type'] == 'BULLISH':
             if curr['low'] <= last_fvg['top'] and curr['close'] > last_fvg['mid']:
                 signal = "BUY"
-        elif last_fvg['type'] == 'BEARISH':
+        elif has_swept_high and last_fvg['type'] == 'BEARISH':
             if curr['high'] >= last_fvg['bottom'] and curr['close'] < last_fvg['mid']:
                 signal = "SELL"
                 
         if signal:
-            # Desplazamiento pips aprox
             disp_pips = abs(curr['close'] - df.iloc[i-5]['open']) / (10 * pip)
-            sl = max(12.0, round(disp_pips * 0.8, 1))
-            tp = max(24.0, sl * 2.5)
+            if disp_pips < 12.0: continue # Filtro de fuerza
+            
+            last_trade_day = day
+            sl = max(10.0, round(disp_pips * 0.7, 1))
+            tp = max(30.0, sl * 3.0) 
             pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+60].to_dict('records'), symbol)
             res.add_trade(pnl, h, signal, sl, tp)
             
@@ -398,7 +409,7 @@ def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=45):
         # En EURUSD solo corremos lo que tiene sentido estadístico
         results = [
             sim_ttm_squeeze(m15.copy(), h1, symbol),        # El Rey del Euro
-            sim_silver_bullet(m5.copy(), symbol)            # ICT Silver Bullet (NY Window)
+            sim_silver_bullet(m5.copy(), h1, symbol)        # ICT Silver Bullet ELITE
         ]
     elif symbol == "GBPUSD":
         # En GBPUSD corremos el Arsenal Completo
