@@ -270,8 +270,14 @@ def sim_silver_bullet(df, df_h1, symbol):
                 signal = "SELL"
                 
         if signal:
+            trend = get_h1_trend(df_h1, curr['time'])
+            if (signal == "BUY" and trend == -1) or (signal == "SELL" and trend == 1):
+                res.filtered += 1
+                signal = None
+                
+        if signal:
             disp_pips = abs(curr['close'] - df.iloc[i-5]['open']) / (10 * pip)
-            if disp_pips < 6.0: continue # Escudo Reactivado: Filtra el ruido y evita pérdidas
+            if disp_pips < 4.5: continue # Filtro suave: el escudo principal ahora es HTF Trend
             
             last_trade_day = day
             sl = max(12.0, round(disp_pips * 0.7, 1))
@@ -281,8 +287,8 @@ def sim_silver_bullet(df, df_h1, symbol):
             
     return res
 
-def sim_london_purge(df, symbol):
-    """Simulador SMC 2.1: London Open Purge (03:00 - 05:00 AM NY)"""
+def sim_london_purge(df, df_h1, symbol):
+    """Simulador SMC 2.1: London Open Purge con Filtro de Tendencia (HTF)"""
     res = BacktestResult("London Open Purge (SMC 2.1)")
     pip = 0.0001 if "JPY" not in symbol else 0.01
     last_trade_day = None
@@ -345,8 +351,14 @@ def sim_london_purge(df, symbol):
              signal = "SELL"
                  
         if signal:
+            trend = get_h1_trend(df_h1, curr['time'])
+            if (signal == "BUY" and trend == -1) or (signal == "SELL" and trend == 1):
+                res.filtered += 1
+                signal = None
+
+        if signal:
             disp_pips = abs(curr['close'] - df.iloc[i-5]['open']) / (10 * pip)
-            if disp_pips < 7.0: continue # Escudo Reactivado: Protege cuenta de $50k del ruido de M5
+            if disp_pips < 5.0: continue # Filtro suave: el escudo real es HTF EMA200
             
             last_trade_day = day
             sl = max(12.0, round(disp_pips * 0.8, 1))
@@ -486,7 +498,9 @@ def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=45):
             sim_ttm_squeeze(m15.copy(), h1, symbol),        # El Rey del Euro
             sim_zscore_reversion(m15.copy(), h1, symbol, z),# Asiático Z-Score
             sim_liquidity_sweep(m5.copy(), h1, symbol),     # Escáner LS (4h)
-            sim_institutional_flow(m5.copy(), m15.copy(), symbol) # SMC Avanzado
+            sim_institutional_flow(m5.copy(), m15.copy(), symbol), # SMC Avanzado
+            sim_silver_bullet(m5.copy(), h1, symbol),       # ICT Silver Bullet HTF Filter
+            sim_london_purge(m5.copy(), h1, symbol)         # London Purge HTF Filter
         ]
     elif symbol == "GBPUSD":
         # En GBPUSD corremos el Arsenal Completo
