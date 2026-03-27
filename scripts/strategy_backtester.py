@@ -221,6 +221,55 @@ def sim_zscore_reversion(df, df_h1, symbol, z_thresh=2.5):
             res.add_trade(pnl, h, signal, sl, tp)
     return res
 
+def sim_silver_bullet(df, symbol):
+    """Simulador ICT Silver Bullet NY (10:00 - 11:00 AM EST)"""
+    res = BacktestResult("ICT Silver Bullet (NY 10am)")
+    pip = 0.0001 if "JPY" not in symbol else 0.01
+    
+    def find_fvgs(df_window):
+        fvgs = []
+        for j in range(len(df_window)-1, 1, -1):
+            if j < 2: continue
+            if df_window.iloc[j]['low'] > df_window.iloc[j-2]['high']:
+                fvgs.append({'type': 'BULLISH', 'top': df_window.iloc[j]['low'], 'bottom': df_window.iloc[j-2]['high'], 'mid': (df_window.iloc[j]['low'] + df_window.iloc[j-2]['high']) / 2})
+            elif df_window.iloc[j]['high'] < df_window.iloc[j-2]['low']:
+                fvgs.append({'type': 'BEARISH', 'top': df_window.iloc[j-2]['low'], 'bottom': df_window.iloc[j]['high'], 'mid': (df_window.iloc[j-2]['low'] + df_window.iloc[j]['high']) / 2})
+        return fvgs
+
+    for i in range(100, len(df)-50):
+        curr = df.iloc[i]
+        ts = curr['time']
+        h = (pd.Timestamp(ts).hour - 5) % 24
+        
+        # Solo ventana 10:00 - 11:00 AM NY (Silver Bullet)
+        if h != 10: continue
+        
+        # Detectar FVG en los últimos 20 minutos (4 velas M5)
+        window = df.iloc[i-20:i+1]
+        fvgs = find_fvgs(window)
+        if not fvgs: continue
+        
+        last_fvg = fvgs[0]
+        signal = None
+        
+        # Entrada en toque de mitigación
+        if last_fvg['type'] == 'BULLISH':
+            if curr['low'] <= last_fvg['top'] and curr['close'] > last_fvg['mid']:
+                signal = "BUY"
+        elif last_fvg['type'] == 'BEARISH':
+            if curr['high'] >= last_fvg['bottom'] and curr['close'] < last_fvg['mid']:
+                signal = "SELL"
+                
+        if signal:
+            # Desplazamiento pips aprox
+            disp_pips = abs(curr['close'] - df.iloc[i-5]['open']) / (10 * pip)
+            sl = max(12.0, round(disp_pips * 0.8, 1))
+            tp = max(24.0, sl * 2.5)
+            pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+60].to_dict('records'), symbol)
+            res.add_trade(pnl, h, signal, sl, tp)
+            
+    return res
+
 # Eliminadas estrategias antiguas perdedoras (Bollinger, ICT, EMA Cross)
 
 def sim_institutional_flow(df_m5, df_m15, symbol):
@@ -348,7 +397,8 @@ def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=45):
     if symbol == "EURUSD":
         # En EURUSD solo corremos lo que tiene sentido estadístico
         results = [
-            sim_ttm_squeeze(m15.copy(), h1, symbol)         # El Rey del Euro
+            sim_ttm_squeeze(m15.copy(), h1, symbol),        # El Rey del Euro
+            sim_silver_bullet(m5.copy(), symbol)            # ICT Silver Bullet (NY Window)
         ]
     elif symbol == "GBPUSD":
         # En GBPUSD corremos el Arsenal Completo
