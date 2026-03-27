@@ -271,7 +271,7 @@ def sim_silver_bullet(df, df_h1, symbol):
                 
         if signal:
             disp_pips = abs(curr['close'] - df.iloc[i-5]['open']) / (10 * pip)
-            if disp_pips < 4.5: continue # La realidad del Euro: ajustado a 4.5 pips
+            # if disp_pips < 4.5: continue # <-- DESACTIVADO PARA DEPURAR SMC
             
             last_trade_day = day
             sl = max(12.0, round(disp_pips * 0.7, 1))
@@ -346,7 +346,7 @@ def sim_london_purge(df, symbol):
                  
         if signal:
             disp_pips = abs(curr['close'] - df.iloc[i-5]['open']) / (10 * pip)
-            if disp_pips < 5.0: continue # Filtro de fuerza ajustado para capturar la liquidez de Londres
+            # if disp_pips < 5.0: continue # <-- DESACTIVADO PARA DEPURAR SMC
             
             last_trade_day = day
             sl = max(12.0, round(disp_pips * 0.8, 1))
