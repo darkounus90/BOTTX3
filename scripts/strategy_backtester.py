@@ -281,6 +281,74 @@ def sim_silver_bullet(df, df_h1, symbol):
             
     return res
 
+def sim_london_purge(df, symbol):
+    """Simulador SMC 2.1: London Open Purge (03:00 - 05:00 AM NY)"""
+    res = BacktestResult("London Open Purge (SMC 2.1)")
+    pip = 0.0001 if "JPY" not in symbol else 0.01
+    last_trade_day = None
+    
+    def get_asia_range(full_df, current_ts):
+        """Busca el rango de Asia (7 PM - 2 AM EST)"""
+        mask = (full_df['time'] < current_ts)
+        # Últimas 100 velas M5 aprox cubren Asia
+        window = full_df[mask].iloc[-120:] 
+        
+        asia_high = -1e9
+        asia_low = 1e9
+        found = False
+        
+        for _, row in window.iterrows():
+            h = (pd.Timestamp(row['time']).hour - 5) % 24
+            if h >= 19 or h < 2:
+                asia_high = max(asia_high, row['high'])
+                asia_low = min(asia_low, row['low'])
+                found = True
+        return (asia_high, asia_low) if found else (None, None)
+
+    for i in range(120, len(df)-50):
+        curr = df.iloc[i]
+        ts = curr['time']
+        day = ts.date()
+        h = (pd.Timestamp(ts).hour - 5) % 24
+        
+        # Ventana de Apertura de Londres (3-5 AM EST)
+        if h < 3 or h > 5 or day == last_trade_day: continue
+        
+        # 1. Obtener Asia Range
+        asia_high, asia_low = get_asia_range(df, ts)
+        if not asia_high: continue
+        
+        # 2. Verificar Barrido (Liquidity Sweep)
+        # ¿La vela actual o las anteriores barreron el rango?
+        has_swept_high = df['high'].iloc[i-12:i+1].max() > asia_high
+        has_swept_low = df['low'].iloc[i-12:i+1].min() < asia_low
+        
+        # 3. Gatillo: Retorno al Rango + FVG
+        # Buscar FVG en los últimos 20 mins
+        window = df.iloc[i-4:i+1]
+        signal = None
+        
+        # BULLISH (Se barrió el bajo de Asia y ahora recupera)
+        if has_swept_low and curr['close'] > asia_low:
+             if curr['low'] > df.iloc[i-2]['high']: # FVG Simple Bullish
+                 signal = "BUY"
+        # BEARISH (Se barrió el alto de Asia y ahora recupera)
+        elif has_swept_high and curr['close'] < asia_high:
+             if curr['high'] < df.iloc[i-2]['low']: # FVG Simple Bearish
+                 signal = "SELL"
+                 
+        if signal:
+            disp_pips = abs(curr['close'] - df.iloc[i-5]['open']) / (10 * pip)
+            if disp_pips < 7.0: continue # Filtro de fuerza 
+            
+            last_trade_day = day
+            sl = max(12.0, round(disp_pips * 0.8, 1))
+            tp = max(36.0, sl * 3.0) 
+            pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+60].to_dict('records'), symbol)
+            res.add_trade(pnl, h, signal, sl, tp)
+            
+    return res
+
 # Eliminadas estrategias antiguas perdedoras (Bollinger, ICT, EMA Cross)
 
 def sim_institutional_flow(df_m5, df_m15, symbol):
@@ -409,7 +477,8 @@ def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=45):
         # En EURUSD solo corremos lo que tiene sentido estadístico
         results = [
             sim_ttm_squeeze(m15.copy(), h1, symbol),        # El Rey del Euro
-            sim_silver_bullet(m5.copy(), h1, symbol)        # ICT Silver Bullet ELITE
+            sim_silver_bullet(m5.copy(), h1, symbol),       # ICT Silver Bullet ELITE
+            sim_london_purge(m5.copy(), symbol)             # SMC 2.1: London Open Purge
         ]
     elif symbol == "GBPUSD":
         # En GBPUSD corremos el Arsenal Completo
