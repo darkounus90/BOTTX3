@@ -142,28 +142,29 @@ def sim_golden_zone(df, symbol):
         low_idx = window['low'].idxmin()
         
         impulse_pips = (highest - lowest) / (10 * pip)
-        if impulse_pips < 12.0: continue # Bajamos a 12 pips
+        if impulse_pips < 10.0: continue # Bajamos a 10 pips para más acción
         
         curr = df.iloc[i]
-        prev = df.iloc[i-1]
         ts = curr['time']
         h = (pd.Timestamp(ts).hour - 5) % 24
-        
         if h < 2 or h > 16: continue 
         
+        # Definir Zona Dorada Institucional (0.50 a 0.786)
         signal = None
-        # Lógica Fib 61.8% (Golden Zone)
-        if high_idx > low_idx: # Impulso alcista, esperamos retroceso
-            target_entry = highest - (highest - lowest) * 0.618
-            # Si el LOW de la vela tocó la zona dorada (tolerancia 3 pips)
-            if curr['low'] <= (target_entry + 2*pip) and curr['close'] > target_entry:
-                if curr['close'] > curr['open']: # Confirmación alcista
+        if high_idx > low_idx: # Impulso alcista
+            fib_50 = highest - (highest - lowest) * 0.50
+            fib_78 = highest - (highest - lowest) * 0.786
+            # Si cualquiera de las últimas 3 velas tocó esta zona
+            past_3 = df.iloc[i-2:i+1]
+            if (past_3['low'] <= fib_50).any() and (past_3['low'] >= fib_78).any():
+                if curr['close'] > curr['open'] and curr['close'] > df.iloc[i-1]['close']:
                     signal = "BUY"
         elif low_idx > high_idx: # Impulso bajista
-            target_entry = lowest + (highest - lowest) * 0.618
-            # Si el HIGH de la vela tocó la zona dorada
-            if curr['high'] >= (target_entry - 2*pip) and curr['close'] < target_entry:
-                if curr['close'] < curr['open']: # Confirmación bajista
+            fib_50 = lowest + (highest - lowest) * 0.50
+            fib_78 = lowest + (highest - lowest) * 0.786
+            past_3 = df.iloc[i-2:i+1]
+            if (past_3['high'] >= fib_50).any() and (past_3['high'] <= fib_78).any():
+                if curr['close'] < curr['open'] and curr['close'] < df.iloc[i-1]['close']:
                     signal = "SELL"
                     
         if signal:
