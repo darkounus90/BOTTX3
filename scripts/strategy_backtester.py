@@ -397,14 +397,23 @@ def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=45):
     for d in [m5, m15, h1]: d['time'] = pd.to_datetime(d['time'], unit='s')
     h1['close_ema_200'] = h1['close'].ewm(span=200, adjust=False).mean()
     
-    # ═══════ EQUIPO DE ÉLITE TX3 PRO ═══════
-    results = [
-        sim_golden_zone(m5.copy(), symbol),                    # ESPECIAL: EURUSD Golden
-        sim_institutional_flow(m5.copy(), m15.copy(), symbol), # NUEVA: IFS SMC 2.0
-        sim_liquidity_sweep(m5.copy(), h1, symbol),            # REY REVERSIÓN: ILS Sweep
-        sim_ttm_squeeze(m15.copy(), h1, symbol),               # REY MOMENTUM: Squeeze
-        sim_zscore_reversion(m15.copy(), h1, symbol, z)        # ESTABLE: Z-Score
-    ]
+    # ═══════ SELECCIÓN ESTRATÉGICA POR SÍMBOLO ═══════
+    if symbol == "EURUSD":
+        # En EURUSD solo corremos lo que tiene sentido estadístico
+        results = [
+            sim_ttm_squeeze(m15.copy(), h1, symbol),        # El Rey del Euro
+            sim_golden_zone(m5.copy(), symbol)              # El Candidato (Fib)
+        ]
+    elif symbol == "GBPUSD":
+        # En GBPUSD corremos el Arsenal Completo
+        results = [
+            sim_ttm_squeeze(m15.copy(), h1, symbol),        # Momentum
+            sim_zscore_reversion(m15.copy(), h1, symbol, z),# Volatilidad
+            sim_liquidity_sweep(m5.copy(), h1, symbol),     # Liquidez 4h
+            sim_institutional_flow(m5.copy(), m15.copy(), symbol) # SMC 2.0
+        ]
+    else:
+        results = []
     print(f"\n{'='*100}")
     print(f"  [+] {symbol} - REPORTE OPERATIVO (ESTRATEGIAS ACTIVAS)")
     print(f"{'='*100}")
