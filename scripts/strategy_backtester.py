@@ -245,14 +245,14 @@ def sim_silver_bullet(df, df_h1, symbol):
         
         if h != 10 or day == last_trade_day: continue
         
-        # 1. Obtener Sweep H1
+        # 1. Obtener Sweep H1 (desde las 8:30 AM NY)
         mask = df_h1['time'] < ts
-        h1_window = df_h1[mask].iloc[-4:] # Últimas 4h
-        liq_high = h1_window['high'].max()
-        liq_low = h1_window['low'].min()
+        h1_recent = df_h1[mask].iloc[-6:] # Ventana de 6h
+        liq_high = h1_recent['high'].max()
+        liq_low = h1_recent['low'].min()
         
-        has_swept_high = df['high'].iloc[i-10:i+1].max() > liq_high
-        has_swept_low = df['low'].iloc[i-10:i+1].min() < liq_low
+        has_swept_high = df['high'].iloc[i-40:i+1].max() > liq_high
+        has_swept_low = df['low'].iloc[i-40:i+1].min() < liq_low
 
         # 2. Detectar FVG
         window = df.iloc[i-15:i+1]
@@ -271,11 +271,11 @@ def sim_silver_bullet(df, df_h1, symbol):
                 
         if signal:
             disp_pips = abs(curr['close'] - df.iloc[i-5]['open']) / (10 * pip)
-            if disp_pips < 12.0: continue # Filtro de fuerza
+            if disp_pips < 8.0: continue # El punto dulce (8 pips)  
             
             last_trade_day = day
-            sl = max(10.0, round(disp_pips * 0.7, 1))
-            tp = max(30.0, sl * 3.0) 
+            sl = max(12.0, round(disp_pips * 0.7, 1))
+            tp = max(25.0, sl * 2.5) 
             pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+60].to_dict('records'), symbol)
             res.add_trade(pnl, h, signal, sl, tp)
             

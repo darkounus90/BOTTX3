@@ -3,10 +3,11 @@
 ======================================================
 Lógica: Basada en la metodología de Inner Circle Trader.
 Busca una entrada institucional entre las 10:00 AM y 11:00 AM EST.
-Requisitos: 
-1. Sweep de liquidez previa (Máximo/Mínimo anterior).
-2. Market Structure Shift (MSS) con desplazamiento fuerte.
-3. Fair Value Gap (FVG) activo.
+Filtros Elite:
+1. Sweep de liquidez previa en H1 (ventana de 6h).
+2. Desplazamiento institucional genuino (> 8 pips).
+3. Mitigación de FVG en M5.
+4. Un solo tiro por sesión para evitar overtrading.
 """
 
 import MetaTrader5 as mt5
@@ -24,14 +25,15 @@ class SilverBulletStrategy(BaseStrategy):
         self.symbol = symbol or BotConfig.DEFAULT_SYMBOL
         self.timeframe = mt5.TIMEFRAME_M5
         
-        # Parámetros Silver Bullet
-        self.start_hour = 10 # 10:00 AM NY
-        self.end_hour = 11   # 11:00 AM NY
+        # Parámetros Silver Bullet (Ajuste Fino EURUSD)
+        self.start_hour = 10 
+        self.end_hour = 11   
         self.fvg_lookback = 10
-        self.min_displacement_pips = 5.0
+        self.min_displacement_pips = 8.0  
+        self.last_trade_date = None
 
     def get_name(self) -> str:
-        return f"Silver Bullet ({self.symbol})"
+        return f"SilverBullet_Elite_{self.symbol}"
 
     def _get_ny_time(self):
         """Obtiene la hora actual corregida a New York"""
@@ -40,7 +42,7 @@ class SilverBulletStrategy(BaseStrategy):
     def _find_fvgs(self, df):
         """Detecta FVGs recientes en el desplazamiento"""
         fvgs = []
-        for i in range(len(df)-3, len(df)-50, -1):
+        for i in range(len(df)-1, 1, -1):
             if i < 2: break
             # FVG Alcista (Gap entre el High de i-2 y el Low de i)
             if df.iloc[i]['low'] > df.iloc[i-2]['high']:
@@ -67,26 +69,26 @@ class SilverBulletStrategy(BaseStrategy):
         if ny_now.hour != self.start_hour or self.last_trade_date == today:
             return None
 
-        # 2. Obtener Liquidez H1 (Últimas 4h)
-        h1_rates = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_H1, 1, 4)
+        # 2. Obtener Liquidez H1 (Radar de Londres + Apertura Wall Street)
+        h1_rates = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_H1, 0, 6)
         if h1_rates is None or len(h1_rates) < 4: return None
-        liq_high = max([r['high'] for r in h1_rates])
-        liq_low = min([r['low'] for r in h1_rates])
+        # Excluimos la vela actual para ver niveles fijos
+        liq_high = max([r['high'] for r in h1_rates[:-1]])
+        liq_low = min([r['low'] for r in h1_rates[:-1]])
 
         # 3. Descargar datos M5
         rates = mt5.copy_rates_from_pos(self.symbol, self.timeframe, 0, 50)
-        if rates is None or len(rates) < 20: return None
+        if rates is None or len(rates) < 30: return None
         df = pd.DataFrame(rates)
         
         # 4. Verificar Barrido de Liquidez previo (Sweep)
         curr = df.iloc[-1]
-        prev = df.iloc[-2]
         pip = 0.0001 if "JPY" not in self.symbol else 0.01
         
-        has_swept_high = df['high'].iloc[-10:].max() > liq_high
-        has_swept_low = df['low'].iloc[-10:].min() < liq_low
+        has_swept_high = df['high'].iloc[-40:].max() > liq_high
+        has_swept_low = df['low'].iloc[-40:].min() < liq_low
         
-        # 5. Desplazamiento e Impulso
+        # 5. Desplazamiento e Impulso (Filtro de 8 pips)
         move_pips = abs(curr['close'] - df.iloc[-5]['open']) / (10 * pip)
         if move_pips < self.min_displacement_pips: return None
         
@@ -98,22 +100,22 @@ class SilverBulletStrategy(BaseStrategy):
         signal = None
         reason = ""
         
-        # COMPRA: El precio barrió el bajo (Low Sweep) y ahora mitiga un Bullish FVG
+        # COMPRA: Post-Sweep Low + Bullish FVG Mitigation
         if has_swept_low and last_fvg['type'] == 'BULLISH':
             if curr['low'] <= last_fvg['top'] and curr['close'] > last_fvg['mid']:
                 signal = "BUY"
-                reason = "S.B. Precision: Post-Sweep Bullish FVG Mitigation"
+                reason = "S.B. Elite: Post-Sweep Bullish FVG Mitigation (8+ pips move)"
                 
-        # VENTA: El precio barrió el alto (High Sweep) y ahora mitiga un Bearish FVG
+        # VENTA: Post-Sweep High + Bearish FVG Mitigation
         elif has_swept_high and last_fvg['type'] == 'BEARISH':
             if curr['high'] >= last_fvg['bottom'] and curr['close'] < last_fvg['mid']:
                 signal = "SELL"
-                reason = "S.B. Precision: Post-Sweep Bearish FVG Mitigation"
+                reason = "S.B. Elite: Post-Sweep Bearish FVG Mitigation (8+ pips move)"
 
         if signal:
-            self.last_trade_date = today # Lock
-            sl = max(10.0, round(move_pips * 0.7, 1))
-            tp = max(25.0, sl * 3.0) # Apuntamos a un 1:3 RR para compensar
+            self.last_trade_date = today
+            sl = max(12.0, round(move_pips * 0.7, 1))
+            tp = max(30.0, sl * 2.5) 
             
             return {
                 "symbol": self.symbol,
