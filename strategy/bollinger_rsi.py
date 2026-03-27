@@ -27,7 +27,7 @@ class BollingerRSIStrategy(BaseStrategy):
         self.rsi_overbought = 68.0 # Suavizado (antes 70.0)
         self.rsi_oversold = 32.0   # Suavizado (antes 30.0)
         self.adx_period = 14
-        self.adx_threshold = 35.0  # OPTIMIZADO: Modo EQUILIBRADO (según backtest)
+        self.adx_threshold = 45.0  # AJUSTADO: 35→45 — evita bloqueo crónico. H1 Trend + Wick + Oráculo protegen
         self.bars_needed = 100
 
     def get_name(self) -> str:
