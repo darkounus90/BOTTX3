@@ -271,7 +271,7 @@ def sim_silver_bullet(df, df_h1, symbol):
                 
         if signal:
             disp_pips = abs(curr['close'] - df.iloc[i-5]['open']) / (10 * pip)
-            if disp_pips < 6.0: continue # La realidad del Euro: 6 pips
+            if disp_pips < 4.5: continue # La realidad del Euro: ajustado a 4.5 pips
             
             last_trade_day = day
             sl = max(12.0, round(disp_pips * 0.7, 1))
@@ -325,21 +325,28 @@ def sim_london_purge(df, symbol):
         
         # 3. Gatillo: Retorno al Rango + FVG
         # Buscar FVG en los últimos 20 mins
-        window = df.iloc[i-4:i+1]
+        fvgs = []
+        for j in range(i, i-20, -1):
+            if j < 2: break
+            if df.iloc[j]['low'] > df.iloc[j-2]['high']:
+                fvgs.append({'type': 'BULLISH', 'top': df.iloc[j]['low'], 'bottom': df.iloc[j-2]['high']})
+            elif df.iloc[j]['high'] < df.iloc[j-2]['low']:
+                fvgs.append({'type': 'BEARISH', 'top': df.iloc[j-2]['low'], 'bottom': df.iloc[j]['high']})
+                
+        if not fvgs: continue
+        last_fvg = fvgs[0]
         signal = None
         
         # BULLISH (Se barrió el bajo de Asia y ahora recupera)
-        if has_swept_low and curr['close'] > asia_low:
-             if curr['low'] > df.iloc[i-2]['high']: # FVG Simple Bullish
-                 signal = "BUY"
+        if has_swept_low and last_fvg['type'] == 'BULLISH' and curr['close'] > asia_low:
+             signal = "BUY"
         # BEARISH (Se barrió el alto de Asia y ahora recupera)
-        elif has_swept_high and curr['close'] < asia_high:
-             if curr['high'] < df.iloc[i-2]['low']: # FVG Simple Bearish
-                 signal = "SELL"
+        elif has_swept_high and last_fvg['type'] == 'BEARISH' and curr['close'] < asia_high:
+             signal = "SELL"
                  
         if signal:
             disp_pips = abs(curr['close'] - df.iloc[i-5]['open']) / (10 * pip)
-            if disp_pips < 7.0: continue # Filtro de fuerza 
+            if disp_pips < 5.0: continue # Filtro de fuerza ajustado para capturar la liquidez de Londres
             
             last_trade_day = day
             sl = max(12.0, round(disp_pips * 0.8, 1))
