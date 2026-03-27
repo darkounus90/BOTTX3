@@ -828,12 +828,22 @@ class TX3ProBot:
                 if hasattr(self, 'q_agent'):
                     self.q_agent.shadow_update_closed_trades()
 
-                # ─── B.1 AI Exit Engine ─────────────────────────────────
-                # DESACTIVADO: Este motor duplicaba la lógica de trailing_stop.py
-                # pero SIN las protecciones (gracia 5 min, filtro ruido, SL mínimo 5 pips).
-                # Causaba cierres a mercado instantáneos que perdían spread+comisión.
-                # La gestión de salidas IA ahora está CENTRALIZADA en trailing_stop.py.
-                pass
+                # ─── B.2 FRIDAY WEEKEND-KILLSWITCH ─────────────────────
+                if getattr(BotConfig, "NEWS_KILLZONES_ENABLED", True): # Usando config relacionada a cierres forzosos temporales
+                    from core.session_filter import get_now_institutional
+                    now_ny = get_now_institutional(BotConfig.MARKET_TIMEZONE)
+                    
+                    if now_ny.weekday() == 4 and now_ny.hour == 16 and now_ny.minute >= 45:
+                        if not getattr(self, "friday_closed", False):
+                            open_pos = mt5.positions_get()
+                            if open_pos and any(p.magic == BotConfig.MAGIC_NUMBER for p in open_pos):
+                                self.logger.critical("🚨 VIERNES 16:45 NY - CIERRE FIN DE SEMANA. Evitando puente de liquidez o falla en FTMO.")
+                                closed_wk = self.position_manager.close_all_positions(reason="Cierre Preventivo Fin de Semana")
+                                self.telegram.notify_error(f"⚠️ WEEKEND KILLSWITCH: Se cerraron {closed_wk} operaciones para evitar Gaps o violación de Reglas FTMO de fin de semana.")
+                            self.friday_closed = True
+                            
+                    if now_ny.weekday() != 4 and getattr(self, "friday_closed", False):
+                        self.friday_closed = False
 
                 # ─── C. Verificar Riesgo (Emergencia) ──────────────
                 if hasattr(self.risk_manager, 'check_and_hedge_crashing_positions'):
@@ -1029,6 +1039,9 @@ class TX3ProBot:
                                     if self.oracle.enabled:
                                         # 🛡️ LATENCY GUARD: Capturar precio antes de la IA
                                         tick_before = mt5.symbol_info_tick(symbol)
+                                        if not tick_before:
+                                            self.logger.error(f"⚠️ broker desconectado temporalmente al leer tick_before de {symbol}. Abortando trade.")
+                                            continue
                                         price_before = tick_before.ask if signal['signal'] == 'BUY' else tick_before.bid
                                         
                                         # 🛡️ CRASH GUARD: Envolver llamada a IA en try/except
@@ -1046,12 +1059,22 @@ class TX3ProBot:
                                             
                                         # 🛡️ LATENCY GUARD: Comprobar precio después de la IA
                                         tick_after = mt5.symbol_info_tick(symbol)
+                                        if not tick_after:
+                                            self.logger.error(f"⚠️ broker desconectado al leer tick_after de {symbol}. Abortando trade.")
+                                            continue
                                         price_after = tick_after.ask if signal['signal'] == 'BUY' else tick_after.bid
                                         
                                         # 🛡️ DYNAMIC SLIPPAGE GUARD: Máximo de 2.5 pips o 2 veces el spread
                                         symbol_info_meta = mt5.symbol_info(symbol)
+                                        if not symbol_info_meta:
+                                            self.logger.error(f"⚠️ broker desconectado al leer symbol_info_meta de {symbol}. Abortando trade.")
+                                            continue
+                                            
                                         point = symbol_info_meta.point
                                         pip_size = 10 * point
+                                        # Prevenir división por cero si pip_size es 0
+                                        if pip_size == 0: continue
+                                        
                                         current_spread_pips = symbol_info_meta.spread * point / pip_size
                                         
                                         slippage_pips = abs(price_after - price_before) / pip_size
