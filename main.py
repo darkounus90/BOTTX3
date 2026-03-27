@@ -121,12 +121,11 @@ class TX3ProBot:
                 ]
                 self.logger.info(f"✅ Estrategias ELITE cargadas: [Z-Score + ILS Sweep + TTM Squeeze] → {symbol}")
             elif symbol == "EURUSD":
-                # 🥇 EURUSD: TTM Squeeze Pro + ILS Sweep
+                # 🥇 EURUSD: TTM Squeeze Pro (Pure Momentum)
                 self.strategies[symbol] = [
-                    TTMSqueezeStrategy(logger=self.logger, symbol=symbol),
-                    LiquiditySweepStrategy(logger=self.logger, symbol=symbol)
+                    TTMSqueezeStrategy(logger=self.logger, symbol=symbol)
                 ]
-                self.logger.info(f"✅ Estrategias RENTABLES cargadas: [TTM Squeeze + ILS Sweep] → {symbol}")
+                self.logger.info(f"✅ Estrategias RENTABLES cargadas: [TTM Squeeze] → {symbol}")
             else:
                 self.strategies[symbol] = []
 
