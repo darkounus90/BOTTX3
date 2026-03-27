@@ -142,26 +142,28 @@ def sim_golden_zone(df, symbol):
         low_idx = window['low'].idxmin()
         
         impulse_pips = (highest - lowest) / (10 * pip)
-        if impulse_pips < 15.0: continue
+        if impulse_pips < 12.0: continue # Bajamos a 12 pips
         
         curr = df.iloc[i]
         prev = df.iloc[i-1]
         ts = curr['time']
         h = (pd.Timestamp(ts).hour - 5) % 24
         
-        if h < 2 or h > 16: continue # Solo Sesión Principal
+        if h < 2 or h > 16: continue 
         
         signal = None
-        # Lógica Fib 61.8%
-        if high_idx > low_idx: # Impulso alcista
+        # Lógica Fib 61.8% (Golden Zone)
+        if high_idx > low_idx: # Impulso alcista, esperamos retroceso
             target_entry = highest - (highest - lowest) * 0.618
-            if abs(curr['close'] - target_entry) < (1.5 * pip):
-                if curr['close'] > prev['close'] and curr['close'] > curr['open']:
+            # Si el LOW de la vela tocó la zona dorada (tolerancia 3 pips)
+            if curr['low'] <= (target_entry + 2*pip) and curr['close'] > target_entry:
+                if curr['close'] > curr['open']: # Confirmación alcista
                     signal = "BUY"
         elif low_idx > high_idx: # Impulso bajista
             target_entry = lowest + (highest - lowest) * 0.618
-            if abs(curr['close'] - target_entry) < (1.5 * pip):
-                if curr['close'] < prev['close'] and curr['close'] < curr['open']:
+            # Si el HIGH de la vela tocó la zona dorada
+            if curr['high'] >= (target_entry - 2*pip) and curr['close'] < target_entry:
+                if curr['close'] < curr['open']: # Confirmación bajista
                     signal = "SELL"
                     
         if signal:
