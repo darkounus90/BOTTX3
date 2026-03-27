@@ -121,8 +121,10 @@ def _calculate_adx(df, period=14):
     return dx.ewm(alpha=1/period, adjust=False).mean()
 
 
-def sim_bollinger_rsi(df, df_h1, symbol, adx_thresh=45.0):
-    res = BacktestResult(f"Bollinger+RSI (ADX<{adx_thresh})")
+def sim_bollinger_rsi(df, df_h1, symbol, adx_thresh=45.0, sl_min=8.0, tp_min=15.0, use_wick=True):
+    label = f"Boll+RSI ADX<{int(adx_thresh)} SL{int(sl_min)}/TP{int(tp_min)}"
+    if not use_wick: label += " noWick"
+    res = BacktestResult(label)
     df['sma20'] = df['close'].rolling(20).mean()
     df['std20'] = df['close'].rolling(20).std()
     mult = 2.3 if "EUR" in symbol else 1.9
@@ -143,7 +145,7 @@ def sim_bollinger_rsi(df, df_h1, symbol, adx_thresh=45.0):
         if "EUR" in symbol and not (h >= 19 or h < 1): continue
         if "GBP" in symbol and not (h >= 13 and h < 17): continue
         
-        # --- FILTRO ADX (fiel al bot) ---
+        # --- FILTRO ADX ---
         if pd.notna(row['adx']) and row['adx'] > adx_thresh:
             res.filtered += 1
             continue
@@ -154,21 +156,22 @@ def sim_bollinger_rsi(df, df_h1, symbol, adx_thresh=45.0):
         if not signal:
             continue
         
-        # --- FILTRO WICK REJECTION (fiel al bot) ---
-        if row['open'] < row['close']:
-            lower_wick = row['open'] - row['low']
-            upper_wick = row['high'] - row['close']
-        else:
-            lower_wick = row['close'] - row['low']
-            upper_wick = row['high'] - row['open']
-        cuerpo = abs(row['close'] - row['open'])
-        
-        if signal == "BUY" and not (lower_wick > cuerpo * 0.8):
-            res.filtered += 1
-            continue
-        if signal == "SELL" and not (upper_wick > cuerpo * 0.8):
-            res.filtered += 1
-            continue
+        # --- FILTRO WICK REJECTION ---
+        if use_wick:
+            if row['open'] < row['close']:
+                lower_wick = row['open'] - row['low']
+                upper_wick = row['high'] - row['close']
+            else:
+                lower_wick = row['close'] - row['low']
+                upper_wick = row['high'] - row['open']
+            cuerpo = abs(row['close'] - row['open'])
+            
+            if signal == "BUY" and not (lower_wick > cuerpo * 0.8):
+                res.filtered += 1
+                continue
+            if signal == "SELL" and not (upper_wick > cuerpo * 0.8):
+                res.filtered += 1
+                continue
         
         # --- FILTRO H1 TREND ---
         trend = get_h1_trend(df_h1, row['time'])
@@ -176,8 +179,8 @@ def sim_bollinger_rsi(df, df_h1, symbol, adx_thresh=45.0):
             res.filtered += 1
             continue
         
-        sl = max(round(row['atr']*1.5 / pip / 10, 1), 8.0)
-        tp = max(round(row['atr']*2.0 / pip / 10, 1), 15.0)
+        sl = max(round(row['atr']*1.5 / pip / 10, 1), sl_min)
+        tp = max(round(row['atr']*2.0 / pip / 10, 1), tp_min)
         pnl = calculate_pnl(signal, row['close'], sl, tp, df.iloc[i+1:i+50].to_dict('records'), symbol)
         res.add_trade(pnl, h, signal, sl, tp)
     return res
@@ -377,21 +380,32 @@ def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=45):
     for d in [m5, m15, h1]: d['time'] = pd.to_datetime(d['time'], unit='s')
     h1['close_ema_200'] = h1['close'].ewm(span=200, adjust=False).mean()
     
-    # Comparativa ADX 35 vs 45 para Bollinger+RSI
+    # ═══════ LABORATORIO BOLLINGER+RSI ═══════
     results = [
-        sim_bollinger_rsi(m5.copy(), h1, symbol, 35),   # ANTES
-        sim_bollinger_rsi(m5.copy(), h1, symbol, 45),   # AHORA
+        # Variante 1: SL8/TP15 + ADX35 + Wick (bot actual con ADX viejo)
+        sim_bollinger_rsi(m5.copy(), h1, symbol, 35, sl_min=8, tp_min=15, use_wick=True),
+        # Variante 2: SL8/TP15 + ADX45 + Wick (bot actual con ADX nuevo)
+        sim_bollinger_rsi(m5.copy(), h1, symbol, 45, sl_min=8, tp_min=15, use_wick=True),
+        # Variante 3: SL15/TP25 + ADX45 + Wick (SL/TP anchos + wick)
+        sim_bollinger_rsi(m5.copy(), h1, symbol, 45, sl_min=15, tp_min=25, use_wick=True),
+        # Variante 4: SL15/TP25 + ADX45 + SIN Wick (como el backtest viejo)
+        sim_bollinger_rsi(m5.copy(), h1, symbol, 45, sl_min=15, tp_min=25, use_wick=False),
+        # Variante 5: SL15/TP25 + SIN ADX + SIN Wick (backtest original puro)
+        sim_bollinger_rsi(m5.copy(), h1, symbol, 999, sl_min=15, tp_min=25, use_wick=False),
+        # Variante 6: SL15/TP25 + SIN ADX + CON Wick 
+        sim_bollinger_rsi(m5.copy(), h1, symbol, 999, sl_min=15, tp_min=25, use_wick=True),
+        # ═══════ OTRAS ESTRATEGIAS ═══════
         sim_zscore_reversion(m15.copy(), h1, symbol, z),
-        sim_ict_breakout(m5.copy(), h1, symbol),
-        sim_ema_cross(m15.copy(), h1, symbol),
         sim_ttm_squeeze(m15.copy(), h1, symbol)
     ]
-    print(f"\n[+] {symbol} - Reporte (con ADX real + Wick Rejection):")
+    print(f"\n{'='*100}")
+    print(f"  [+] {symbol} - LABORATORIO BOLLINGER+RSI (¿Qué parámetro mata la rentabilidad?)")
+    print(f"{'='*100}")
     for r in results:
         rep = r.get_report()
         pf_str = f"PF:{rep['profit_factor']:.2f}" if rep['profit_factor'] else "PF:N/A"
         wr_str = f"WR:{rep['win_rate']}%" if rep['win_rate'] else "WR:N/A"
-        print(f"  - {rep['name']:30s} | Trades: {rep['trades']:3d} | {wr_str:>8} | {pf_str:>7} | Filtramos {rep['filtered']} | PnL: ${rep['total_pnl']:+8.2f} | MaxDD: ${rep['max_drawdown']:,.2f} | {rep['verdict']}")
+        print(f"  {rep['name']:40s} | T:{rep['trades']:3d} | {wr_str:>8} | {pf_str:>7} | PnL:${rep['total_pnl']:+8.2f} | DD:${rep['max_drawdown']:,.2f} | {rep['verdict']}")
     return [r.get_report() for r in results]
 
 if __name__ == "__main__":
