@@ -828,22 +828,12 @@ class TX3ProBot:
                 if hasattr(self, 'q_agent'):
                     self.q_agent.shadow_update_closed_trades()
 
-                # ─── B.2 FRIDAY WEEKEND-KILLSWITCH ─────────────────────
-                if getattr(BotConfig, "NEWS_KILLZONES_ENABLED", True): # Usando config relacionada a cierres forzosos temporales
-                    from core.session_filter import get_now_institutional
-                    now_ny = get_now_institutional(BotConfig.MARKET_TIMEZONE)
-                    
-                    if now_ny.weekday() == 4 and now_ny.hour == 16 and now_ny.minute >= 45:
-                        if not getattr(self, "friday_closed", False):
-                            open_pos = mt5.positions_get()
-                            if open_pos and any(p.magic == BotConfig.MAGIC_NUMBER for p in open_pos):
-                                self.logger.critical("🚨 VIERNES 16:45 NY - CIERRE FIN DE SEMANA. Evitando puente de liquidez o falla en FTMO.")
-                                closed_wk = self.position_manager.close_all_positions(reason="Cierre Preventivo Fin de Semana")
-                                self.telegram.notify_error(f"⚠️ WEEKEND KILLSWITCH: Se cerraron {closed_wk} operaciones para evitar Gaps o violación de Reglas FTMO de fin de semana.")
-                            self.friday_closed = True
-                            
-                    if now_ny.weekday() != 4 and getattr(self, "friday_closed", False):
-                        self.friday_closed = False
+                # ─── B.1 AI Exit Engine ─────────────────────────────────
+                # DESACTIVADO: Este motor duplicaba la lógica de trailing_stop.py
+                # pero SIN las protecciones (gracia 5 min, filtro ruido, SL mínimo 5 pips).
+                # Causaba cierres a mercado instantáneos que perdían spread+comisión.
+                # La gestión de salidas IA ahora está CENTRALIZADA en trailing_stop.py.
+                pass
 
                 # ─── C. Verificar Riesgo (Emergencia) ──────────────
                 if hasattr(self.risk_manager, 'check_and_hedge_crashing_positions'):
