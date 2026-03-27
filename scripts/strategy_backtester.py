@@ -121,6 +121,57 @@ def _calculate_adx(df, period=14):
     return dx.ewm(alpha=1/period, adjust=False).mean()
 
 
+def sim_golden_zone(df, symbol):
+    """Simulador de la nueva estrategia EURUSD Golden Zone (Fib 61.8%)"""
+    res = BacktestResult("Golden Zone Reversion (F61.8)")
+    pip = 0.0001 if "JPY" not in symbol else 0.01
+    
+    # ATR para SL/TP
+    tr = pd.concat([df['high'] - df['low'], (df['high'] - df['close'].shift()).abs(), (df['low'] - df['close'].shift()).abs()], axis=1).max(axis=1)
+    df['atr'] = tr.rolling(14).mean()
+    
+    lookback = 36 # 3 horas impulsivos
+    
+    for i in range(100, len(df)-50):
+        window = df.iloc[i-lookback:i]
+        if len(window) < lookback: continue
+        
+        highest = window['high'].max()
+        lowest = window['low'].min()
+        high_idx = window['high'].idxmax()
+        low_idx = window['low'].idxmin()
+        
+        impulse_pips = (highest - lowest) / (10 * pip)
+        if impulse_pips < 15.0: continue
+        
+        curr = df.iloc[i]
+        prev = df.iloc[i-1]
+        ts = curr['time']
+        h = (pd.Timestamp(ts).hour - 5) % 24
+        
+        if h < 2 or h > 16: continue # Solo Sesión Principal
+        
+        signal = None
+        # Lógica Fib 61.8%
+        if high_idx > low_idx: # Impulso alcista
+            target_entry = highest - (highest - lowest) * 0.618
+            if abs(curr['close'] - target_entry) < (1.5 * pip):
+                if curr['close'] > prev['close'] and curr['close'] > curr['open']:
+                    signal = "BUY"
+        elif low_idx > high_idx: # Impulso bajista
+            target_entry = lowest + (highest - lowest) * 0.618
+            if abs(curr['close'] - target_entry) < (1.5 * pip):
+                if curr['close'] < prev['close'] and curr['close'] < curr['open']:
+                    signal = "SELL"
+                    
+        if signal:
+            sl = max(round(curr['atr']*1.5 / pip / 10, 1), 12.0)
+            tp = max(round(curr['atr']*3.0 / pip / 10, 1), 24.0)
+            pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+100].to_dict('records'), symbol)
+            res.add_trade(pnl, h, signal, sl, tp)
+            
+    return res
+
 def sim_liquidity_sweep(df, df_h1, symbol):
     """Simulador mejorado de ILS Sweep (detecta 1-candle sweeps)"""
     res = BacktestResult("ILS Liquidity Sweep (4h)")
@@ -346,6 +397,7 @@ def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=45):
     
     # ═══════ EQUIPO DE ÉLITE TX3 PRO ═══════
     results = [
+        sim_golden_zone(m5.copy(), symbol),                    # ESPECIAL: EURUSD Golden
         sim_institutional_flow(m5.copy(), m15.copy(), symbol), # NUEVA: IFS SMC 2.0
         sim_liquidity_sweep(m5.copy(), h1, symbol),            # REY REVERSIÓN: ILS Sweep
         sim_ttm_squeeze(m15.copy(), h1, symbol),               # REY MOMENTUM: Squeeze
