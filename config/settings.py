@@ -171,8 +171,10 @@ class SessionConfig:
 
     NY_START_HOUR = 8
     NY_START_MINUTE = 0
-    NY_END_HOUR = 17                   # ⚠️ CORREGIDO: Ampliado a las 5 PM EST para integrar el filtro propio de GBPUSD
-    NY_END_MINUTE = 0
+    NY_END_HOUR = 16                   # 🛡️ PROTECCIÓN ROLLOVER: Cierre final a las 16:45 PM EST
+    NY_END_MINUTE = 45
+    
+    STRICT_CONSISTENCY_MODE = True       # 🛡️ FTMO LEGAL COMPLIANCE: Mantiene el lote base intocable
     
     TOKYO_START_HOUR = 19
     TOKYO_START_MINUTE = 0

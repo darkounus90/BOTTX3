@@ -161,7 +161,7 @@ class SessionFilter:
         else:
             return {
                 "id": "HIBERNATION",
-                "name": "💤 HIBERNACIÓN (Mercado Cerrado / Rollover)",
+                "name": "💤 HIBERNACIÓN (Mercado Cerrado / Rollover / Asia)",
                 "active_strats": []
             }
 

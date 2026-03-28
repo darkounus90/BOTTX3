@@ -469,11 +469,6 @@ def sim_ttm_squeeze(df, df_h1, symbol):
             elif prev['momentum_bear'] and prev['close'] < prev['kc_lower']: signal = "SELL"
             
         if signal:
-            trend = get_h1_trend(df_h1, curr['time'])
-            if (signal == "BUY" and trend == -1) or (signal == "SELL" and trend == 1):
-                res.filtered += 1
-                continue
-                
             atr_pips = prev['atr'] / pip / 10
             sl = max(15.0, round(atr_pips * 1.5, 1))
             tp = max(30.0, round(atr_pips * 4.0, 1))

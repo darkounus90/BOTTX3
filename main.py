@@ -965,6 +965,10 @@ class TX3ProBot:
                         if self.position_manager.get_open_positions_count() < BotConfig.MAX_OPEN_POSITIONS:
                             # Iterar todas las estrategias del par actual
                             for strategy in strategy_list:
+                                # 🚨 RACE CONDITION GUARD: Re-verificar el cupo en MICROSEGUNDOS antes de cada estrategia
+                                if self.position_manager.get_open_positions_count() >= BotConfig.MAX_OPEN_POSITIONS:
+                                    break
+                                    
                                 signal = strategy.generate_signal()
                                 
                                 if signal:
