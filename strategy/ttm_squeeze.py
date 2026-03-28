@@ -82,6 +82,16 @@ class TTMSqueezeStrategy(BaseStrategy):
         df['momentum_bull'] = df['ema_8'] > df['ema_34']
         df['momentum_bear'] = df['ema_8'] < df['ema_34']
 
+        # H1 Macro Trend Filter
+        h1_rates = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_H1, 0, 200)
+        is_uptrend_h1 = False
+        is_downtrend_h1 = False
+        if h1_rates is not None and len(h1_rates) > 100:
+            df_h1 = pd.DataFrame(h1_rates)
+            ema_200_h1 = df_h1['close'].ewm(span=200, adjust=False).mean()
+            is_uptrend_h1 = df_h1['close'].iloc[-2] > ema_200_h1.iloc[-2]
+            is_downtrend_h1 = df_h1['close'].iloc[-2] < ema_200_h1.iloc[-2]
+
         prev = df.iloc[-2]
         prev2 = df.iloc[-3]
         prev3 = df.iloc[-4]
@@ -94,9 +104,9 @@ class TTMSqueezeStrategy(BaseStrategy):
         signal_type = None
 
         if was_squeezed and is_firing:
-            if prev['momentum_bull'] and prev['close'] > prev['kc_upper']:
+            if prev['momentum_bull'] and is_uptrend_h1 and prev['close'] > prev['kc_upper']:
                 signal_type = "BUY"
-            elif prev['momentum_bear'] and prev['close'] < prev['kc_lower']:
+            elif prev['momentum_bear'] and is_downtrend_h1 and prev['close'] < prev['kc_lower']:
                 signal_type = "SELL"
 
         if not signal_type:
