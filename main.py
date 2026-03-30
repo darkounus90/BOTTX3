@@ -972,6 +972,9 @@ class TX3ProBot:
                                 signal = strategy.generate_signal()
                                 
                                 if signal:
+                                    if 'signal' not in signal:
+                                        continue
+
                                     # Resetear cronómetro de hibernación al ver una señal
                                     self._last_signal_found_timestamp = sleep_module.time()
                                     if self._in_hibernation:

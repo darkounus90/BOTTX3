@@ -92,7 +92,7 @@ class ICTBreakoutStrategy:
         
         return {
             "symbol": self.symbol,
-            "type": signal_type,
+            "signal": signal_type,
             "stop_loss_pips": sl_pips,
             "take_profit_pips": tp_pips,
             "probability": 80.0,

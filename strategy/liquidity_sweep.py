@@ -89,10 +89,10 @@ class LiquiditySweepStrategy:
             
             return {
                 "symbol": self.symbol,
-                "type": signal,
+                "signal": signal,
                 "reason": reason,
-                "sl_pips": max(round(atr * 1.5 / pip / 10, 1), 10.0), # SL atrás de la mecha
-                "tp_pips": max(round(atr * 3.0 / pip / 10, 1), 20.0), # R:R 1:2 preferido
+                "stop_loss_pips": max(round(atr * 1.5 / pip / 10, 1), 10.0), # SL atrás de la mecha
+                "take_profit_pips": max(round(atr * 3.0 / pip / 10, 1), 20.0), # R:R 1:2 preferido
                 "strategy": "ILS_Sweep"
             }
 
