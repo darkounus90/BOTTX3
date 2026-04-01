@@ -78,6 +78,8 @@ class PhaseTracker:
             # Agrupar profit por día calendario (en ET corregido)
             daily_map = defaultdict(float)
             for deal in deals:
+                if deal.type not in [0, 1]:  # SOLO permitir DEAL_TYPE_BUY(0) y DEAL_TYPE_SELL(1)
+                    continue
                 if deal.entry not in [1, 2, 3]:  # Solo salidas (OUT)
                     continue
                 
