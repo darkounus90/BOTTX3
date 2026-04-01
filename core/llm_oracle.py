@@ -228,11 +228,8 @@ class GeminiOracle:
                 if response and response.text:
                     txt = response.text.strip()
                     # Si no es JSON (es narrativo), guardamos para el dashboard
-                    if not txt.startswith("{"):
+                    if not txt.startswith("{") and "{" not in txt:
                         self.last_narration = txt
-                    else:
-                        # Capturar decisiones JSON para la Consola Matrix
-                        self._capture_reasoning(txt, model_name=model_name)
                     return txt
                 return None
             except Exception as e:
@@ -397,6 +394,10 @@ class GeminiOracle:
                 self._cooldown_cache[cache_id] = datetime.now()
             
             self._signal_cache[cache_id] = (candle_key, data)
+            
+            # Capturar decisiones JSON para la Consola Matrix
+            self._capture_reasoning(clean_text, model_name=clean_model_name, symbol=symbol, strategy=signal_type)
+            
             return data
         except Exception as e:
             return {"decision": "APPROVED", "reason": f"IA Parsing Error: {e}"}
@@ -465,6 +466,7 @@ class GeminiOracle:
             data["decision"] = data.get("decision", "HOLD").upper()
             
             self._signal_cache[cache_id] = (candle_key, data)
+            self._capture_reasoning(clean_text, model_name=self.target_light.replace("models/", ""), symbol=symbol, strategy=f"EXIT {order_type}")
             return data
         except Exception as e:
             return {"decision": "HOLD", "reason": f"Error del Oráculo: {e}"}
@@ -541,7 +543,7 @@ class GeminiOracle:
             self.logger.error(f"Error en re-init del Oráculo: {e}")
             return False
 
-    def _capture_reasoning(self, json_text: str, model_name: str = "unknown"):
+    def _capture_reasoning(self, json_text: str, model_name: str = "unknown", symbol: str = "N/A", strategy: str = "N/A"):
         """
         🧠 Captura decisiones JSON del Oráculo para la Consola Matrix del Dashboard.
         Almacena las últimas N decisiones con timestamp, modelo, y razonamiento completo.
@@ -560,8 +562,8 @@ class GeminiOracle:
                 "decision": parsed.get("decision", "N/A"),
                 "confidence": parsed.get("confidence", 0),
                 "reason": parsed.get("reason", "Sin razonamiento disponible"),
-                "symbol": parsed.get("symbol", parsed.get("pair", "N/A")),
-                "action": parsed.get("action", parsed.get("signal", "N/A")),
+                "symbol": symbol,
+                "action": strategy,
             }
             
             self._reasoning_history.append(entry)
