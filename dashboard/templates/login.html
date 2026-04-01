@@ -14,15 +14,11 @@
             --purple-glow: #6366F1;
         }
 
-        body {
-            /* Fallback background if image fails */
-            background-color: #050811; 
-            /* Se aplica un tinte oscuro para darle un toque cyberpunk, usando la URL de Flask */
-            background-image: linear-gradient(to right bottom, rgba(5,8,17,0.85), rgba(5,8,17,0.92)), url("{{ url_for('static', filename='img/bg_login.png') }}");
+        body { background-color: #030712; background-image: linear-gradient(rgba(6,182,212,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(6,182,212,0.05) 1px, transparent 1px); background-size: 30px 30px; font-family: 'JetBrains Mono', monospace; height: 100vh; width: 100vw; overflow: hidden; margin: 0; color: white; position: relative; }}");
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            font-family: 'Outfit', sans-serif;
+            font-family: 'JetBrains Mono', monospace;
             height: 100vh;
             display: flex;
             align-items: center;
@@ -40,8 +36,8 @@
             z-index: -1;
             animation: float 20s infinite alternate cubic-bezier(0.5, 0, 0.5, 1);
         }
-        .orb-1 { width: 450px; height: 450px; background: var(--cyan-glow); top: -10%; left: -10%; opacity: 0.15; }
-        .orb-2 { width: 550px; height: 550px; background: var(--purple-glow); bottom: -20%; right: -10%; opacity: 0.15; animation-delay: -5s; }
+        .orb-1 { width: 450px; height: 450px; background: #06b6d4; top: -10%; left: -10%; opacity: 0.15; }
+        .orb-2 { width: 550px; height: 550px; background: #10b981; bottom: -20%; right: -10%; opacity: 0.15; animation-delay: -5s; }
 
         @keyframes float {
             0% { transform: translate(0, 0) scale(1); }
@@ -50,35 +46,47 @@
 
         /* Glassmorphism Card (Nivel Institucional) */
         .glass-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(28px) saturate(180%);
-            -webkit-backdrop-filter: blur(28px) saturate(180%);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            box-shadow: 0 40px 80px -15px rgba(0, 0, 0, 0.9), 
-                        inset 0 1px 0 rgba(255, 255, 255, 0.15);
-            width: 100%;
-            max-width: 440px;
-            padding: 3.5rem 3rem;
-            animation: cardEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(2, 6, 23, 0.95);
+            border: 1px solid rgba(6, 182, 212, 0.4);
+            border-top: 2px solid rgba(6, 182, 212, 0.8);
+            box-shadow: 0 4px 50px rgba(0, 0, 0, 0.9), 0 0 20px rgba(6, 182, 212, 0.15);
+            width: 90%;
+            max-width: 420px;
+            padding: 3rem 2.5rem;
+            animation: cardEntrance 0.8s ease-out forwards;
             opacity: 0;
-            transform: translateY(40px) scale(0.95);
+            z-index: 10;
+            border-radius: 2px;
         }
 
-        @keyframes cardEntrance {
-            to { opacity: 1; transform: translateY(0) scale(1); }
+        .glass-card::before, .glass-card::after {
+            content: '';
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border: 2px solid rgba(6, 182, 212, 0.8);
+            pointer-events: none;
+        }
+        .glass-card::before { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+        .glass-card::after { bottom: -2px; right: -2px; border-left: none; border-top: none; }
+
+        @keyframes cardEntrance { from { opacity: 0; filter: blur(5px); } to { opacity: 1; filter: blur(0); } }
         }
 
         /* Brand Styling */
         .brand-title {
-            font-family: 'Syncopate', sans-serif;
+            font-family: 'JetBrains Mono', monospace;
             font-size: 2.8rem;
             letter-spacing: -1.5px;
             text-shadow: 0 0 25px rgba(6, 182, 212, 0.2);
             margin-bottom: -5px;
         }
         .brand-bot {
-            color: var(--cyan-glow);
+            color: #06b6d4;
             text-shadow: 0 0 15px rgba(6, 182, 212, 0.8);
         }
         .mission-control {
@@ -122,7 +130,7 @@
             font-size: 1rem;
             pointer-events: none;
             transition: 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-            font-family: 'Outfit', sans-serif;
+            font-family: 'JetBrains Mono', monospace;
             letter-spacing: 2px;
             text-transform: uppercase;
         }
@@ -132,7 +140,7 @@
         .input-group input:valid ~ label {
             top: -12px;
             font-size: 0.70rem;
-            color: var(--cyan-glow);
+            color: #06b6d4;
             letter-spacing: 3px;
             text-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
             font-weight: 600;
@@ -146,7 +154,7 @@
             transform: translateX(-50%);
             width: 0%;
             height: 2px;
-            background: linear-gradient(90deg, var(--cyan-glow), var(--purple-glow));
+            background: linear-gradient(90deg, #06b6d4, #10b981);
             transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
             box-shadow: 0 0 15px rgba(6, 182, 212, 0.6);
         }
@@ -159,11 +167,11 @@
         .btn-magic {
             width: 100%;
             padding: 1.1rem;
-            border-radius: 12px;
+            border-radius: 0.15rem;
             background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%);
             border: 1px solid rgba(6, 182, 212, 0.4);
             color: white;
-            font-family: 'Outfit', sans-serif;
+            font-family: 'JetBrains Mono', monospace;
             font-weight: 600;
             font-size: 0.95rem;
             letter-spacing: 3px;
@@ -229,7 +237,7 @@
             </div>
             
             <h1 class="brand-title">DARKO<span class="brand-bot">BOT</span></h1>
-            <p class="mission-control mt-3">Quant Matrix Portal</p>
+            <p class="mission-control mt-3">TACTICAL HUD TERMINAL</p>
         </div>
 
         {% with messages = get_flashed_messages() %}
@@ -256,12 +264,12 @@
 
             <div class="input-group">
                 <input type="password" name="password" required>
-                <label>ACCESS KEY</label>
+                <label>ACCESS PIN</label>
                 <div class="line"></div>
             </div>
 
             <button type="submit" class="btn-magic mt-4">
-                Initialize Link
+                AUTHORIZE ACCESS
             </button>
         </form>
 
