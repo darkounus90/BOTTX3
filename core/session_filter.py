@@ -204,9 +204,12 @@ class SessionFilter:
 
         session = self.get_current_session()
 
+        now_col = get_now_institutional("America/Bogota")
+
         return {
             "session": session,
             "time": current_time.strftime("%H:%M:%S"),
+            "time_col": now_col.strftime("%H:%M:%S"),
             "day": now.strftime("%A"),
             "is_weekday": is_weekday,
             "in_london": in_london,

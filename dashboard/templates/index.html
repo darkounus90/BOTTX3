@@ -923,10 +923,10 @@
                     badge.className = 'text-[0.65rem] px-2 py-0.5 rounded-md font-bold bg-slate-500/20 text-slate-400 border border-slate-500/30';
                 }
 
-                // Actualizar Reloj del Sistema NY (Server Time)
-                if (data.session_info.time) {
+                // Actualizar Reloj Local COL
+                if (data.session_info.time_col || data.session_info.time) {
                     const timeEl = document.getElementById('ny-server-time');
-                    if (timeEl) timeEl.textContent = data.session_info.time;
+                    if (timeEl) timeEl.textContent = data.session_info.time_col || data.session_info.time;
                 }
 
                 // Helper para clases de sesiones reales
