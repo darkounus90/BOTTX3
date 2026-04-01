@@ -203,14 +203,7 @@ class PhaseTracker:
 
             day_pct = (day_profit / total_profit) * 100
             if day_pct > self.consistency_rule_pct:
-                # Modificación: Solo alertar si el profit total es mayor al 1% del target total
-                # o tenemos más de un día. El dia 1 siempre será 100%.
                 if total_profit > (self.profit_target * 0.01) and sum(1 for p in self.daily_profits if p > 0) > 1:
-                    self.logger.warning(
-                        f"⚠️ Regla de consistencia violada: "
-                        f"Día {i + 1} = {day_pct:.1f}% "
-                        f"(máx: {self.consistency_rule_pct}%)"
-                    )
                     return False
 
         return True

@@ -36,7 +36,7 @@ class ChallengeConfig:
     # ─── FUNDED ACCOUNT ───────────────────────────────────────────────
     PROFIT_SPLIT = 90                    # FTMO: Scale Plan permite hasta 90/10
     MIN_PAYOUT = 1_000
-    CONSISTENCY_RULE_PCT = 40            # Máx 40% en un solo día
+    CONSISTENCY_RULE_PCT = 100           # 🔥 FTMO NO tiene regla de consistencia (40%) para evaluaciones estándar. Permite hasta el 100% en un trade.
 
     @classmethod
     def get_profit_target(cls, phase: int) -> float:
