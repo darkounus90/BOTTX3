@@ -31,7 +31,7 @@ class ChallengeConfig:
 
     # ─── DÍAS MÍNIMOS ─────────────────────────────────────────────────
     MIN_TRADING_DAYS = 4                 # FTMO: 4 Días Mínimos Requeridos
-    MIN_PROFIT_PER_DAY = BALANCE_INICIAL * 0.005 # 0.5% mínimo de profit por día contable
+    MIN_PROFIT_PER_DAY = 1.0             # 🔥 FTMO no exige $250. Cualquier día > $1 se marca como rentable/operativo.
 
     # ─── FUNDED ACCOUNT ───────────────────────────────────────────────
     PROFIT_SPLIT = 90                    # FTMO: Scale Plan permite hasta 90/10
