@@ -376,7 +376,7 @@ def sim_london_purge(df, df_h1, symbol):
 
 # Eliminadas estrategias antiguas perdedoras (Bollinger, ICT, EMA Cross)
 
-def sim_institutional_flow(df_m5, df_m15, symbol):
+def sim_institutional_flow(df_m5, df_m15, df_h1, symbol):
     """Simulador de la nueva estrategia IFS SMC 2.0 (Inbalance + Mitigation)"""
     res = BacktestResult("IFS SMC 2.0 (M15 FVG)")
     pip = 0.0001 if "JPY" not in symbol else 0.01
@@ -513,7 +513,7 @@ def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=45):
             sim_ttm_squeeze(m15.copy(), h1, symbol),        # Momentum
             sim_zscore_reversion(m15.copy(), h1, symbol, z),# Volatilidad
             sim_liquidity_sweep(m5.copy(), h1, symbol),     # Liquidez 4h
-            sim_institutional_flow(m5.copy(), m15.copy(), symbol) # SMC 2.0
+            sim_institutional_flow(m5.copy(), m15.copy(), h1, symbol) # SMC 2.0
         ]
     else:
         results = []
