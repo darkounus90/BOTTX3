@@ -67,6 +67,17 @@ class InstitutionalFlowStrategy:
         curr = df_entry.iloc[-1]
         prev = df_entry.iloc[-2]
         
+        recent_high = df_entry.iloc[-4:-1]['high'].max() # Últimas 3 velas para MSS más estricto
+        recent_low = df_entry.iloc[-4:-1]['low'].min()
+        
+        # 2.5 Contexto Macro (H1 Tendencia)
+        h1_long = mt5.copy_rates_from_pos(self.symbol, mt5.TIMEFRAME_H1, 0, 250)
+        trend = "UNKNOWN"
+        if h1_long is not None and len(h1_long) > 200:
+            df_trend = pd.DataFrame(h1_long)
+            df_trend['ema200'] = df_trend['close'].ewm(span=200, adjust=False).mean()
+            trend = "BULL" if df_trend.iloc[-1]['close'] > df_trend.iloc[-1]['ema200'] else "BEAR"
+        
         # 3. Lógica de Mitigación
         # Buscamos el último FVG no mitigado
         last_fvg = fvgs[-1] 
@@ -75,22 +86,22 @@ class InstitutionalFlowStrategy:
         reason = ""
         
         # --- CASO COMPRA (Mitigación de FVG Alcista) ---
-        if last_fvg['type'] == 'BULLISH':
+        if last_fvg['type'] == 'BULLISH' and trend == "BULL":
             # El precio debe haber entrado en la zona de mitigación (debajo del mid o top)
             if curr['close'] < last_fvg['top'] and curr['close'] > last_fvg['bottom']:
-                # Market Structure Shift (M5): El precio empieza a subir de nuevo
-                if curr['close'] > prev['high'] and curr['close'] > df_entry['close'].rolling(10).mean().iloc[-1]:
+                # Market Structure Shift Estricto (M5)
+                if curr['close'] > recent_high and curr['close'] > df_entry['close'].rolling(10).mean().iloc[-1]:
                     signal = "BUY"
-                    reason = f"Mitigating Bullish FVG at {last_fvg['mid']:.5f} + MSS M5"
+                    reason = f"Mitigating Bullish FVG at {last_fvg['mid']:.5f} + MSS Strict M5"
 
         # --- CASO VENTA (Mitigación de FVG Bajista) ---
-        elif last_fvg['type'] == 'BEARISH':
+        elif last_fvg['type'] == 'BEARISH' and trend == "BEAR":
             # El precio debe haber subido a la zona de mitigación
             if curr['close'] > last_fvg['bottom'] and curr['close'] < last_fvg['top']:
-                # Market Structure Shift (M5): El precio rompe el mínimo anterior
-                if curr['close'] < prev['low'] and curr['close'] < df_entry['close'].rolling(10).mean().iloc[-1]:
+                # Market Structure Shift Estricto (M5)
+                if curr['close'] < recent_low and curr['close'] < df_entry['close'].rolling(10).mean().iloc[-1]:
                     signal = "SELL"
-                    reason = f"Mitigating Bearish FVG at {last_fvg['mid']:.5f} + MSS M5"
+                    reason = f"Mitigating Bearish FVG at {last_fvg['mid']:.5f} + MSS Strict M5"
 
         if signal:
             # Calcular ATR para stops técnicos
@@ -99,6 +110,12 @@ class InstitutionalFlowStrategy:
                            (df_entry['low'] - df_entry['close'].shift()).abs()], axis=1).max(axis=1)
             atr = tr.rolling(14).mean().iloc[-1]
             pip = 0.0001 if "JPY" not in self.symbol else 0.01
+
+            # Session Filter (LND / NY)
+            from zoneinfo import ZoneInfo
+            hour_est = datetime.now(ZoneInfo("America/New_York")).hour
+            if hour_est < 2 or hour_est > 17:
+                return None
 
             return {
                 "symbol": self.symbol,

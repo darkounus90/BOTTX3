@@ -115,14 +115,13 @@ class TX3ProBot:
         self.strategies = {}
         for symbol in BotConfig.WATCHLIST:
             if symbol == "GBPUSD":
-                # 🏆 GBPUSD: ELITE TEAM (The Big Four)
+                # 🏆 GBPUSD: ELITE TEAM (The High Precision Models)
+                # ⚠️ ILS y IFS SMC desactivadas preventivamente por bajo WinRate y alto Drawdown (2026-04-13)
                 self.strategies[symbol] = [
                     ZScoreReversionStrategy(logger=self.logger, symbol=symbol),
-                    LiquiditySweepStrategy(logger=self.logger, symbol=symbol),
-                    TTMSqueezeStrategy(logger=self.logger, symbol=symbol),
-                    InstitutionalFlowStrategy(symbol=symbol, logger=self.logger)
+                    TTMSqueezeStrategy(logger=self.logger, symbol=symbol)
                 ]
-                self.logger.info(f"✅ ESTRATEGIAS ELITE CARGADAS: [Z-Score + ILS + Squeeze + IFS SMC] → {symbol}")
+                self.logger.info(f"✅ ESTRATEGIAS ELITE CARGADAS: [Z-Score + Squeeze Pro] → {symbol}")
             elif symbol == "EURUSD":
                 # 🥇 EURUSD: ELITE SETUP (Momentum Puro)
                 self.strategies[symbol] = [

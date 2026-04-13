@@ -174,6 +174,12 @@ def sim_liquidity_sweep(df, df_h1, symbol):
                 
         if signal:
             potential_signals += 1
+            trend_h1 = get_h1_trend(df_h1, ts)
+            if (signal == "BUY" and trend_h1 == -1) or (signal == "SELL" and trend_h1 == 1):
+                res.filtered += 1
+                signal = None
+                
+        if signal:
             # Mantener filtro de tendencia pero menos agresivo (usando LSMA M5)
             if signal == "SELL" and curr['close'] > curr['lsma']: continue
             if signal == "BUY" and curr['close'] < curr['lsma']: continue
@@ -409,17 +415,21 @@ def sim_institutional_flow(df_m5, df_m15, symbol):
         last_fvg = fvgs[-1]
         signal = None
         
+        trend_h1 = get_h1_trend(df_h1, ts)
+        
         # Caso Bullish FVG
-        if last_fvg['type'] == 'BULLISH':
+        if last_fvg['type'] == 'BULLISH' and trend_h1 == 1:
             # El precio toca la zona de mitigación
             if curr['close'] < last_fvg['top'] and curr['close'] > last_fvg['bottom']:
-                if curr['close'] > prev['high'] and curr['close'] > curr['ma10']:
+                recent_high = df_m5.iloc[i-3:i]['high'].max()
+                if curr['close'] > recent_high and curr['close'] > curr['ma10']:
                     signal = "BUY"
                     
         # Caso Bearish FVG
-        elif last_fvg['type'] == 'BEARISH':
+        elif last_fvg['type'] == 'BEARISH' and trend_h1 == -1:
             if curr['close'] > last_fvg['bottom'] and curr['close'] < last_fvg['top']:
-                if curr['close'] < prev['low'] and curr['close'] < curr['ma10']:
+                recent_low = df_m5.iloc[i-3:i]['low'].min()
+                if curr['close'] < recent_low and curr['close'] < curr['ma10']:
                     signal = "SELL"
                     
         if signal:
