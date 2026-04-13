@@ -70,8 +70,15 @@ class SMCScanner:
         # Como optimización extrema y pasiva: si compramos dentro o sobre un inbalance de liquidez bajista 
         # masivo reciente (riesgo de trampa), penalizamos.
         
-        # Distancia mínima de proximidad a FVG (5 pips en la unidad correcta del par)
-        pip_size = 0.01 if "JPY" in symbol else 0.0001
+        # 🛡️ DINÁMICA DE PIPs: Normalización Universal
+        symbol_info = mt5.symbol_info(symbol)
+        if symbol_info and symbol_info.digits in [3, 5]:
+            pip_size = 10 * symbol_info.point
+        elif symbol_info and symbol_info.digits == 2: # Oro
+            pip_size = 0.10
+        else:
+            pip_size = symbol_info.point if symbol_info else 0.0001
+            
         proximity = 5.0 * pip_size  # 5 pips de proximidad
 
         if signal_direction == 'BUY':

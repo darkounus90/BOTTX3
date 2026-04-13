@@ -78,8 +78,15 @@ class TrailingStopManager:
         if symbol_info is None:
             return
 
+        # ─── DINÁMICA DE PIPs ───
         point = symbol_info.point
-        pip_in_points = 10 * point  # 1 pip = 10 points (5 dígitos)
+        # Normalización Universal de Pip (Forex, Oro, Índices)
+        if symbol_info.digits in [3, 5]:
+            pip_in_points = 10 * point
+        elif symbol_info.digits == 2: # Oro (XAUUSD)
+            pip_in_points = 0.10 # 1 pip = 0.10 USD
+        else: # 4 dígitos o Índices
+            pip_in_points = point
 
         tick = mt5.symbol_info_tick(position.symbol)
         if tick is None:
@@ -147,33 +154,28 @@ class TrailingStopManager:
         
         # ─── 🧠 MODO IA: ESCÁNER PREVENTIVO DEL ORÁCULO ─────────────
         # La IA evalúa operaciones vivas, pero con INTELIGENCIA INSTITUCIONAL:
-        # 1. PERÍODO DE GRACIA: No evaluar hasta que el trade tenga al menos 5 minutos de vida
-        # 2. UMBRAL DE RUIDO: Solo activar asfixia si el trade pierde más de 3 pips (no por spread/ruido)
-        # 3. PROTECCIÓN MÍNIMA: SL de asfixia a 5 pips (no 1.5, que garantiza pérdida por comisión)
+        # 1. PERÍODO DE GRACIA: 10 minutos para que respire (antes 5)
+        # 2. UMBRAL DE RUIDO: Solo activar asfixia si el trade pierde más de 5 pips (antes 3)
+        # 3. PROTECCIÓN MÍNIMA: SL de asfixia a 7 pips de distancia (antes 5)
         if self.oracle and self.oracle.enabled:
             import time
             now_ts = time.time()
             
-            # ─── PERÍODO DE GRACIA: 5 minutos después de abrir ─────────
-            # El trade necesita tiempo para respirar y desarrollar su tesis
+            # ─── PERÍODO DE GRACIA: 10 minutos después de abrir ─────────
             trade_age_seconds = now_ts - position.time
-            GRACE_PERIOD_SECONDS = 300  # 5 minutos
+            GRACE_PERIOD_SECONDS = 600  # 10 minutos
             
             if trade_age_seconds < GRACE_PERIOD_SECONDS:
-                # Trade demasiado joven para que la IA intervenga
-                # Solo logueamos una vez para transparencia
                 grace_log_key = f"_grace_logged_{position.ticket}"
                 if not getattr(self, grace_log_key, False):
                     remaining = int((GRACE_PERIOD_SECONDS - trade_age_seconds) / 60)
-                    self.logger.info(f"⏳ Gracia IA: {position.symbol} Ticket #{position.ticket} | {remaining} min restantes antes de evaluar salida.")
+                    self.logger.info(f"⏳ Gracia IA: {position.symbol} Ticket #{position.ticket} | {remaining} min restantes.")
                     setattr(self, grace_log_key, True)
-                # No tocar nada, dejar que el trade se desarrolle
                 ai_approved = False
             else:
-                # Trade maduro — ahora sí evaluamos con la IA
                 last_ai_time = getattr(self, f"_last_ai_time_{position.symbol}", 0)
                 
-                # Rate limit: 120 segundos por símbolo (más tiempo para pensar, menos spam)
+                # Rate limit: 120 segundos por símbolo
                 if now_ts - last_ai_time > 120:
                     eval_result = self.oracle.evaluate_exit(position.symbol, profit_pips, order_type_str)
                     setattr(self, f"_last_ai_eval_{position.symbol}", eval_result)
@@ -185,33 +187,29 @@ class TrailingStopManager:
                 ai_reason = eval_result.get("reason", "Fallback IA")
                 
                 if decision == "CLOSE":
-                    # Solo activar asfixia si el trade está en pérdida real (> 3 pips)
-                    # o en ganancia significativa (> 8 pips) que se está devolviendo  
-                    # NO activar por ruido/spread en los primeros pips
-                    if profit_pips < -3.0 or profit_pips >= 8.0:
+                    # Umbral de Ruido: Solo intervenir si la pérdida es > 5 pips o ganancia devuelta > 8 pips
+                    if profit_pips < -5.0 or profit_pips >= 8.0:
                         ai_approved = True
                         
                         last_log_time = getattr(self, f"_last_log_time_{position.symbol}", 0)
                         if now_ts - last_log_time > 30:
-                            self.logger.warning(f"🧠 CIO ALERTA ROJA en {position.symbol}: {ai_reason}. Protegiendo Trade (Option B).")
+                            self.logger.warning(f"🧠 CIO ALERTA ROJA en {position.symbol}: {ai_reason}. Asfixiando a 7 pips.")
                             setattr(self, f"_last_log_time_{position.symbol}", now_ts)
                         
-                        # SL de protección a 5 pips (institucional, cubre spread + comisión)
+                        # SL de protección a 7 pips (más holgado para evitar cacería por Spread)
                         if position.type == mt5.ORDER_TYPE_BUY:
-                            new_sl = current_price - (5.0 * pip_in_points)
+                            new_sl = current_price - (7.0 * pip_in_points)
                             if position.sl != 0.0 and new_sl < position.sl:
                                 new_sl = position.sl
                         else:
-                            new_sl = current_price + (5.0 * pip_in_points)
+                            new_sl = current_price + (7.0 * pip_in_points)
                             if position.sl != 0.0 and new_sl > position.sl:
                                 new_sl = position.sl
                     else:
-                        # La IA dice CLOSE pero el trade está en zona de ruido (-3 a +8 pips)
-                        # No hacemos nada, dejamos que el SL/TP originales trabajen
                         ai_approved = False
                         last_log_time = getattr(self, f"_last_log_time_{position.symbol}", 0)
                         if now_ts - last_log_time > 60:
-                            self.logger.info(f"🧠 CIO Nota en {position.symbol}: IA sugiere precaución ({ai_reason}), pero P&L en zona neutral ({profit_pips:+.1f} pips). Dejando respirar.")
+                            self.logger.info(f"🧠 CIO Nota {position.symbol}: Sugiere cautela ({ai_reason}), pero en zona neutral ({profit_pips:+.1f} pips).")
                             setattr(self, f"_last_log_time_{position.symbol}", now_ts)
                             
                 elif decision == "HOLD" and profit_pips >= self.activation_pips:

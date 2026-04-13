@@ -107,8 +107,16 @@ class PositionManager:
         if not strict_mode:
             risk_pct *= portfolio_weight
         
-        # Límite duro absoluto para evitar locuras (cap al 3% de riesgo real de la cuenta)
-        risk_pct = min(risk_pct, BotConfig.MAX_RISK_PER_TRADE_PCT * 3.0) 
+        # 🛡️ PILAR 4: Filtro de Correlación USD (USD Correlation Guard)
+        # Previene duplicar el riesgo en la misma dirección en el dólar (ej: BUY EURUSD y BUY GBPUSD)
+        if "USD" in symbol:
+            correlation_ratio = self._check_usd_correlation(symbol, "BUY" if stop_loss_pips > 0 else "SELL")
+            if correlation_ratio < 1.0:
+                self.logger.warning(f"🧺 USD CORRELATION GUARD: Otro par USD detectado en la misma dirección. Reduciendo riesgo al {correlation_ratio*100:.0f}%.")
+                risk_pct *= correlation_ratio
+
+        # Límite duro absoluto para evitar locuras (cap al 1.5x del riesgo base)
+        risk_pct = min(risk_pct, BotConfig.MAX_RISK_PER_TRADE_PCT * 1.5) 
         
         # Determinar el balance para el cálculo del riesgo
         if getattr(BotConfig, "SIMULATE_50K_CHALLENGE", False):
@@ -146,7 +154,13 @@ class PositionManager:
         # 🛡️ MITIGACIÓN RIESGO 5: Redondeo estricto hacia ABAJO usando floor para EVITAR volúmenes inválidos o pasarse del riesgo
         steps = math.floor(lotes_raw / si.volume_step)
         lotes = steps * si.volume_step
-        lotes = round(max(si.volume_min, min(lotes, si.volume_max)), 2) # 🔴 FIX: Normalización de volumen estricta
+        lotes = round(max(si.volume_min, min(lotes, si.volume_max)), 2) 
+        
+        # 🛡️ CAP FINAL DE SEGURIDAD (Usuario): No sobrepasar el límite configurado
+        max_limit = getattr(BotConfig, "MAX_LOT_SIZE", 2.0)
+        if lotes > max_limit:
+            self.logger.warning(f"📐 CAP DE SEGURIDAD: Lotaje {lotes} excede el máximo permitido ({max_limit}). Ajustando a {max_limit} lotes.")
+            lotes = max_limit
 
         # ─── 5. LÍMITE DURO DE SEGURIDAD (PROPORCIONAL AL BALANCE) ───
         # Límite máximo absoluto de lotes para evitar que un stop loss 
@@ -598,3 +612,35 @@ class PositionManager:
                              "magic": BotConfig.MAGIC_NUMBER
                         }
                         mt5.order_send(req_modify)
+
+    def _check_usd_correlation(self, symbol: str, direction: str) -> float:
+        """
+        Calcula si ya existe una exposición significativa al USD en la misma dirección.
+        Retorna 0.5 si hay conflicto (mismo lado del USD), 1.0 si es seguro.
+        """
+        positions = mt5.positions_get()
+        if not positions:
+            return 1.0
+            
+        usd_exposure_direction = 0 # +1 para USD-Fuerte, -1 para USD-Débil
+        
+        for pos in positions:
+            if pos.magic != BotConfig.MAGIC_NUMBER:
+                continue
+            if "USD" not in pos.symbol:
+                continue
+            if pos.symbol == symbol:
+                continue 
+                
+            is_usd_base = pos.symbol.startswith("USD")
+            pos_dir = 1 if pos.type == mt5.ORDER_TYPE_BUY else -1
+            usd_exposure_direction += (pos_dir if is_usd_base else -pos_dir)
+                
+        new_is_usd_base = symbol.startswith("USD")
+        new_dir = 1 if direction == "BUY" else -1
+        new_usd_impact = new_dir if new_is_usd_base else -new_dir
+        
+        if (usd_exposure_direction > 0 and new_usd_impact > 0) or (usd_exposure_direction < 0 and new_usd_impact < 0):
+            return 0.5 
+            
+        return 1.0

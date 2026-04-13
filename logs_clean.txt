@@ -1,0 +1,422 @@
+2026-03-04 00:09:00 | INFO     | [96mℹ️  📝 Logger inicializado -> logs/bot_20260304_000900.log[0m
+2026-03-04 00:09:00 | INFO     | [92m✅ Telegram Notifier activado ✅[0m
+2026-03-04 00:09:00 | INFO     | [96mℹ️  📓 Trade Journal existente: data/trade_journal.csv[0m
+2026-03-04 00:09:01 | INFO     | [93m🛡️  Risk Manager inicializado (Modo de Cálculo Dinámico).[0m
+2026-03-04 00:09:01 | INFO     | [94m🎯 Phase Tracker inicializado | Fase 1 | Target: $5,000 (10.0%)[0m
+2026-03-04 00:09:01 | INFO     | [96mℹ️  🧠 Módulo AI Sentiment (FinBERT) Inicializado.[0m
+2026-03-04 00:09:01 | INFO     | [96mℹ️  📰 News Filter activado | Antes: 30min | Después: 15min[0m
+2026-03-04 00:09:01 | INFO     | [96mℹ️  🔄 Trailing Stop activado | Activación: +10 pips | Step: 5 pips[0m
+2026-03-04 00:09:01 | INFO     | [92m✅ 👁️‍🗨️ IA CASCADA: gemini-flash-latest -> gemini-3.1-flash-image-preview -> gemini-3-flash-preview -> gemini-2.5-flash-image -> gemini-flash-lite-latest -> gemini-3.1-flash-lite-preview -> gemini-2.5-flash-lite-preview-09-2025 -> gemma-3-4b-it[0m
+2026-03-04 00:09:01 | INFO     | [96mℹ️  ✨ Estrategia Cargada: NY Opening Breakout (EURUSD)[0m
+2026-03-04 00:09:01 | INFO     | [96mℹ️  ✨ Estrategia Cargada: London Opening Breakout (EURUSD)[0m
+2026-03-04 00:09:01 | INFO     | [96mℹ️  ✨ Estrategia Cargada: Tokyo Opening Breakout (EURUSD)[0m
+2026-03-04 00:09:01 | INFO     | [96mℹ️  ✨ Estrategia Cargada: Sydney Opening Breakout (EURUSD)[0m
+2026-03-04 00:09:01 | INFO     | [96mℹ️  ✅ Todas las estrategias [Bull/Bear+RSI, NY, LND, TKY, SYN Breakouts] cargadas en: EURUSD[0m
+2026-03-04 00:09:01 | INFO     | [96mℹ️  ✨ Estrategia Cargada: NY Opening Breakout (GBPUSD)[0m
+2026-03-04 00:09:01 | INFO     | [96mℹ️  ✨ Estrategia Cargada: London Opening Breakout (GBPUSD)[0m
+2026-03-04 00:09:01 | INFO     | [96mℹ️  ✨ Estrategia Cargada: Tokyo Opening Breakout (GBPUSD)[0m
+2026-03-04 00:09:01 | INFO     | [96mℹ️  ✨ Estrategia Cargada: Sydney Opening Breakout (GBPUSD)[0m
+2026-03-04 00:09:01 | INFO     | [96mℹ️  ✅ Todas las estrategias [Bull/Bear+RSI, NY, LND, TKY, SYN Breakouts] cargadas en: GBPUSD[0m
+2026-03-04 00:09:01 | INFO     | [96mℹ️  ✨ Estrategia Cargada: NY Opening Breakout (USDJPY)[0m
+2026-03-04 00:09:01 | INFO     | [96mℹ️  ✨ Estrategia Cargada: London Opening Breakout (USDJPY)[0m
+2026-03-04 00:09:01 | INFO     | [96mℹ️  ✨ Estrategia Cargada: Tokyo Opening Breakout (USDJPY)[0m
+2026-03-04 00:09:01 | INFO     | [96mℹ️  ✨ Estrategia Cargada: Sydney Opening Breakout (USDJPY)[0m
+2026-03-04 00:09:01 | INFO     | [96mℹ️  ✅ Todas las estrategias [Bull/Bear+RSI, NY, LND, TKY, SYN Breakouts] cargadas en: USDJPY[0m
+2026-03-04 00:09:01 | INFO     | [92m✅ 💾 Estado restaurado (guardado: 2026-03-03T23:05:00.609701)[0m
+2026-03-04 00:09:01 | INFO     | [92m✅ Estado restaurado correctamente[0m
+2026-03-04 00:09:01 | INFO     | [96mℹ️  🌐 Dashboard iniciando en http://0.0.0.0:5050[0m
+2026-03-04 00:09:01 | INFO     | [92m✅ 📡 Telegram Command Handler iniciado (Polling)[0m
+2026-03-04 00:09:01 | INFO     | [96mℹ️  Conectando a MetaTrader 5...[0m
+2026-03-04 00:09:05 | INFO     | [97m════════════════════════════════════════════════════════════[0m
+2026-03-04 00:09:05 | INFO     | [92m✅ CONECTADO A METATRADER 5[0m
+2026-03-04 00:09:05 | INFO     | [96mℹ️    Cuenta:    7383625[0m
+2026-03-04 00:09:05 | INFO     | [96mℹ️    Servidor:  FPMarketsSC-Demo[0m
+2026-03-04 00:09:05 | INFO     | [96mℹ️    Nombre:    Diego Alejandro Rojas Garcia 1st A/C [0m
+2026-03-04 00:09:05 | INFO     | [96mℹ️    Balance:   $97,722.35[0m
+2026-03-04 00:09:05 | INFO     | [96mℹ️    Equity:    $97,722.35[0m
+2026-03-04 00:09:05 | INFO     | [96mℹ️    Leverage:  1:100[0m
+2026-03-04 00:09:05 | INFO     | [97m════════════════════════════════════════════════════════════[0m
+2026-03-04 00:09:05 | INFO     | [92m✅ 💾 Estado restaurado (guardado: 2026-03-03T23:05:00.609701)[0m
+2026-03-04 00:09:05 | INFO     | [96mℹ️  💾 Balance inicial restaurado: $97,816.95[0m
+2026-03-04 00:09:05 | INFO     | [97m════════════════════════════════════════════════════════════[0m
+2026-03-04 00:09:05 | INFO     | [1m  🤖 TX3 PRO BOT $50K - PROFESSIONAL[0m
+2026-03-04 00:09:05 | INFO     | [97m════════════════════════════════════════════════════════════[0m
+2026-03-04 00:09:05 | INFO     | [96mℹ️    Fase:          1[0m
+2026-03-04 00:09:05 | INFO     | [96mℹ️    Modo:          🟢 LIVE[0m
+2026-03-04 00:09:05 | INFO     | [96mℹ️    Estado:        ▶️ ACTIVO[0m
+2026-03-04 00:09:05 | INFO     | [96mℹ️    Dashboard:     http://0.0.0.0:5050[0m
+2026-03-04 00:09:05 | INFO     | [96mℹ️    News Filter:   ✅ Enabled[0m
+2026-03-04 00:09:05 | INFO     | [96mℹ️    Trailing Stop: ✅ Enabled[0m
+2026-03-04 00:09:05 | INFO     | [97m════════════════════════════════════════════════════════════[0m
+2026-03-04 00:09:05 | INFO     | [97m════════════════════════════════════════════════════════════[0m
+2026-03-04 00:09:05 | INFO     | [1m  🧪 INICIANDO AUTO-PRUEBA DE SISTEMAS[0m
+2026-03-04 00:09:05 | INFO     | [97m════════════════════════════════════════════════════════════[0m
+2026-03-04 00:09:05 | INFO     | [92m✅ 🔹 MT5: Conectado a Cuenta 7383625 (First Prudential Markets Limited)[0m
+2026-03-04 00:09:05 | INFO     | [92m✅ 🔹 Watchlist: Todos los símbolos (3) disponibles.[0m
+2026-03-04 00:09:07 | INFO     | [92m✅ 🔹 Oráculo IA: Respuesta recibida -> Sistemas OK 🏛️📈[0m
+2026-03-04 00:09:07 | INFO     | [92m✅ 🔹 Riesgo: Drawdown actual estable (94.60)[0m
+2026-03-04 00:09:07 | INFO     | [92m✅ 🔹 Telegram: Configuración de envío detectada.[0m
+2026-03-04 00:09:07 | INFO     | [92m✅ ✨ AUTO-PRUEBA COMPLETADA: Todos los sistemas están operativos.[0m
+2026-03-04 00:09:07 | INFO     | [96mℹ️  🟡 Sesión activa[0m
+2026-03-04 00:09:07 | INFO     | [97m────────────────────────────────────────────────────────────[0m
+2026-03-04 00:09:07 | INFO     | [93m🛡️  ESTADO DE DRAWDOWN[0m
+2026-03-04 00:09:07 | INFO     | [93m🛡️    Diario: -$    0.00 / -$ 2500.00  (  0.0%)  Margen: $ 2500.00[0m
+2026-03-04 00:09:07 | INFO     | [93m🛡️    Total:  -$   94.60 / -$ 5000.00  (  1.9%)  Margen: $ 4905.40[0m
+2026-03-04 00:09:07 | INFO     | [97m────────────────────────────────────────────────────────────[0m
+2026-03-04 00:09:07 | INFO     | [94m🎯 PROGRESO FASE 1[0m
+2026-03-04 00:09:07 | INFO     | [94m🎯   Profit:     $  -94.60 / $ 5000.00  ( -1.9%)  ❌[0m
+2026-03-04 00:09:07 | INFO     | [94m🎯   Días rent.: 0/4  ❌[0m
+2026-03-04 00:09:07 | INFO     | [92m✅ Regla de consistencia: ✅ OK[0m
+2026-03-04 00:10:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:10:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:10:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:15:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:15:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:20:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:20:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:20:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:25:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:25:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:30:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:30:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:31:29 | INFO     | [96mℹ️  🧪 TEST: Iniciando trade simulado en EURUSD[0m
+2026-03-04 00:31:29 | INFO     | [96mℹ️  🧪 TEST: Validando con SMC...[0m
+2026-03-04 00:31:29 | WARNING  | [93m⚠️  SMC VETO: EURUSD BUY bloqueado por tendencia bajista en H1 (Precio < EMA 200)[0m
+2026-03-04 00:31:29 | INFO     | [96mℹ️  🧪 TEST: Consultando Q-Learning...[0m
+2026-03-04 00:31:29 | INFO     | [96mℹ️  🧪 TEST: Consultando Juez Supremo (Gemini)...[0m
+2026-03-04 00:35:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:35:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:35:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:40:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:40:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:40:05 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:45:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:45:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:50:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:50:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:50:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:55:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:55:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 00:55:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:00:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:00:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:05:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:05:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:09:08 | INFO     | [97m────────────────────────────────────────────────────────────[0m
+2026-03-04 01:09:08 | INFO     | [93m🛡️  ESTADO DE DRAWDOWN[0m
+2026-03-04 01:09:08 | INFO     | [93m🛡️    Diario: -$    0.00 / -$ 2500.00  (  0.0%)  Margen: $ 2500.00[0m
+2026-03-04 01:09:08 | INFO     | [93m🛡️    Total:  -$   94.60 / -$ 5000.00  (  1.9%)  Margen: $ 4905.40[0m
+2026-03-04 01:09:08 | INFO     | [97m────────────────────────────────────────────────────────────[0m
+2026-03-04 01:09:08 | INFO     | [94m🎯 PROGRESO FASE 1[0m
+2026-03-04 01:09:08 | INFO     | [94m🎯   Profit:     $  -94.60 / $ 5000.00  ( -1.9%)  ❌[0m
+2026-03-04 01:09:08 | INFO     | [94m🎯   Días rent.: 0/4  ❌[0m
+2026-03-04 01:09:08 | INFO     | [92m✅ Regla de consistencia: ✅ OK[0m
+2026-03-04 01:10:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:10:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:10:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:15:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:15:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:20:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:20:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:25:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:25:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:25:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:30:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:30:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:30:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:35:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:35:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:40:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:40:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:45:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:45:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:45:02 | INFO     | [97m────────────────────────────────────────────────────────────[0m
+2026-03-04 01:45:02 | INFO     | [95m📊 SEÑAL DETECTADA: 🔴 VENTA[0m
+2026-03-04 01:45:02 | INFO     | [95m📊   Estrategia:  London Breakout Institucional (USDJPY)[0m
+2026-03-04 01:45:02 | INFO     | [95m📊   Símbolo:     USDJPY[0m
+2026-03-04 01:45:02 | INFO     | [95m📊   SL:          21.3 pips[0m
+2026-03-04 01:45:02 | INFO     | [95m📊   TP:          49.7 pips[0m
+2026-03-04 01:45:02 | INFO     | [95m📊   R:R:         1:2.3[0m
+2026-03-04 01:45:02 | INFO     | [95m📊   Razón:       London Range Breakout Bajista (Momentum)[0m
+2026-03-04 01:45:02 | INFO     | [96mℹ️  📰 2 eventos económicos detectados hoy[0m
+2026-03-04 01:45:02 | WARNING  | [93m⚠️  SMC VETO: USDJPY SELL bloqueado por tendencia alcista en H1 (Precio > EMA 200)[0m
+2026-03-04 01:45:09 | WARNING  | [93m⚠️  🛑 Trade Cancelado por Oráculo (CIO): Venta en breakout extendido (cuchillo cayendo) sin alineación SMC; falta retroceso a zona premium o mitigación de FVG/OB tras expansión de Londres.[0m
+2026-03-04 01:50:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:50:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:50:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:55:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 01:55:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:00:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:00:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:05:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:05:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:05:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:09:08 | INFO     | [97m────────────────────────────────────────────────────────────[0m
+2026-03-04 02:09:08 | INFO     | [93m🛡️  ESTADO DE DRAWDOWN[0m
+2026-03-04 02:09:08 | INFO     | [93m🛡️    Diario: -$    0.00 / -$ 2500.00  (  0.0%)  Margen: $ 2500.00[0m
+2026-03-04 02:09:08 | INFO     | [93m🛡️    Total:  -$   94.60 / -$ 5000.00  (  1.9%)  Margen: $ 4905.40[0m
+2026-03-04 02:09:08 | INFO     | [97m────────────────────────────────────────────────────────────[0m
+2026-03-04 02:09:08 | INFO     | [94m🎯 PROGRESO FASE 1[0m
+2026-03-04 02:09:08 | INFO     | [94m🎯   Profit:     $  -94.60 / $ 5000.00  ( -1.9%)  ❌[0m
+2026-03-04 02:09:08 | INFO     | [94m🎯   Días rent.: 0/4  ❌[0m
+2026-03-04 02:09:08 | INFO     | [92m✅ Regla de consistencia: ✅ OK[0m
+2026-03-04 02:10:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:10:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:10:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:15:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:15:01 | INFO     | [97m────────────────────────────────────────────────────────────[0m
+2026-03-04 02:15:01 | INFO     | [95m📊 SEÑAL DETECTADA: 🔵 COMPRA[0m
+2026-03-04 02:15:01 | INFO     | [95m📊   Estrategia:  London Breakout Institucional (EURUSD)[0m
+2026-03-04 02:15:01 | INFO     | [95m📊   Símbolo:     EURUSD[0m
+2026-03-04 02:15:01 | INFO     | [95m📊   SL:          20 pips[0m
+2026-03-04 02:15:01 | INFO     | [95m📊   TP:          43.1 pips[0m
+2026-03-04 02:15:01 | INFO     | [95m📊   R:R:         1:2.2[0m
+2026-03-04 02:15:01 | INFO     | [95m📊   Razón:       London Range Breakout Alcista (Momentum)[0m
+2026-03-04 02:15:01 | WARNING  | [93m⚠️  SMC VETO: EURUSD BUY bloqueado por tendencia bajista en H1 (Precio < EMA 200)[0m
+2026-03-04 02:15:05 | INFO     | [96mℹ️  🔄 Calculando Mapa de Calor Volumétrico para rebalanceo...[0m
+2026-03-04 02:15:05 | INFO     | [96mℹ️  🔥 IA Ultra-Confident (85%). Aumentando lotaje 50% (High Conviction).[0m
+2026-03-04 02:15:05 | INFO     | [93m🛡️  🛡️ MATH FORTRESS: EURUSD | Risk 1.362% | SL: 20.0 | Lotes: 6.65[0m
+2026-03-04 02:15:05 | WARNING  | [93m⚠️  ⚠️ Operación rechazada: Spread muy alto en EURUSD (2.0 pips > 1.5 max)[0m
+2026-03-04 02:15:05 | INFO     | [97m────────────────────────────────────────────────────────────[0m
+2026-03-04 02:15:05 | INFO     | [95m📊 SEÑAL DETECTADA: 🔵 COMPRA[0m
+2026-03-04 02:15:05 | INFO     | [95m📊   Estrategia:  London Breakout Institucional (GBPUSD)[0m
+2026-03-04 02:15:05 | INFO     | [95m📊   Símbolo:     GBPUSD[0m
+2026-03-04 02:15:05 | INFO     | [95m📊   SL:          24.5 pips[0m
+2026-03-04 02:15:05 | INFO     | [95m📊   TP:          57.1 pips[0m
+2026-03-04 02:15:05 | INFO     | [95m📊   R:R:         1:2.3[0m
+2026-03-04 02:15:05 | INFO     | [95m📊   Razón:       London Range Breakout Alcista (Momentum)[0m
+2026-03-04 02:15:05 | WARNING  | [93m⚠️  SMC VETO: GBPUSD BUY bloqueado por tendencia bajista en H1 (Precio < EMA 200)[0m
+2026-03-04 02:15:10 | INFO     | [96mℹ️  🔥 IA Ultra-Confident (85%). Aumentando lotaje 50% (High Conviction).[0m
+2026-03-04 02:15:10 | INFO     | [93m🛡️  🛡️ MATH FORTRESS: GBPUSD | Risk 1.590% | SL: 24.5 | Lotes: 6.34[0m
+2026-03-04 02:15:10 | WARNING  | [93m⚠️  ⚠️ Operación rechazada: Spread muy alto en GBPUSD (1.5 pips > 1.5 max)[0m
+2026-03-04 02:20:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:20:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:25:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:25:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:30:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:30:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:30:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:35:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:35:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:40:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:40:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:45:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:45:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:45:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:50:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:50:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:50:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:55:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 02:55:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:00:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:00:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:05:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:05:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:05:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:09:08 | INFO     | [97m────────────────────────────────────────────────────────────[0m
+2026-03-04 03:09:08 | INFO     | [93m🛡️  ESTADO DE DRAWDOWN[0m
+2026-03-04 03:09:08 | INFO     | [93m🛡️    Diario: -$    0.00 / -$ 2500.00  (  0.0%)  Margen: $ 2500.00[0m
+2026-03-04 03:09:08 | INFO     | [93m🛡️    Total:  -$   94.60 / -$ 5000.00  (  1.9%)  Margen: $ 4905.40[0m
+2026-03-04 03:09:08 | INFO     | [97m────────────────────────────────────────────────────────────[0m
+2026-03-04 03:09:08 | INFO     | [94m🎯 PROGRESO FASE 1[0m
+2026-03-04 03:09:08 | INFO     | [94m🎯   Profit:     $  -94.60 / $ 5000.00  ( -1.9%)  ❌[0m
+2026-03-04 03:09:08 | INFO     | [94m🎯   Días rent.: 0/4  ❌[0m
+2026-03-04 03:09:08 | INFO     | [92m✅ Regla de consistencia: ✅ OK[0m
+2026-03-04 03:10:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:10:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:15:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:15:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:20:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:20:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:20:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:25:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:25:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:25:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:30:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:30:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:35:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:35:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:40:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:40:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:40:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:45:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:45:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:50:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:50:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:55:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:55:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 03:55:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:00:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:00:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:00:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:05:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:05:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:09:09 | INFO     | [97m────────────────────────────────────────────────────────────[0m
+2026-03-04 04:09:09 | INFO     | [93m🛡️  ESTADO DE DRAWDOWN[0m
+2026-03-04 04:09:09 | INFO     | [93m🛡️    Diario: -$    0.00 / -$ 2500.00  (  0.0%)  Margen: $ 2500.00[0m
+2026-03-04 04:09:09 | INFO     | [93m🛡️    Total:  -$   94.60 / -$ 5000.00  (  1.9%)  Margen: $ 4905.40[0m
+2026-03-04 04:09:09 | INFO     | [97m────────────────────────────────────────────────────────────[0m
+2026-03-04 04:09:09 | INFO     | [94m🎯 PROGRESO FASE 1[0m
+2026-03-04 04:09:09 | INFO     | [94m🎯   Profit:     $  -94.60 / $ 5000.00  ( -1.9%)  ❌[0m
+2026-03-04 04:09:09 | INFO     | [94m🎯   Días rent.: 0/4  ❌[0m
+2026-03-04 04:09:09 | INFO     | [92m✅ Regla de consistencia: ✅ OK[0m
+2026-03-04 04:10:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:10:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:10:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:15:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:15:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:15:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:20:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:20:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:25:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:25:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:30:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:30:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:30:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:35:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:35:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:35:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:40:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:40:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:45:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:45:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:45:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:50:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:50:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:50:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:55:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 04:55:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:00:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:00:01 | INFO     | [96mℹ️  🟢 Sesión OVERLAP activa (London + NY)[0m
+2026-03-04 05:00:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:05:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:05:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:05:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:09:10 | INFO     | [97m────────────────────────────────────────────────────────────[0m
+2026-03-04 05:09:10 | INFO     | [93m🛡️  ESTADO DE DRAWDOWN[0m
+2026-03-04 05:09:10 | INFO     | [93m🛡️    Diario: -$    0.00 / -$ 2500.00  (  0.0%)  Margen: $ 2500.00[0m
+2026-03-04 05:09:10 | INFO     | [93m🛡️    Total:  -$   94.60 / -$ 5000.00  (  1.9%)  Margen: $ 4905.40[0m
+2026-03-04 05:09:10 | INFO     | [97m────────────────────────────────────────────────────────────[0m
+2026-03-04 05:09:10 | INFO     | [94m🎯 PROGRESO FASE 1[0m
+2026-03-04 05:09:10 | INFO     | [94m🎯   Profit:     $  -94.60 / $ 5000.00  ( -1.9%)  ❌[0m
+2026-03-04 05:09:10 | INFO     | [94m🎯   Días rent.: 0/4  ❌[0m
+2026-03-04 05:09:10 | INFO     | [92m✅ Regla de consistencia: ✅ OK[0m
+2026-03-04 05:10:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:10:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:10:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:15:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:15:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:20:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:20:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:20:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:25:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:25:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:25:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:30:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:30:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:35:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:35:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:40:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:40:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:40:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:45:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:45:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:50:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:50:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:55:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:55:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 05:55:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:00:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:00:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:00:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:05:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:05:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:09:11 | INFO     | [97m────────────────────────────────────────────────────────────[0m
+2026-03-04 06:09:11 | INFO     | [93m🛡️  ESTADO DE DRAWDOWN[0m
+2026-03-04 06:09:11 | INFO     | [93m🛡️    Diario: -$    0.00 / -$ 2500.00  (  0.0%)  Margen: $ 2500.00[0m
+2026-03-04 06:09:11 | INFO     | [93m🛡️    Total:  -$   94.60 / -$ 5000.00  (  1.9%)  Margen: $ 4905.40[0m
+2026-03-04 06:09:11 | INFO     | [97m────────────────────────────────────────────────────────────[0m
+2026-03-04 06:09:11 | INFO     | [94m🎯 PROGRESO FASE 1[0m
+2026-03-04 06:09:11 | INFO     | [94m🎯   Profit:     $  -94.60 / $ 5000.00  ( -1.9%)  ❌[0m
+2026-03-04 06:09:11 | INFO     | [94m🎯   Días rent.: 0/4  ❌[0m
+2026-03-04 06:09:11 | INFO     | [92m✅ Regla de consistencia: ✅ OK[0m
+2026-03-04 06:10:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:10:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:10:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:15:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:15:00 | INFO     | [97m────────────────────────────────────────────────────────────[0m
+2026-03-04 06:15:00 | INFO     | [95m📊 SEÑAL DETECTADA: 🔵 COMPRA[0m
+2026-03-04 06:15:00 | INFO     | [95m📊   Estrategia:  NY Breakout Institucional (USDJPY)[0m
+2026-03-04 06:15:00 | INFO     | [95m📊   Símbolo:     USDJPY[0m
+2026-03-04 06:15:00 | INFO     | [95m📊   SL:          30.7 pips[0m
+2026-03-04 06:15:00 | INFO     | [95m📊   TP:          46.0 pips[0m
+2026-03-04 06:15:00 | INFO     | [95m📊   R:R:         1:1.5[0m
+2026-03-04 06:15:00 | INFO     | [95m📊   Razón:       NY Range Breakout Alcista (Momentum Decisivo)[0m
+2026-03-04 06:15:10 | ERROR    | [91m❌ AI Error en models/gemini-flash-latest: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 5, model: gemini-3-flash
+Please retry in 49.997348735s. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_content_free_tier_requests"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel-FreeTier"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-3-flash"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 5
+}
+, retry_delay {
+  seconds: 49
+}
+][0m
+2026-03-04 06:15:13 | ERROR    | [91m❌ AI Error en models/gemini-flash-latest: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 5, model: gemini-3-flash
+Please retry in 46.941532413s. [links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, violations {
+  quota_metric: "generativelanguage.googleapis.com/generate_content_free_tier_requests"
+  quota_id: "GenerateRequestsPerMinutePerProjectPerModel-FreeTier"
+  quota_dimensions {
+    key: "model"
+    value: "gemini-3-flash"
+  }
+  quota_dimensions {
+    key: "location"
+    value: "global"
+  }
+  quota_value: 5
+}
+, retry_delay {
+  seconds: 46
+}
+][0m
+2026-03-04 06:15:19 | WARNING  | [93m⚠️  R:R ratio insuficiente: 1.5 (mínimo: 1.5)[0m
+2026-03-04 06:20:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:20:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:25:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:25:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:25:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:30:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:30:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:30:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:35:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:35:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:40:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:40:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:40:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:45:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:45:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:45:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:50:01 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:50:03 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:55:00 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:55:02 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m
+2026-03-04 06:55:04 | INFO     | [96mℹ️  💾 Estado guardado correctamente[0m

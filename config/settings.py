@@ -68,6 +68,7 @@ class BotConfig:
     KELLY_FRACTION = 0.0                 # Cero para evitar sobreapalancamiento prohibido por FTMO.
     MAX_TRADES_PER_DAY = 5               # Reducimos los tiros diarios a 5 (Francotirador élite).
     MAX_OPEN_POSITIONS = 2               # Permite hasta solo 2 simultáneas para evitar correlaciones suicidas.
+    MAX_LOT_SIZE = 2.0                   # 🛡️ CAP DE SEGURIDAD: Máximo 2 lotes para evitar sobre-exposición accidental.
     REVENGE_COOLDOWN_MINUTES = 60        # 1 HORA de bloqueo tras cerrar un trade (Elimina 100% el revenge trading)
 
     # ─── EMERGENCY THRESHOLDS ─────────────────────────────────────────
@@ -171,8 +172,8 @@ class SessionConfig:
 
     NY_START_HOUR = 8
     NY_START_MINUTE = 0
-    NY_END_HOUR = 16                   # 🛡️ PROTECCIÓN ROLLOVER: Cierre final a las 16:45 PM EST
-    NY_END_MINUTE = 45
+    NY_END_HOUR = 13                   # 🛡️ PROTECCIÓN ROLLOVER: Sesión termina a la 1:00 PM EST (Evita rango lateral de la tarde)
+    NY_END_MINUTE = 0
     
     STRICT_CONSISTENCY_MODE = True       # 🛡️ FTMO LEGAL COMPLIANCE: Mantiene el lote base intocable
     

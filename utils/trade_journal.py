@@ -500,9 +500,15 @@ class TradeJournal:
                 # Un deal de cierre de tipo BUY(0) significa que la posición original era SELL.
                 pos_direction = "SELL" if deal.type == 0 else "BUY"
                 
-                # Calcular pips aproximados (en deals de cierre, mt5 no da pips directo fácilmente)
+                # Calcular pips aproximados basados en el profit bruto del deal
                 profit_pips = 0.0
-                
+                si = mt5.symbol_info(symbol)
+                if si and deal.volume > 0:
+                    pip_size = si.point * (10 if si.digits in [3, 5] else 1)
+                    pip_val_lot = (pip_size / si.trade_tick_size) * si.trade_tick_value
+                    if pip_val_lot > 0:
+                        profit_pips = round(deal.profit / (deal.volume * pip_val_lot), 1)
+                        
                 row = {
                     "timestamp": ts,
                     "trade_id": trade_id,

@@ -142,7 +142,7 @@ def sim_liquidity_sweep(df, df_h1, symbol):
         ts = curr['time']
         h = (pd.Timestamp(ts).hour - 5) % 24
         
-        if h < 2 or h > 16: continue
+        if h < 2 or h >= 13: continue
         
         mask = (df_h1['time'] < ts)
         h1_window = df_h1[mask].iloc[-4:]
@@ -201,7 +201,7 @@ def sim_zscore_reversion(df, df_h1, symbol, z_thresh=2.5):
         curr, prev_row = df.iloc[i], df.iloc[i-1]
         h = (pd.Timestamp(curr['time']).hour - 5) % 24
         if "EUR" in symbol and not (h >= 19 or h < 1): continue
-        if "GBP" in symbol and not (h >= 13 and h < 17): continue
+        if "GBP" in symbol and not (h >= 3 and h < 13): continue
         signal = "SELL" if (prev_row['z'] >= z_thresh and curr['z'] < z_thresh) else "BUY" if (prev_row['z'] <= -z_thresh and curr['z'] > -z_thresh) else None
         
         if signal:
@@ -396,7 +396,7 @@ def sim_institutional_flow(df_m5, df_m15, symbol):
         h = (pd.Timestamp(ts).hour - 5) % 24
         
         # Filtro Sesión (Institucional)
-        if h < 2 or h > 16: continue
+        if h < 2 or h >= 13: continue
         
         # Buscar contexto en M15
         mask = (df_m15['time'] < ts)
