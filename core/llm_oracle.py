@@ -58,7 +58,7 @@ class GeminiOracle:
         self.buckets = {}
         self.models_instances = {}
         self.cascade_models = []
-        self.target_light = "gemma-3-1b"
+        self.target_light = "gemini-1.5-flash"
         
         # Caché de señales para evitar duplicar llamadas en la misma vela M5
         self._signal_cache = {}
@@ -122,11 +122,11 @@ class GeminiOracle:
                 if lc not in self.cascade_models:
                     self.cascade_models.append(lc)
 
-            # 2. Seleccionar el Fallback Definitivo (Gemma-3 - infinito)
-            # Priorizamos versiones balanceadas (4b o 12b) en lugar del 1b
-            t1_cands = [m for m in available_models if "gemma-3-4b" in m or "gemma-3-12b" in m]
+            # 2. Seleccionar el Fallback Definitivo (Evitamos gemma por problemas de permisos 403)
+            # Priorizamos flash-lite o 1.5-flash
+            t1_cands = [m for m in available_models if "gemini-2.0-flash-lite" in m or "gemini-1.5-flash-8b" in m]
             if not t1_cands:
-                t1_cands = [m for m in available_models if "gemma-3" in m]
+                t1_cands = [m for m in available_models if "1.5-flash" in m or "flash" in m]
             self.target_light = t1_cands[0] if t1_cands else "default-light"
 
             # 3. Configurar Buckets para la lista final
