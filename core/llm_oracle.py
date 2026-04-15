@@ -198,7 +198,6 @@ class GeminiOracle:
         
         if not self._get_token(model_name):
             if urgent:
-                import time
                 time.sleep(5)
                 # No reintentar infinitamente si es por RPD
                 if self.buckets[model_name]["rpd_count"] < self.buckets[model_name]["rpd_limit"]:

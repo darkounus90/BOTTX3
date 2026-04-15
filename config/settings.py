@@ -63,7 +63,7 @@ class BotConfig:
     FTMO_TIMEZONE = "Europe/Prague"      # 🔥 Zona horaria oficial de FTMO (Sincronización Crítica)
 
     # ─── RISK MANAGEMENT (FTMO COMPLIANCE) ────────────────────────────
-    MAX_RISK_PER_TRADE_PCT = 0.4                 # 0.4% = $200 base para cuenta 50K. Modo Conservador para Sobrevivir.
+    MAX_RISK_PER_TRADE_PCT = 0.1                 # 0.1% = $50 base para cuenta 50K. Modo Conservador para Sobrevivir.
     STRICT_CONSISTENCY_MODE = True       # FTMO exige que no haya "one-sided bets".
     KELLY_FRACTION = 0.0                 # Cero para evitar sobreapalancamiento prohibido por FTMO.
     MAX_TRADES_PER_DAY = 5               # Reducimos los tiros diarios a 5 (Francotirador élite).
