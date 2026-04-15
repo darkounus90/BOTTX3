@@ -58,20 +58,25 @@ def main():
         """
         
         print("[*] Enviando Trade a la IA de Google (evaluación con cascada)...")
-        decision, razon, modelo_usado = oracle.evaluate_trade("GBPUSD", "BUY", "TTMSqueeze", prompt_prueba)
+        ai_response = oracle.evaluate_trade(
+            symbol="GBPUSD",
+            signal_type="BUY",
+            reason="TTM Squeeze Breakout en periodo de baja volatilidad",
+            adx=25.0
+        )
         
         print("\n" + "="*60)
         print(" 🎯 RESPUESTA RECIBIDA DESDE LOS SERVIDORES DE GOOGLE:")
         print("="*60)
-        print(f"Modelo que respondió a la petición: {modelo_usado}")
-        print(f"Veredicto IA: {decision}")
-        print(f"Razonamiento  : {razon}")
+        print(f"Modelo que respondió a la petición: {ai_response.get('model', 'Desconocido')}")
+        print(f"Veredicto IA: {ai_response.get('decision')}")
+        print(f"Razonamiento: {ai_response.get('reason')}")
         print("="*60 + "\n")
         
-        if "ERROR" in decision or decision == "VETO":
+        if "ERROR" in ai_response.get("decision", "") or ai_response.get("decision") == "VETO":
              print("⚠️ La prueba corrió, pero revisa arriba en el Razonamiento si hubo algún bloqueo extraño.")
         else:
-             print("🚀 EXITO TOTAL: El código parcheado funciona, maneja bien los modelos libres de 403 y da luz verde sin el error de variable 'time'.")
+             print("🚀 EXITO TOTAL: El código parcheado funciona, maneja bien los modelos libres de 403.")
              
     except Exception as e:
         print(f"\n❌ CRASH LETAL (Aún hay errores de código): {e}")
