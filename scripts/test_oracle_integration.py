@@ -6,16 +6,21 @@ import json
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from core.llm_oracle import GeminiOracle
-from utils.logger import BotLogger
-from config.settings import BotConfig
+
+class DummyLogger:
+    def __init__(self): pass
+    def info(self, msg): print(f"[INFO] {msg}")
+    def error(self, msg): print(f"[ERROR] {msg}")
+    def warning(self, msg): print(f"[WARN] {msg}")
+    def debug(self, msg): print(f"[DEBUG] {msg}")
 
 def main():
     print("\n" + "="*60)
     print(" 🧠 INICIANDO TEST DE INTEGRACIÓN DEL ORÁCULO IA")
     print("="*60 + "\n")
     
-    # Simular un logger
-    logger = BotLogger("TEST")
+    # Simular un logger aislado
+    logger = DummyLogger()
     
     # Extraer la clave desde el BOT CONFIG como lo hace main.py
     api_key = os.environ.get("GEMINI_API_KEY", "")
