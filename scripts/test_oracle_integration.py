@@ -10,6 +10,7 @@ from core.llm_oracle import GeminiOracle
 class DummyLogger:
     def __init__(self): pass
     def info(self, msg): print(f"[INFO] {msg}")
+    def success(self, msg): print(f"[SUCCESS] {msg}")
     def error(self, msg): print(f"[ERROR] {msg}")
     def warning(self, msg): print(f"[WARN] {msg}")
     def debug(self, msg): print(f"[DEBUG] {msg}")
