@@ -92,42 +92,29 @@ class GeminiOracle:
             # 1. Armar la cascada de modelos inteligentes
             cands = []
             for m in available_models:
-                # Omitir incompatibles, versiones obsoletas, modelos beta, experimentales y lentos (PRO/ULTRA)
+                # Omitir incompatibles, versiones obsoletas, modelos beta, experimentales y lentos
                 if any(x in m.lower() for x in ["vision", "embedding", "text-bison", "tts", "robotics", "preview", "experimental", "customtools", "pro", "ultra"]):
-                    continue
-                # Evitamos poner a Gemma o Lite en la cima principal de la cascada
-                if "lite" in m or "gemma" in m:
                     continue
                 cands.append(m)
             
-            # Ordenar: Queremos que las versiones "3" vayan primero, luego "2.5", luego "flash-latest"
-            # Prioridad para modelos Flash rápidos
+            # Ordenar: Damos prioridad a los mejores (2.5, 2.0) y enviamos gemma y lites hasta abajo de la cascada
             def _sort_key(m_name):
                 base = 0
-                
                 if "3.1" in m_name: base += 310
                 elif "3.0" in m_name or "-3-" in m_name: base += 300
                 elif "2.5" in m_name: base += 250
                 elif "2.0" in m_name: base += 200
                 elif "1.5" in m_name: base += 150
+                
+                if "lite" in m_name: base -= 20
+                if "gemma" in m_name: base -= 30
                 return base
                 
             cands.sort(key=_sort_key, reverse=True)
-            self.cascade_models = cands # Usar TODOS los modelos principales disponibles en lugar de solo 4
+            self.cascade_models = cands # Usar TODOS los modelos disponibles de forma dinámica
 
-            # Anexamos todos los Lite disponibles como Fallback Intermedio (Ej: 3.1-lite, 2.5-lite)
-            lite_cands = [m for m in available_models if "lite" in m and "tts" not in m]
-            lite_cands.sort(reverse=True)
-            for lc in lite_cands: # Añadir absolutamente todos los lites a la cascada
-                if lc not in self.cascade_models:
-                    self.cascade_models.append(lc)
-
-            # 2. Seleccionar el Fallback Definitivo (Evitamos gemma por problemas de permisos 403)
-            # Priorizamos flash-lite o 1.5-flash
-            t1_cands = [m for m in available_models if "gemini-2.0-flash-lite" in m or "gemini-1.5-flash-8b" in m]
-            if not t1_cands:
-                t1_cands = [m for m in available_models if "1.5-flash" in m or "flash" in m]
-            self.target_light = t1_cands[0] if t1_cands else "default-light"
+            # 2. Seleccionar el Fallback Definitivo (El modelo más pequeño al fondo de la cascada)
+            self.target_light = self.cascade_models[-1] if self.cascade_models else "default-light"
 
             # 3. Configurar Buckets para la lista final
             num_keys = len(self.api_keys) if self.api_keys else 1
@@ -234,6 +221,10 @@ class GeminiOracle:
             except Exception as e:
                 err_str = str(e).lower()
                 last_error = str(e)
+                if "403" in err_str or "permission" in err_str:
+                    self.logger.warning(f"⏩ {model.model_name} bloqueado/sin permisos. Saltando automáticamente...")
+                    break
+                
                 if "429" in err_str or "quota" in err_str:
                     if len(self.api_keys) > 1:
                         # Forzar cambio de clave si da error de cuota en una
