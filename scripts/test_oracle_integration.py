@@ -5,7 +5,7 @@ import json
 # Agregar la raíz del proyecto para poder importar core y config
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from core.llm_oracle import LLMOracle
+from core.llm_oracle import GeminiOracle
 from utils.logger import BotLogger
 from config.settings import BotConfig
 
@@ -27,7 +27,7 @@ def main():
     print(f"[*] Inicializando Oráculo con {len(api_key.split(','))} Llave(s).")
     
     try:
-        oracle = LLMOracle(logger=logger, api_key=api_key)
+        oracle = GeminiOracle(logger=logger, api_key=api_key)
         
         if not oracle.enabled:
             print("\n❌ RESULTADO: EL ORÁCULO NO PUDO INICIAR (enabled=False). Faltan modelos disponibles.\n")
