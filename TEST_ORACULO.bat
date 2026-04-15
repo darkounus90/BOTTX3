@@ -6,6 +6,9 @@ echo     TX3 PRO BOT - TEST DE ORACULO IA (V2 PARCHEADO)
 echo =======================================================
 echo.
 
+set PYTHONHOME=
+set PYTHONPATH=
+
 set "PY_EXE="
 if exist ".venv\Scripts\python.exe" (
     set "PY_EXE=.\.venv\Scripts\python.exe"
