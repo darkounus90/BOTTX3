@@ -83,7 +83,7 @@ class LiquiditySweepStrategy:
             # Filtro adicional: Solo operar en sesiones de alta liquidez
             from zoneinfo import ZoneInfo
             hour_est = datetime.now(ZoneInfo("America/New_York")).hour
-            if hour_est < 2 or hour_est > 17: # Londres + NY
+            if hour_est < 2 or hour_est >= 13: # Solo Londres y Mañana de NY
                 return None
 
             # Calcular ATR para SL/TP dinámico

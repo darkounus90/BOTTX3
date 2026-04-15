@@ -280,7 +280,7 @@ class TX3ProBot:
 
         # Estado Operativo Real (basado en horarios reales de estrategias activas: 03:00-17:00 EST)
         hour_est = datetime.now(ZoneInfo(BotConfig.TIMEZONE)).hour
-        is_in_active_window = 3 <= hour_est < 17
+        is_in_active_window = 3 <= hour_est < 13
         bot_status = "🟢 OPERACIONAL" if is_in_active_window else "💤 ZONA MUERTA"
         
         data = {

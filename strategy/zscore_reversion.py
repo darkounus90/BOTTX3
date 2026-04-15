@@ -44,8 +44,8 @@ class ZScoreReversionStrategy(BaseStrategy):
         hour_est = datetime.now(ZoneInfo("America/New_York")).hour
         
         if "GBP" in self.symbol:
-            # GBPUSD: Solo opera en la ventana segura (13:00 a 17:00 EST)
-            if hour_est < 13 or hour_est >= 17:
+            # GBPUSD: Operar en ventana Londres/Mañana NY (3:00 AM a 1:00 PM EST)
+            if hour_est < 3 or hour_est >= 13:
                 return None
 
         df = pd.DataFrame(rates)

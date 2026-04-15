@@ -114,7 +114,7 @@ class InstitutionalFlowStrategy:
             # Session Filter (LND / NY)
             from zoneinfo import ZoneInfo
             hour_est = datetime.now(ZoneInfo("America/New_York")).hour
-            if hour_est < 2 or hour_est > 17:
+            if hour_est < 2 or hour_est >= 13:
                 return None
 
             return {

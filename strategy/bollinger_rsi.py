@@ -118,8 +118,8 @@ class BollingerRSIStrategy(BaseStrategy):
             if hour_est >= 1 and hour_est < 19:
                 return None
         elif "GBP" in self.symbol:
-            # GBPUSD: 13:00 - 17:00 EST (Transición segura demostrada por la macroeconomía)
-            if hour_est < 13 or hour_est >= 17:
+            # GBPUSD: Operar en la sesión líquida y evitar la tarde tóxica (3:00 AM a 1:00 PM EST)
+            if hour_est < 3 or hour_est >= 13:
                 return None
 
         # --- FILTRO DE TENDENCIA H1 (High-Fidelity Match) ---
