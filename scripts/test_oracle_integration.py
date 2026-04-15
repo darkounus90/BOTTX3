@@ -32,7 +32,7 @@ def main():
     print(f"[*] Inicializando Oráculo con {len(api_key.split(','))} Llave(s).")
     
     try:
-        oracle = GeminiOracle(logger=logger, api_key=api_key)
+        oracle = GeminiOracle(logger=logger)
         
         if not oracle.enabled:
             print("\n❌ RESULTADO: EL ORÁCULO NO PUDO INICIAR (enabled=False). Faltan modelos disponibles.\n")
