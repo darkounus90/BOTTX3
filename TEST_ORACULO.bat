@@ -7,8 +7,12 @@ echo =======================================================
 echo.
 
 set "PY_EXE="
-where python >nul 2>nul
-if not errorlevel 1 set "PY_EXE=python"
+if exist ".venv\Scripts\python.exe" (
+    set "PY_EXE=.\.venv\Scripts\python.exe"
+) else (
+    where python >nul 2>nul
+    if not errorlevel 1 set "PY_EXE=python"
+)
 
 if not defined PY_EXE (
     where py >nul 2>nul
