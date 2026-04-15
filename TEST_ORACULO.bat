@@ -1,24 +1,47 @@
 @echo off
-cd /d "%~dp0"
-title Test de Integracion IA (Motor Real)
-color 0A
-echo.
+setlocal enabledelayedexpansion
+
 echo =======================================================
-echo     TX3 PRO BOT - TEST DE ORÁCULO IA (V2 PARCHEADO)
+echo     TX3 PRO BOT - TEST DE ORACULO IA (V2 PARCHEADO)
 echo =======================================================
 echo.
 
-if exist ".venv\Scripts\python.exe" goto use_venv
+set "PY_EXE="
+where python >nul 2>nul
+if not errorlevel 1 set "PY_EXE=python"
 
-echo Entorno virtual no encontrado, usando python global...
-python scripts\test_oracle_integration.py
-goto end_test
+if not defined PY_EXE (
+    where py >nul 2>nul
+    if not errorlevel 1 set "PY_EXE=py"
+)
 
-:use_venv
-echo Usando entorno virtual local de Windows...
-.\.venv\Scripts\python.exe scripts\test_oracle_integration.py
+if not defined PY_EXE (
+    for /d %%V in ("%LOCALAPPDATA%\Programs\Python\Python*") do (
+        if exist "%%V\python.exe" set "PY_EXE=%%V\python.exe"
+    )
+)
+if not defined PY_EXE (
+    for /d %%V in ("C:\Program Files\Python*") do (
+        if exist "%%V\python.exe" set "PY_EXE=%%V\python.exe"
+    )
+)
+if not defined PY_EXE (
+    for /d %%V in ("C:\Users\Administrator\AppData\Local\Programs\Python\Python*") do (
+        if exist "%%V\python.exe" set "PY_EXE=%%V\python.exe"
+    )
+)
 
-:end_test
+if not defined PY_EXE (
+    echo [ERROR] No encuentro Python en este servidor.
+    pause
+    exit /b
+)
+
+echo [-] Python encontrado en: "!PY_EXE!"
+echo [-] Lanzando prueba de IA...
+echo.
+"!PY_EXE!" scripts\test_oracle_integration.py
+
 echo.
 echo =======================================================
 echo Test finalizado. Comprueba que el veredicto salio exitoso.
