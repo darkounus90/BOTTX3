@@ -45,6 +45,9 @@ if not defined PY_EXE (
 )
 
 echo [-] Python encontrado en: "!PY_EXE!"
+echo [-] Asegurando librerias instaladas...
+"!PY_EXE!" -m pip install MetaTrader5 google-generativeai --quiet
+
 echo [-] Lanzando prueba de IA...
 echo.
 "!PY_EXE!" scripts\test_oracle_integration.py
