@@ -492,7 +492,7 @@ def sim_ttm_squeeze(df, df_h1, symbol):
             
     return res
 
-def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=45):
+def run_backtest(symbol="EURUSD", days=365, z=2.5, adx=45):
     if not mt5.initialize(): return []
     m5 = pd.DataFrame(mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M5, 0, days*24*12))
     m15 = pd.DataFrame(mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M15, 0, days*24*4))
@@ -529,7 +529,7 @@ def run_backtest(symbol="EURUSD", days=60, z=2.5, adx=45):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--days", type=int, default=60)
+    parser.add_argument("--days", type=int, default=365)
     parser.add_argument("--symbols", type=str, default="EURUSD,GBPUSD")
     parser.add_argument("--mode", type=str, default="standard")
     args = parser.parse_args()
