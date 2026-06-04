@@ -166,6 +166,16 @@ def run_dashboard(bot_logger: BotLogger):
     log = logging.getLogger("werkzeug")
     log.setLevel(logging.ERROR)
 
+    # Lanzar navegador automáticamente en modo App
+    def _open_browser():
+        import time, os
+        time.sleep(3) # Esperar a que Flask levante
+        url = f"http://localhost:{DashboardConfig.PORT}"
+        # Intenta Chrome modo App, si falla intenta Edge, si falla abre pestaña normal
+        os.system(f'start chrome --app={url} || start msedge --app={url} || start {url}')
+        
+    threading.Thread(target=_open_browser, daemon=True).start()
+
     try:
         socketio.run(
             app,
