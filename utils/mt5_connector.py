@@ -16,18 +16,29 @@ class MT5Connector:
         self.connected = False
 
     def connect(self) -> bool:
-        """
-        Inicializa la conexión con MT5.
-        MT5 debe estar instalado y abierto con la cuenta TX3 logueada.
-        """
+        import os
         self.logger.info("Conectando a MetaTrader 5...")
+        path = r"C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe"
+        
+        login_str = os.getenv("MT5_LOGIN")
+        password = os.getenv("MT5_PASSWORD")
+        server = os.getenv("MT5_SERVER")
+        
+        if login_str and password and server:
+            try:
+                login = int(login_str.strip())
+                self.logger.info(f"Inyectando credenciales para la cuenta: {login} en {server}")
+                success = mt5.initialize(path=path, login=login, password=password, server=server, timeout=60000, portable=True)
+            except Exception as e:
+                self.logger.error(f"Error parseando login: {e}")
+                success = mt5.initialize(path=path, timeout=60000, portable=True)
+        else:
+            success = mt5.initialize(path=path, timeout=60000, portable=True)
 
-        if not mt5.initialize(path=r"C:\Program Files\MetaTrader 5\terminal64.exe"):
+        if not success:
             error = mt5.last_error()
-            self.logger.error(f"Error al inicializar MT5: {error}")
-            self.logger.error(
-                "Asegúrate de que MetaTrader 5 esté instalado y abierto."
-            )
+            self.logger.error(f"Error CRÍTICO al inicializar MT5: {error}")
+            self.logger.error("🚨 Imposible conectar. Asegúrate de tener conexión a internet.")
             return False
 
         # Obtener info de la cuenta
