@@ -197,6 +197,7 @@ class NewsFilter:
             self.logger.error(f"🚨 [CRUCIAL] Fallo crónico obteniendo calendario económico: {e}")
             # 🛡️ MITIGACIÓN 4: Anulamos el peligroso schedule estático. Si no hay certeza 100%, NO SE OPERA.
             self.api_failed_today = True
+            self._cache_date = today # Evita spam infinito de reintentos hoy
             
             # Notificar por Telegram que el bot está ciego
             from utils.telegram_notifier import TelegramNotifier
@@ -214,7 +215,11 @@ class NewsFilter:
         url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
         
         # 🛡️ MITIGACIÓN 7: Timeout estricto de 3 segundos para evitar Bloqueo del Hilo Principal
-        response = requests.get(url, timeout=3)
+        # Se agrega User-Agent real para evitar error HTTP 429 (Rate Limit) de Cloudflare
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=3)
 
         if response.status_code != 200:
             raise ConnectionError(f"HTTP Status {response.status_code} al conectar con Noticias")
