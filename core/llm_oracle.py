@@ -92,22 +92,23 @@ class GeminiOracle:
             # 1. Armar la cascada de modelos inteligentes
             cands = []
             for m in available_models:
-                # Omitir incompatibles, versiones obsoletas, modelos beta, experimentales y lentos
-                if any(x in m.lower() for x in ["vision", "embedding", "text-bison", "tts", "robotics", "preview", "experimental", "customtools", "pro", "ultra"]):
+                # Omitir incompatibles, versiones obsoletas, modelos beta, experimentales, lentos, e imagenes/gemma sin cuota
+                if any(x in m.lower() for x in ["vision", "embedding", "text-bison", "tts", "robotics", "preview", "experimental", "customtools", "pro", "ultra", "image", "gemma"]):
                     continue
                 cands.append(m)
             
-            # Ordenar: Damos prioridad a los mejores (2.5, 2.0) y enviamos gemma y lites hasta abajo de la cascada
+            # Ordenar: Damos prioridad a los modelos con mayor cuota RPM (lites tienen más) y más modernos
             def _sort_key(m_name):
                 base = 0
                 if "3.1" in m_name: base += 310
+                elif "3.5" in m_name: base += 350
                 elif "3.0" in m_name or "-3-" in m_name: base += 300
                 elif "2.5" in m_name: base += 250
                 elif "2.0" in m_name: base += 200
                 elif "1.5" in m_name: base += 150
                 
-                if "lite" in m_name: base -= 20
-                if "gemma" in m_name: base -= 30
+                # En la cuota nueva, los modelos Lite tienen más RPM (15 y 10), los premiamos
+                if "lite" in m_name: base += 50 
                 return base
                 
             cands.sort(key=_sort_key, reverse=True)
@@ -300,14 +301,19 @@ class GeminiOracle:
             if h1_rates is not None and len(h1_rates) >= 2:
                 h1_trend = "ALCISTA (Higher Highs)" if h1_rates[-1]['close'] > h1_rates[0]['close'] else "BAJISTA (Lower Lows)"
             
-            # Contexto M5 (Micro Estructura y Volatilidad ATR/Range)
-            m5_rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M5, 0, 5)
+            # Contexto M5 (Micro Estructura, Volatilidad y EMA 200)
+            m5_rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M5, 0, 200)
             m5_context = ""
             if m5_rates is not None and len(m5_rates) > 0:
-                closes = [r['close'] for r in m5_rates]
-                r_min = min(r['low'] for r in m5_rates)
-                r_max = max(r['high'] for r in m5_rates)
-                m5_context = f"| M5 Last 5 Closes: {closes} | M5 Range: {r_max - r_min:.5f}"
+                closes = [r['close'] for r in m5_rates[-5:]]
+                r_min = min(r['low'] for r in m5_rates[-5:])
+                r_max = max(r['high'] for r in m5_rates[-5:])
+                # Calcular EMA 200 simple para ver sobre-extensión
+                import pandas as pd
+                df_m5 = pd.DataFrame(m5_rates)
+                ema_200 = df_m5['close'].ewm(span=200, adjust=False).mean().iloc[-1]
+                dist_ema = closes[-1] - ema_200
+                m5_context = f"| Últimos 5 cierres: {closes} | Rango M5: {r_max - r_min:.5f} | Distancia a EMA200 M5: {dist_ema:.5f}"
             
             # Contexto de Correlación Macroeconómica (Proxy USDCHF o DXY)
             proxy_symbol = "USDCHF"
@@ -335,17 +341,20 @@ class GeminiOracle:
         except: pass
 
         prompt = (
-            f"ERES CIO DE HEDGE FUND (SMC/ICT Professional).\n"
+            f"ERES CIO DE HEDGE FUND (SMC/ICT Professional) evaluando una cuenta de Prop Firm (FTMO).\n"
             f"Símbolo: {symbol} | Señal: {signal_type} | ADX: {adx} | Estructura Técnica: {context_data}\n"
             f"Contexto Macro/Noticias: {news_context}\n"
             f"Lógica Matemática de Alerta: {reason}\n\n"
             f"REGLA DE CAZA DE LIQUIDEZ Y MACRO:\n"
             f"- ZONA ROJA: Rompimiento por ENCIMA -> COMPRA (Solo si tendencia H1 es Alcista y Macro lo apoya).\n"
             f"- ZONA ROJA: Rebote y rechazo MÁS ABAJO -> VENDE (Solo si tendencia H1 es Bajista).\n"
-            f"- ZONA VERDE: Rompimiento MÁS ABAJO asustando a la masa -> COMPRA el rebote falso sin dudar.\n"
-            f"- CORRELACIÓN: Si el Dólar (USDCHF/DXY) va en contra agresiva de nuestro trade, actúa con máxima cautela (Beta si hay riesgo institucional).\n"
-            f"- NOTICIAS: Solo veta por noticias si faltan MENOS de 30 minutos para el evento. Si faltan más de 30 min y la estructura técnica es sólida, APRUEBA el trade. No seas paranoico con noticias lejanas.\n\n"
-            f"Analiza paso a paso (Chain of Thought) si esta técnica ({signal_type}) respeta la Marea H1, la correlación Macro y caza trampas institucionales.\n"
+            f"- DISTANCIA EMA 200: Si el precio está demasiado alejado de la EMA 200, cuidado con reversiones bruscas.\n"
+            f"- CORRELACIÓN: Si el Dólar (USDCHF/DXY) va en contra agresiva de nuestro trade, actúa con máxima cautela.\n"
+            f"- NOTICIAS: Veta por noticias si faltan MENOS de 30 minutos para el evento.\n\n"
+            f"⚠️ REGLA ESTRICTA FTMO (DRAWDOWN PROTECTION):\n"
+            f"Estamos operando bajo reglas estrictas de límite de pérdida. Si la estructura técnica es confusa, contradictoria (Ej: H1 Bajista pero señal de COMPRA), o la volatilidad (rango) es demasiado pobre, DEBES VETAR LA OPERACIÓN (REJECTED).\n"
+            f"Prefiere dejar pasar oportunidades antes que arriesgar el Drawdown.\n\n"
+            f"Analiza paso a paso (Chain of Thought) si esta técnica ({signal_type}) respeta la Marea H1, la correlación Macro y las reglas de protección de capital FTMO.\n"
             f"ESTRUCTURA JSON REQUERIDA EXACTA:\n"
             f"{{\n"
             f"  \"analisis\": \"breve razonamiento institucional pensando paso a paso\",\n"

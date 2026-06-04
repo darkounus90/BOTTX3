@@ -63,12 +63,12 @@ class BotConfig:
     FTMO_TIMEZONE = "Europe/Prague"      # 🔥 Zona horaria oficial de FTMO (Sincronización Crítica)
 
     # ─── RISK MANAGEMENT (FTMO COMPLIANCE) ────────────────────────────
-    MAX_RISK_PER_TRADE_PCT = 0.1                 # 0.1% = $50 base para cuenta 50K. Modo Conservador para Sobrevivir.
+    MAX_RISK_PER_TRADE_PCT = 1.0                 # 1.0% = $500 base para cuenta 50K (Ajuste Francotirador).
     STRICT_CONSISTENCY_MODE = True       # FTMO exige que no haya "one-sided bets".
     KELLY_FRACTION = 0.0                 # Cero para evitar sobreapalancamiento prohibido por FTMO.
     MAX_TRADES_PER_DAY = 5               # Reducimos los tiros diarios a 5 (Francotirador élite).
     MAX_OPEN_POSITIONS = 2               # Permite hasta solo 2 simultáneas para evitar correlaciones suicidas.
-    MAX_LOT_SIZE = 2.0                   # 🛡️ CAP DE SEGURIDAD: Máximo 2 lotes para evitar sobre-exposición accidental.
+    MAX_LOT_SIZE = 5.0                   # 🛡️ CAP DE SEGURIDAD: Máximo 5 lotes para permitir el riesgo de $500.
     REVENGE_COOLDOWN_MINUTES = 60        # 1 HORA de bloqueo tras cerrar un trade (Elimina 100% el revenge trading)
 
     # ─── EMERGENCY THRESHOLDS ─────────────────────────────────────────
@@ -91,7 +91,7 @@ class BotConfig:
     
     MODE_FILTERS = "STRICT"              
     DEFAULT_SYMBOL = "EURUSD"
-    WATCHLIST = ["EURUSD", "GBPUSD"]     # 🔥 ELIMINADO AUDUSD/USDJPY: Las pruebas cuantitativas demuestran que destruyen capital.
+    WATCHLIST = ["EURUSD"]                                 # 🔥 Portafolio Sniper (Protección de FTMO Activa)
     DEFAULT_TIMEFRAME = "M5"             
     EMA_FAST_PERIOD = 20
     EMA_SLOW_PERIOD = 50

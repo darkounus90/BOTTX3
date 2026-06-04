@@ -9,6 +9,9 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Fix for windows console emoji print crash
+sys.stdout.reconfigure(encoding='utf-8')
+
 import MetaTrader5 as mt5
 import pandas as pd
 import numpy as np
@@ -17,6 +20,7 @@ from zoneinfo import ZoneInfo
 from collections import defaultdict
 import argparse
 import json
+import joblib
 
 # ═══════════════════════════════════════════════════════════════
 #  CONFIGURACIÓN DEL BACKTEST
@@ -25,7 +29,7 @@ import json
 COMMISSION_PER_LOT = 9.0      
 SPREAD_PIPS_SIM    = 1.5      
 INITIAL_BALANCE    = 50000.0
-RISK_PER_TRADE_PCT = 0.4      
+RISK_PER_TRADE_PCT = 1.0      
 
 class BacktestResult:
     def __init__(self, name):
@@ -78,7 +82,7 @@ class BacktestResult:
         }
 
 def calculate_pnl(direction, entry, sl_pips, tp_pips, future, symbol):
-    pip = 0.01 if "JPY" in symbol else 0.0001
+    pip = 1.0 if "US100" in symbol or "NAS" in symbol else (0.01 if "JPY" in symbol else 0.0001)
     spread = SPREAD_PIPS_SIM * pip
     entry_eff = entry + (spread if direction == "BUY" else -spread)
     sl_pr = entry_eff - sl_pips * pip if direction == "BUY" else entry_eff + sl_pips * pip
@@ -440,6 +444,70 @@ def sim_institutional_flow(df_m5, df_m15, df_h1, symbol):
             
     return res
 
+def sim_bollinger_rsi(df, df_h1, symbol):
+    res = BacktestResult("Bollinger+RSI Micro-Scalper")
+    
+    delta = df['close'].diff()
+    gain = delta.where(delta > 0, 0.0)
+    loss = -delta.where(delta < 0, 0.0)
+    avg_gain = gain.ewm(alpha=1/14, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1/14, adjust=False).mean()
+    rs = avg_gain / (avg_loss + 1e-9)
+    df['rsi'] = 100 - (100 / (1 + rs))
+    
+    bb_dev = 2.1 if "EUR" in symbol else 1.9
+    df['sma_20'] = df['close'].rolling(20).mean()
+    df['std_20'] = df['close'].rolling(20).std()
+    df['bb_upper'] = df['sma_20'] + (df['std_20'] * bb_dev)
+    df['bb_lower'] = df['sma_20'] - (df['std_20'] * bb_dev)
+    
+    tr = pd.concat([df['high'] - df['low'], abs(df['high'] - df['close'].shift()), abs(df['low'] - df['close'].shift())], axis=1).max(axis=1)
+    df['atr'] = tr.rolling(14).mean()
+    
+    up_move = df['high'] - df['high'].shift(1)
+    down_move = df['low'].shift(1) - df['low']
+    plus_dm = np.where((up_move > down_move) & (up_move > 0), up_move, 0.0)
+    minus_dm = np.where((down_move > up_move) & (down_move > 0), down_move, 0.0)
+    atr_adx = tr.ewm(alpha=1/14, adjust=False).mean()
+    plus_di = 100 * (pd.Series(plus_dm).ewm(alpha=1/14, adjust=False).mean() / atr_adx)
+    minus_di = 100 * (pd.Series(minus_dm).ewm(alpha=1/14, adjust=False).mean() / atr_adx)
+    dx = 100 * (np.abs(plus_di - minus_di) / (plus_di + minus_di + 1e-9))
+    df['adx'] = dx.ewm(alpha=1/14, adjust=False).mean()
+    
+    pip = 0.01 if "JPY" in symbol else 0.0001
+    last_signal_time = None
+    
+    for i in range(100, len(df)-50):
+        curr, prev = df.iloc[i], df.iloc[i-1]
+        h = (pd.Timestamp(curr['time']).hour - 5) % 24
+        
+        if "EUR" in symbol and (h >= 1 and h < 19): continue
+        elif "GBP" in symbol and (h < 3 or h >= 13): continue
+            
+        if prev['adx'] > 45.0: continue
+        
+        trend_h1 = get_h1_trend(df_h1, curr['time'])
+        cuerpo = abs(prev['close'] - prev['open'])
+        lower_wick = prev['open'] - prev['low'] if prev['open'] < prev['close'] else prev['close'] - prev['low']
+        upper_wick = prev['high'] - prev['close'] if prev['open'] < prev['close'] else prev['high'] - prev['open']
+        
+        signal = None
+        if prev['rsi'] <= 32.0 and (prev['close'] <= prev['bb_lower'] or prev['low'] <= prev['bb_lower']):
+            if lower_wick > (cuerpo * 0.8) and trend_h1 != -1: signal = "BUY"
+        elif prev['rsi'] >= 68.0 and (prev['close'] >= prev['bb_upper'] or prev['high'] >= prev['bb_upper']):
+            if upper_wick > (cuerpo * 0.8) and trend_h1 != 1: signal = "SELL"
+                
+        if signal:
+            if last_signal_time == prev['time']: continue
+            last_signal_time = prev['time']
+            atr_pips = prev['atr'] / pip / 10
+            sl = max(round(atr_pips * 1.5, 1), 8.0)
+            tp = max(round(atr_pips * 2.0, 1), 15.0)
+            pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+100].to_dict('records'), symbol)
+            res.add_trade(pnl, h, signal, sl, tp)
+            
+    return res
+
 def sim_ttm_squeeze(df, df_h1, symbol):
     res = BacktestResult("TTM Squeeze Pro (LND/NY)")
     
@@ -492,29 +560,86 @@ def sim_ttm_squeeze(df, df_h1, symbol):
             
     return res
 
-def run_backtest(symbol="EURUSD", days=365, z=2.5, adx=45):
-    if not mt5.initialize(): return []
-    m5 = pd.DataFrame(mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M5, 0, days*24*12))
-    m15 = pd.DataFrame(mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M15, 0, days*24*4))
-    h1 = pd.DataFrame(mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_H1, 0, days*24 + 200))
-    mt5.shutdown()
-    for d in [m5, m15, h1]: d['time'] = pd.to_datetime(d['time'], unit='s')
-    h1['close_ema_200'] = h1['close'].ewm(span=200, adjust=False).mean()
+def sim_evergreen_pullback(df_m15, df_h1, symbol):
+    res = BacktestResult("Evergreen Trend Pullback (M15)")
     
+    # Calculate M15 EMA 50
+    df_m15['ema_50'] = df_m15['close'].ewm(span=50, adjust=False).mean()
+    
+    pip = 1.0 if "US100" in symbol or "NAS" in symbol else (0.01 if "JPY" in symbol else 0.0001)
+    
+    for i in range(50, len(df_m15)-10):
+        curr = df_m15.iloc[i]
+        h = (pd.Timestamp(curr['time']).hour - 5) % 24
+        
+        # Avoid extreme illiquid hours (17:00 NY roll)
+        if h == 17: continue
+        
+        # Check H1 Trend
+        trend = get_h1_trend(df_h1, curr['time'])
+        if trend == 0: continue
+        
+        signal = None
+        # Bullish Pullback
+        if trend == 1:
+            if curr['low'] <= curr['ema_50'] and curr['close'] > curr['ema_50'] and df_m15.iloc[i-1]['close'] > df_m15.iloc[i-1]['ema_50']:
+                signal = "BUY"
+        # Bearish Pullback
+        elif trend == -1:
+            if curr['high'] >= curr['ema_50'] and curr['close'] < curr['ema_50'] and df_m15.iloc[i-1]['close'] < df_m15.iloc[i-1]['ema_50']:
+                signal = "SELL"
+                
+        if signal:
+            sl = 15.0
+            tp = 20.0 # 1:1.33 RR
+            pnl = calculate_pnl(signal, curr['close'], sl, tp, df_m15.iloc[i+1:i+50].to_dict('records'), symbol)
+            res.add_trade(pnl, h, signal, sl, tp)
+            
+    return res
+
+def run_backtest(symbol="EURUSD", days=365, z=2.5, adx=45):
+    if not mt5.initialize(): 
+        print("❌ Error: MetaTrader 5 no está abierto o no pudo conectar.")
+        return []
+        
+    mt5.symbol_select(symbol, True)
+    
+    # Intentar traer datos, los brokers de fondeo a veces solo dan 3 a 6 meses de historial M5
+    r_m5 = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M5, 0, days*24*12)
+    r_m15 = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M15, 0, days*24*4)
+    r_h1 = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_H1, 0, days*24 + 200)
+    
+    mt5.shutdown()
+    
+    if r_m5 is None or r_m15 is None or r_h1 is None:
+        print(f"❌ ERROR CRÍTICO: Tu MetaTrader (FTMO) no tiene {days} días de historial para {symbol}.")
+        print("💡 Solución: El broker bloquea descargas tan grandes de golpe. Intenta con --days 60 o --days 90 en el archivo RUN_BACKTEST.bat")
+        return []
+        
+    m5 = pd.DataFrame(r_m5)
+    m15 = pd.DataFrame(r_m15)
+    h1 = pd.DataFrame(r_h1)
+    
+    for d in [m5, m15, h1]: 
+        if 'time' in d.columns:
+            d['time'] = pd.to_datetime(d['time'], unit='s')
+            
+    if 'close' in h1.columns:
+        h1['close_ema_200'] = h1['close'].ewm(span=200, adjust=False).mean()
+
     # ═══════ SELECCIÓN ESTRATÉGICA POR SÍMBOLO ═══════
     if symbol == "EURUSD":
-        # En EURUSD solo corremos lo que tiene sentido matemático comprobado
+        # EURUSD: Especialista Tendencial
         results = [
-            sim_ttm_squeeze(m15.copy(), h1, symbol)         # El Rey del Euro (Momentum Puro)
+            sim_ttm_squeeze(m15.copy(), h1, symbol)
         ]
     elif symbol == "GBPUSD":
-        # En GBPUSD corremos el Arsenal Completo
+        # GBPUSD: Especialista en Reversión
         results = [
-            sim_ttm_squeeze(m15.copy(), h1, symbol),        # Momentum
-            sim_zscore_reversion(m15.copy(), h1, symbol, z),# Volatilidad
-            sim_liquidity_sweep(m5.copy(), h1, symbol),     # Liquidez 4h
-            sim_institutional_flow(m5.copy(), m15.copy(), h1, symbol) # SMC 2.0
+            sim_zscore_reversion(m15.copy(), h1, symbol, z)
         ]
+    elif symbol == "US100.cash" or symbol == "NAS100":
+        results = []
     else:
         results = []
     print(f"\n{'='*100}")
@@ -526,6 +651,116 @@ def run_backtest(symbol="EURUSD", days=365, z=2.5, adx=45):
         wr_str = f"WR:{rep['win_rate']}%" if rep['win_rate'] else "WR:N/A"
         print(f"  {rep['name']:40s} | T:{rep['trades']:3d} | {wr_str:>8} | {pf_str:>7} | PnL:${rep['total_pnl']:+8.2f} | DD:${rep['max_drawdown']:,.2f} | {rep['verdict']}")
     return [r.get_report() for r in results]
+    
+def sim_xgboost_ai(df, df_h1, symbol):
+    res = BacktestResult("XGBoost AI (GPU Model)")
+    model_path = f"data/rf_model_{symbol}.pkl"
+    if not os.path.exists(model_path):
+        print(f"  [ERROR] No se encontró el cerebro IA en {model_path}")
+        return res
+        
+    try:
+        model = joblib.load(model_path)
+        if hasattr(model, 'set_params'):
+            model.set_params(device="cpu")
+    except Exception as e:
+        print(f"  [ERROR] Fallo al cargar modelo: {e}")
+        return res
+
+    # Feature Engineering (Nasdaq Scale)
+    df['hour'] = df['time'].dt.hour
+    df['day_of_week'] = df['time'].dt.dayofweek
+    df['ema20'] = df['close'].ewm(span=20, adjust=False).mean()
+    df['ema50'] = df['close'].ewm(span=50, adjust=False).mean()
+    df['ema_dist'] = df['ema20'] - df['ema50']
+    
+    # Z-Score
+    sma50 = df['close'].rolling(50).mean()
+    std50 = df['close'].rolling(50).std()
+    df['zscore'] = (df['close'] - sma50) / (std50 + 1e-9)
+
+    # ATR
+    tr = pd.concat([df['high'] - df['low'], (df['high'] - df['close'].shift()).abs(), (df['low'] - df['close'].shift()).abs()], axis=1).max(axis=1)
+    df['atr'] = tr.rolling(14).mean()
+    
+    # ADX
+    plus_dm = (df['high'] - df['high'].shift(1)).clip(lower=0)
+    minus_dm = (df['low'].shift(1) - df['low']).clip(lower=0)
+    plus_dm = plus_dm.where(plus_dm > minus_dm, 0)
+    minus_dm = minus_dm.where(minus_dm > plus_dm, 0)
+    atr_adx = tr.ewm(alpha=1/14, adjust=False).mean()
+    plus_di = 100 * (plus_dm.ewm(alpha=1/14, adjust=False).mean() / (atr_adx + 1e-10))
+    minus_di = 100 * (minus_dm.ewm(alpha=1/14, adjust=False).mean() / (atr_adx + 1e-10))
+    dx = (abs(plus_di - minus_di) / (plus_di + minus_di + 1e-10)) * 100
+    df['adx'] = dx.ewm(alpha=1/14, adjust=False).mean()
+    
+    # MACD
+    ema12 = df['close'].ewm(span=12, adjust=False).mean()
+    ema26 = df['close'].ewm(span=26, adjust=False).mean()
+    df['macd'] = ema12 - ema26
+    df['macd_signal'] = df['macd'].ewm(span=9, adjust=False).mean()
+    df['macd_hist'] = df['macd'] - df['macd_signal']
+    
+    df['volatility'] = df['high'] - df['low']
+    
+    # RSI
+    delta = df['close'].diff()
+    gain = delta.where(delta > 0, 0)
+    loss = -delta.where(delta < 0, 0)
+    avg_gain = gain.ewm(alpha=1/14, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1/14, adjust=False).mean()
+    rs = avg_gain / (avg_loss + 1e-9)
+    df['rsi'] = 100 - (100 / (1 + rs))
+    
+    # Retorno
+    df['return_last_3'] = df['close'] - df['close'].shift(3)
+    
+    features = ['hour', 'day_of_week', 'ema_dist', 'volatility', 'rsi', 'return_last_3', 'zscore', 'atr', 'adx', 'macd_hist']
+    df = df.dropna(subset=features)
+    if len(df) == 0: return res
+    
+    pip = 1.0 if "US100" in symbol or "NAS" in symbol else (0.01 if "JPY" in symbol else 0.0001)
+    
+    for i in range(100, len(df)-50):
+        curr = df.iloc[i]
+        h = curr['hour']
+        
+        # Filtro de horario Nasdaq (Solo operar en apertura NY y horas de alta liquidez)
+        if h < 8 or h > 16: continue 
+        
+        X_live = df[features].iloc[i:i+1]
+        try:
+            pred = model.predict(X_live)[0]
+        except:
+            continue
+            
+        signal = None
+        if pred == 2: signal = "BUY"
+        elif pred == 0: signal = "SELL"
+        
+        if signal:
+            # Filtro Tendencia HTF (Simulación del CIO Oracle)
+            trend = get_h1_trend(df_h1, curr['time'])
+            if (signal == "BUY" and trend == -1) or (signal == "SELL" and trend == 1):
+                res.filtered += 1
+                continue
+                
+            # SL y TP dinámicos
+            tr = max(curr['high'] - curr['low'], abs(curr['high'] - df.iloc[i-1]['close']), abs(curr['low'] - df.iloc[i-1]['close']))
+            atr_pips = tr / pip / 10
+            if atr_pips < 5: atr_pips = 10
+            
+            if "US100" in symbol or "NAS" in symbol:
+                sl = 20.0
+                tp = 40.0
+            else:
+                sl = max(20.0, round(atr_pips * 1.5, 1))
+                tp = max(40.0, round(atr_pips * 3.0, 1))
+            
+            pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+100].to_dict('records'), symbol)
+            res.add_trade(pnl, h, signal, sl, tp)
+            
+    return res
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
