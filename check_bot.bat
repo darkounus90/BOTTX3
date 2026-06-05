@@ -1,4 +1,6 @@
 @echo off
+chcp 65001 >nul
+set PYTHONUTF8=1
 title 🛡️ TX3 Bot Institutional Auditor
 color 0E
 cls
@@ -12,12 +14,45 @@ echo [*] Revisando Sincronía Prague (Reset) vs New York (Market)...
 echo [*] Verificando Motor Anti-Correlacion Pearson...
 echo.
 
-:: Intentar detectar el comando de Python correcto de forma automatica
-set "PY_CMD="
+:: 1. Búsqueda automática ultra-rápida (Ignora WindowsApps)
+for /d %%V in ("%LOCALAPPDATA%\Programs\Python\Python*") do (
+    if exist "%%V\python.exe" set "PY_CMD=%%V\python.exe"
+)
+if not defined PY_CMD (
+    for /d %%U in ("C:\Users\*") do (
+        for /d %%V in ("%%U\AppData\Local\Programs\Python\Python*") do (
+            if exist "%%V\python.exe" set "PY_CMD=%%V\python.exe"
+        )
+    )
+)
+if not defined PY_CMD (
+    for /d %%V in ("C:\Program Files\Python*") do (
+        if exist "%%V\python.exe" set "PY_CMD=%%V\python.exe"
+    )
+)
+if not defined PY_CMD (
+    for /d %%V in ("C:\Program Files (x86)\Python*") do (
+        if exist "%%V\python.exe" set "PY_CMD=%%V\python.exe"
+    )
+)
 
-where python >nul 2>nul && set "PY_CMD=python"
-if not defined PY_CMD where py >nul 2>nul && set "PY_CMD=py"
-if not defined PY_CMD where python3 >nul 2>nul && set "PY_CMD=python3"
+:: 2. Fallback a PATH (filtrando la trampa de WindowsApps)
+if not defined PY_CMD (
+    for /f "delims=" %%I in ('where python 2^>nul') do (
+        set "tmp_py=%%I"
+        if "!tmp_py:WindowsApps=!"=="!tmp_py!" (
+            if not defined PY_CMD set "PY_CMD=%%I"
+        )
+    )
+)
+if not defined PY_CMD (
+    for /f "delims=" %%I in ('where py 2^>nul') do (
+        set "tmp_py=%%I"
+        if "!tmp_py:WindowsApps=!"=="!tmp_py!" (
+            if not defined PY_CMD set "PY_CMD=%%I"
+        )
+    )
+)
 
 if not defined PY_CMD (
     echo.

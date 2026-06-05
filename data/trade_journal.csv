@@ -1,0 +1,1 @@
+timestamp,trade_id,action,type,symbol,volume,price,sl,tp,sl_pips,tp_pips,rr_ratio,profit,profit_pips,balance_after,equity_after,daily_dd_used,overall_dd_used,session,strategy,reason,duration,phase,comment

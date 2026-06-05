@@ -597,6 +597,105 @@ def sim_evergreen_pullback(df_m15, df_h1, symbol):
             
     return res
 
+def sim_brainforge_v3(df, symbol):
+    res = BacktestResult("BrainForge V3 (Institucional)")
+    model_path = f"ai_lab/models/brain_v3.pkl"
+    if not os.path.exists(model_path):
+        return res
+        
+    try:
+        model = joblib.load(model_path)
+        if hasattr(model, 'set_params'):
+            model.set_params(device="cpu")
+    except Exception as e:
+        print(f"  [ERROR] Fallo al cargar BrainForge V3: {e}")
+        return res
+
+    # Feature Engineering V3 Exacto
+    PIP_SIZE = 0.0001 if "JPY" not in symbol else 0.01
+    
+    df['hour'] = df['time'].dt.hour
+    df['day_of_week'] = df['time'].dt.dayofweek
+    
+    df['ema9'] = df['close'].ewm(span=9, adjust=False).mean()
+    df['ema21'] = df['close'].ewm(span=21, adjust=False).mean()
+    df['ema50'] = df['close'].ewm(span=50, adjust=False).mean()
+    df['sma200'] = df['close'].rolling(200).mean()
+    
+    df['dist_ema9_21_pips'] = (df['ema9'] - df['ema21']) / PIP_SIZE
+    df['dist_close_ema50_pips'] = (df['close'] - df['ema50']) / PIP_SIZE
+    df['dist_close_sma200_pips'] = (df['close'] - df['sma200']) / PIP_SIZE
+    
+    def calc_rsi(series, period=14):
+        delta = series.diff()
+        gain = delta.where(delta > 0, 0)
+        loss = -delta.where(delta < 0, 0)
+        avg_gain = gain.rolling(window=period, min_periods=1).mean()
+        avg_loss = loss.rolling(window=period, min_periods=1).mean()
+        rs = avg_gain / (avg_loss + 1e-9)
+        return 100 - (100 / (1 + rs))
+        
+    df['rsi14'] = calc_rsi(df['close'], 14)
+    rsi_min = df['rsi14'].rolling(14).min()
+    rsi_max = df['rsi14'].rolling(14).max()
+    df['stoch_rsi'] = (df['rsi14'] - rsi_min) / (rsi_max - rsi_min + 1e-9)
+    
+    tr = pd.concat([df['high'] - df['low'], (df['high'] - df['close'].shift()).abs(), (df['low'] - df['close'].shift()).abs()], axis=1).max(axis=1)
+    df['atr14_pips'] = tr.rolling(window=14, min_periods=1).mean() / PIP_SIZE
+    
+    ema12 = df['close'].ewm(span=12, adjust=False).mean()
+    ema26 = df['close'].ewm(span=26, adjust=False).mean()
+    df['macd'] = (ema12 - ema26) / PIP_SIZE
+    df['macd_signal'] = df['macd'].ewm(span=9, adjust=False).mean()
+    df['macd_hist'] = df['macd'] - df['macd_signal']
+    
+    sma20 = df['close'].rolling(20).mean()
+    std20 = df['close'].rolling(20).std()
+    df['bbw'] = (std20 * 4) / sma20
+    df['zscore20'] = (df['close'] - sma20) / (std20 + 1e-9)
+    
+    df['roc_15'] = df['close'].pct_change(15) * 100
+    df['roc_30'] = df['close'].pct_change(30) * 100
+    
+    df['return_1_pips'] = df['close'].diff(1) / PIP_SIZE
+    df['return_3_pips'] = df['close'].diff(3) / PIP_SIZE
+    df['return_5_pips'] = df['close'].diff(5) / PIP_SIZE
+    
+    features_list = [
+        'tick_volume', 'spread',
+        'hour', 'day_of_week', 
+        'ema9', 'ema21', 'ema50', 'sma200',
+        'dist_ema9_21_pips', 'dist_close_ema50_pips', 'dist_close_sma200_pips',
+        'rsi14', 'stoch_rsi', 'atr14_pips', 
+        'macd', 'macd_signal', 'macd_hist', 
+        'bbw', 'zscore20', 
+        'roc_15', 'roc_30',
+        'return_1_pips', 'return_3_pips', 'return_5_pips'
+    ]
+    
+    df = df.dropna(subset=features_list)
+    if len(df) == 0: return res
+    
+    for i in range(100, len(df)-50):
+        curr = df.iloc[i]
+        h = curr['hour']
+        
+        X_live = df[features_list].iloc[i:i+1]
+        try:
+            probs = model.predict_proba(X_live)[0]
+            prob_win = probs[2]
+        except:
+            continue
+            
+        if prob_win >= 0.25: # Umbral óptimo de V3
+            signal = "BUY" # El modelo V3 asume clase 2 como victoria (generalmente largo en nuestro contexto)
+            sl = 20.0
+            tp = 40.0
+            pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+100].to_dict('records'), symbol)
+            res.add_trade(pnl, h, signal, sl, tp)
+            
+    return res
+
 def run_backtest(symbol="EURUSD", days=365, z=2.5, adx=45):
     if not mt5.initialize(): 
         print("❌ Error: MetaTrader 5 no está abierto o no pudo conectar.")
@@ -631,12 +730,14 @@ def run_backtest(symbol="EURUSD", days=365, z=2.5, adx=45):
     if symbol == "EURUSD":
         # EURUSD: Especialista Tendencial
         results = [
-            sim_ttm_squeeze(m15.copy(), h1, symbol)
+            sim_ttm_squeeze(m15.copy(), h1, symbol),
+            sim_brainforge_v3(m15.copy(), symbol)
         ]
     elif symbol == "GBPUSD":
         # GBPUSD: Especialista en Reversión
         results = [
-            sim_zscore_reversion(m15.copy(), h1, symbol, z)
+            sim_zscore_reversion(m15.copy(), h1, symbol, z),
+            sim_brainforge_v3(m15.copy(), symbol)
         ]
     elif symbol == "US100.cash" or symbol == "NAS100":
         results = []

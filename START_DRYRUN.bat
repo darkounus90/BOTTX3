@@ -9,7 +9,7 @@ pip install -r requirements.txt
 echo.
 
 echo [2/3] Verificando Memoria de Machine Learning...
-if not exist "data\rf_model_EURUSD.pkl" (
+if not exist "data\rf_model_NAS100.pkl" (
     echo    ! El Cerebro IA es nuevo y necesita ser entrenado por primera vez.
     echo    - Ejecutando el Scanner y Entrenador Espacial - Esto tardara 1-2 minutos...
     python scripts\train_ml_model.py
@@ -22,8 +22,8 @@ echo.
 set TELEGRAM_BOT_TOKEN=8407569871:AAFwcNzt8Mk0U0Bp3MGwT6OAaxHzRhy-2zg
 set TELEGRAM_CHAT_ID=1176201993
 set DASHBOARD_SECRET=tx3-pro-bot-secret
-set HUGGINGFACE_TOKEN=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
-set GEMINI_API_KEY=AIzaSyAgAV3K-t5rv_P7ru_NpyI8rcgGWObWkS8,AIzaSyC1OgAyHJKbauD_-S9ohpGGpdsmLDFrO-4
+set HUGGINGFACE_TOKEN=YOUR_HUGGINGFACE_TOKEN
+set GEMINI_API_KEY=YOUR_GEMINI_API_KEY
 
 echo [3/3] 🧪 Arrancando Bot en MODO PRUEBA (DRY RUN) - Fase 1...
 echo    ✅ El bot analizara el mercado en tiempo real

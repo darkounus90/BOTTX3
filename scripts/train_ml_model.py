@@ -13,7 +13,7 @@ import pandas as pd
 import numpy as np
 
 # ML Libraries
-from sklearn.ensemble import RandomForestClassifier
+import xgboost as xgb
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score
 import joblib
@@ -23,7 +23,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 MODEL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data'))
 
 class MLTrainer:
-    def __init__(self, symbol="EURUSD", timeframe=mt5.TIMEFRAME_M15, bars=10000):
+    def __init__(self, symbol="US100.cash", timeframe=mt5.TIMEFRAME_M15, bars=10000):
         self.symbol = symbol
         self.timeframe = timeframe
         self.bars = bars
@@ -34,54 +34,28 @@ class MLTrainer:
     def run(self):
         print(f"🤖 ENTRENAMIENTO IA INICIANDO ({self.symbol})...")
         
-        # 1. Fetch Data
-        if not mt5.initialize():
-            print("❌ MT5 Error")
+        # 1. Fetch Data (Desde disco local para aprovechar la GPU al máximo)
+        import glob
+        print(f"📥 Leyendo datos locales de disco duro para {self.symbol}...")
+        
+        # Buscar en data/raw los archivos parquet (generados por 01_download_data.py)
+        raw_dir = os.path.join(MODEL_DIR, "raw")
+        archivos = glob.glob(os.path.join(raw_dir, f"{self.symbol}_*.parquet"))
+        
+        if not archivos:
+            print(f"❌ No se encontraron archivos .parquet para {self.symbol} en {raw_dir}")
+            print("💡 Ejecuta python scripts/01_download_data.py primero.")
             return
             
-        print(f"📥 Descargando {self.bars} velas históricas para {self.symbol}...")
-        rates = mt5.copy_rates_from_pos(self.symbol, self.timeframe, 0, self.bars)
+        print(f"📚 Encontrados {len(archivos)} archivos. Consolidando...")
+        df_list = [pd.read_parquet(archivo) for archivo in archivos]
+        df = pd.concat(df_list, ignore_index=True)
         
-        if rates is None or len(rates) == 0:
-            print(f"❌ No hay datos para {self.symbol}.")
-            error = mt5.last_error()
-            print(f"⚠️ Error MT5 Code: {error}")
+        if 'time' in df.columns:
+            df['time'] = pd.to_datetime(df['time'])
+            df = df.sort_values('time').reset_index(drop=True)
             
-            # Intentar ver si el símbolo existe pero con otro nombre
-            symbols = mt5.symbols_get()
-            if symbols:
-                print(f"🔍 Símbolos disponibles en tu broker (primeros 10):")
-                count = 0
-                for s in symbols:
-                    if 'EUR' in s.name or 'USD' in s.name:
-                        print(f"  - {s.name}")
-                        count += 1
-                        if count >= 10: break
-            
-            print("💡 SUGERENCIA:")
-            print("1. El mercado puede estar CERRADO (Fin de semana) y el broker desactiva descargas masivas temporales.")
-            print("2. El símbolo en tu broker FPMarkets puede llamarse diferente (Ej: EURUSD.a, EURUSD.pro).")
-            print("   Si es así, edita scripts/train_ml_model.py linea 133 para incluir ese sufijo.")
-            
-            mt5.shutdown()
-            
-            # Para evitar que el bot entero colapse en fin de semana y siga operando tradicionalmente:
-            print("\n✅ CREANDO CEREBRO DE EMERGENCIA PARA CONTINUAR ARRANQUE...")
-            # Crear un dataframe dummy de emergencia solo para que genere el archivo .pkl
-            # y el bot tradicional no regrese el error the "FileNotFound"
-            dummy_data = {'hour': [1], 'day_of_week': [1], 'ema_dist': [1], 'volatility': [1], 'rsi': [1], 'return_last_3': [1]}
-            dummy_target = [0]
-            dummy_rf = RandomForestClassifier(n_estimators=1, max_depth=1)
-            dummy_rf.fit(pd.DataFrame(dummy_data), dummy_target)
-            model_path = os.path.join(MODEL_DIR, f"rf_model_{self.symbol}.pkl")
-            joblib.dump(dummy_rf, model_path)
-            
-            return
-            
-        mt5.shutdown()
-        
-        df = pd.DataFrame(rates)
-        df['time'] = pd.to_datetime(df['time'], unit='s')
+        print(f"✅ Cargadas {len(df):,} velas históricas en memoria RAM.")
         
         # 2. Feature Engineering (Crear las variables que la IA estudiará)
         print("🧠 Calculando Features (RSI, Volatilidad, Diferenciales EMA, Horarios)...")
@@ -94,11 +68,38 @@ class MLTrainer:
         # Técnicos básicos
         df['ema20'] = df['close'].ewm(span=20, adjust=False).mean()
         df['ema50'] = df['close'].ewm(span=50, adjust=False).mean()
-        df['ema_dist'] = (df['ema20'] - df['ema50']) * 10000 # Distancia en pips
+        df['ema_dist'] = df['ema20'] - df['ema50'] # Distancia en puntos reales
         
-        df['volatility'] = (df['high'] - df['low']) * 10000
+        # Z-Score (Reversión a la media)
+        sma50 = df['close'].rolling(50).mean()
+        std50 = df['close'].rolling(50).std()
+        df['zscore'] = (df['close'] - sma50) / (std50 + 1e-9)
+
+        # ATR (Volatilidad dinámica real)
+        tr = pd.concat([df['high'] - df['low'], (df['high'] - df['close'].shift()).abs(), (df['low'] - df['close'].shift()).abs()], axis=1).max(axis=1)
+        df['atr'] = tr.rolling(14).mean()
         
-        # Variables de Momentum
+        # ADX (Fuerza de la tendencia)
+        plus_dm = (df['high'] - df['high'].shift(1)).clip(lower=0)
+        minus_dm = (df['low'].shift(1) - df['low']).clip(lower=0)
+        plus_dm = plus_dm.where(plus_dm > minus_dm, 0)
+        minus_dm = minus_dm.where(minus_dm > plus_dm, 0)
+        atr_adx = tr.ewm(alpha=1/14, adjust=False).mean()
+        plus_di = 100 * (plus_dm.ewm(alpha=1/14, adjust=False).mean() / (atr_adx + 1e-10))
+        minus_di = 100 * (minus_dm.ewm(alpha=1/14, adjust=False).mean() / (atr_adx + 1e-10))
+        dx = (abs(plus_di - minus_di) / (plus_di + minus_di + 1e-10)) * 100
+        df['adx'] = dx.ewm(alpha=1/14, adjust=False).mean()
+        
+        # MACD Momentum
+        ema12 = df['close'].ewm(span=12, adjust=False).mean()
+        ema26 = df['close'].ewm(span=26, adjust=False).mean()
+        df['macd'] = ema12 - ema26
+        df['macd_signal'] = df['macd'].ewm(span=9, adjust=False).mean()
+        df['macd_hist'] = df['macd'] - df['macd_signal']
+        
+        df['volatility'] = df['high'] - df['low']
+        
+        # Variables de Momentum (RSI)
         delta = df['close'].diff()
         gain = delta.where(delta > 0, 0)
         loss = -delta.where(delta < 0, 0)
@@ -110,22 +111,23 @@ class MLTrainer:
         # Variables de Tendencia Pasada
         df['return_last_3'] = df['close'] - df['close'].shift(3)
         
-        # 3. Labeling (La variable objetivo / Target)
-        # Queremos predecir qué va a pasar en las próximas 6 velas (1h 30m)
-        df['future_return'] = df['close'].shift(-6) - df['close']
+        # 3. Labeling (Path-Dependent: Considera el Stop Loss)
+        # Ventana futura de 100 velas (Igual al motor del Backtester)
+        # Shift negativo trae los datos futuros al presente
+        future_high = df['high'].shift(-1)[::-1].rolling(100, min_periods=1).max()[::-1]
+        future_low = df['low'].shift(-1)[::-1].rolling(100, min_periods=1).min()[::-1]
         
-        # Nuestro "Edge"
-        # 1: Sube más de 5 pips
-        # -1: Cae más de 5 pips
-        # 0: Se queda lateralizado (Ruido)
+        tp = 40.0 # Take Profit (40 puntos)
+        sl = 20.0 # Stop Loss (20 puntos)
         
-        pip_target = 0.0005 # 5 pips
         conditions = [
-            (df['future_return'] >= pip_target),
-            (df['future_return'] <= -pip_target)
+            # COMPRA: Toca TP hacia arriba Y NUNCA toca SL hacia abajo en esas 12 velas
+            ((future_high - df['close']) >= tp) & ((df['close'] - future_low) < sl),
+            # VENTA: Toca TP hacia abajo Y NUNCA toca SL hacia arriba en esas 12 velas
+            ((df['close'] - future_low) >= tp) & ((future_high - df['close']) < sl)
         ]
-        choices = [1, -1]
-        df['target'] = np.select(conditions, choices, default=0)
+        choices = [2, 0]
+        df['target'] = np.select(conditions, choices, default=1)
         
         # Limpiar NaN y valores extremos
         df = df.dropna().replace([np.inf, -np.inf], np.nan).dropna()
@@ -134,7 +136,7 @@ class MLTrainer:
         # Quitar los casos '0' ayuda mucho al accuracy predictivo si usamos "Probability" output
         # Pero para un clasificador general dejaremos todo, o daremos pesos a las clases.
         
-        features = ['hour', 'day_of_week', 'ema_dist', 'volatility', 'rsi', 'return_last_3']
+        features = ['hour', 'day_of_week', 'ema_dist', 'volatility', 'rsi', 'return_last_3', 'zscore', 'atr', 'adx', 'macd_hist']
         X = df[features]
         y = df['target']
         
@@ -143,9 +145,16 @@ class MLTrainer:
         
         print(f"📊 Dataset listo: {len(X_train)} Train | {len(X_test)} Test")
         
-        # 5. Entrenar Random Forest
-        print("⚙️ Entrenando Bosque Aleatorio (500 Decision Trees)...")
-        rf = RandomForestClassifier(n_estimators=100, max_depth=8, min_samples_split=10, random_state=42, class_weight='balanced')
+        # 5. Entrenar XGBoost con RTX 5070
+        print("⚙️ Entrenando XGBoost con Aceleración CUDA (RTX 5070)...")
+        rf = xgb.XGBClassifier(
+            n_estimators=500,
+            max_depth=8,
+            learning_rate=0.01,
+            tree_method="hist",
+            device="cuda",
+            random_state=42
+        )
         rf.fit(X_train, y_train)
         
         # 6. Evaluación

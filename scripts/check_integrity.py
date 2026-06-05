@@ -1,8 +1,12 @@
-
 import sys
 import os
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+
+# Forzar soporte UTF-8 en Windows para que los emojis no rompan la consola
+if sys.platform == 'win32':
+    import codecs
+    sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
 
 # Añadir el directorio raíz al path para poder importar los módulos del bot
 sys.path.append(os.getcwd())
@@ -36,10 +40,10 @@ except ImportError:
 
 # Mock Google AI
 try:
-    import google.generativeai as genai
+    import google.genai as genai
 except ImportError:
     genai = MagicMock()
-    sys.modules["google.generativeai"] = genai
+    sys.modules["google.genai"] = genai
 
 # Otras importaciones críticas
 try:
@@ -85,12 +89,13 @@ def test_integrity():
 
     # 3. Probar Risk Manager (Lógica de Prague Reset)
     try:
-        rm = RiskManager(logger=mock_logger)
-        # Inyectar mock de cuenta para que no falle al pedir info
-        mt5.account_info.return_value = MagicMock(balance=50000, equity=50000, profit=0)
-        mt5.history_deals_get.return_value = []
-        
-        rm.reset_daily()
+        from unittest.mock import patch
+        with patch('core.risk_manager.mt5') as mock_mt5:
+            mock_mt5.account_info.return_value = MagicMock(balance=50000, equity=50000, profit=0)
+            mock_mt5.history_deals_get.return_value = []
+            
+            rm = RiskManager(logger=mock_logger)
+            rm.reset_daily()
         print(f"✅ RiskManager: Reset diario de Prague verificado.")
     except Exception as e:
         print(f"❌ ERROR EN RISK MANAGER: {e}")

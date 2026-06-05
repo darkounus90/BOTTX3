@@ -26,6 +26,11 @@ import time as sleep_module
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+if "--dry-run" in sys.argv:
+    print("[MODO ASESOR] Inyectando motor de Yahoo Finance. Ignorando conexion a MetaTrader 5...")
+    import utils.mock_mt5 as mock_mt5
+    sys.modules['MetaTrader5'] = mock_mt5
+
 import MetaTrader5 as mt5
 
 from config.settings import ChallengeConfig, BotConfig, DashboardConfig, TelegramConfig
@@ -114,20 +119,21 @@ class TX3ProBot:
         # Todas mostraron PF < 1.0 y Win Rate < 40% en ambos pares durante 60 días.
         self.strategies = {}
         for symbol in BotConfig.WATCHLIST:
-            if symbol == "GBPUSD":
-                # 🏆 GBPUSD: ELITE TEAM (The High Precision Models)
-                # ⚠️ ILS y IFS SMC desactivadas preventivamente por bajo WinRate y alto Drawdown (2026-04-13)
+            if symbol == "EURUSD":
+                # 🏆 EURUSD: Especialista Tendencial y BrainForge AI
+                from strategy.ai_brain_strategy import AIBrainStrategy
                 self.strategies[symbol] = [
-                    ZScoreReversionStrategy(logger=self.logger, symbol=symbol),
-                    TTMSqueezeStrategy(logger=self.logger, symbol=symbol)
+                    TTMSqueezeStrategy(logger=self.logger, symbol=symbol),
+                    AIBrainStrategy(logger=self.logger, symbol=symbol)
                 ]
-                self.logger.info(f"✅ ESTRATEGIAS ELITE CARGADAS: [Z-Score + Squeeze Pro] → {symbol}")
-            elif symbol == "EURUSD":
-                # 🥇 EURUSD: ELITE SETUP (Momentum Puro)
+                self.logger.info(f"✅ ESTRATEGIA CARGADA: [TTM Squeeze Pro] → {symbol}")
+                self.logger.info(f"✅ ESTRATEGIA CARGADA: [BrainForge V3 AI] → {symbol}")
+            elif symbol == "GBPUSD":
+                # 🏆 GBPUSD: Especialista en Reversión (Atrapa latigazos)
                 self.strategies[symbol] = [
-                    TTMSqueezeStrategy(logger=self.logger, symbol=symbol)
+                    ZScoreReversionStrategy(logger=self.logger, symbol=symbol)
                 ]
-                self.logger.info(f"✅ Estrategias RENTABLES cargadas: [TTM Squeeze] → {symbol}")
+                self.logger.info(f"✅ ESTRATEGIA CARGADA: [Z-Score Reversion] → {symbol}")
             else:
                 self.strategies[symbol] = []
 
