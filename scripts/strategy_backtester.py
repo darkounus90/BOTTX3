@@ -856,12 +856,12 @@ def sim_brainforge_v5(df, symbol):
 
 
 def sim_brainforge_qlearning(symbol="EURUSD"):
-    res = BacktestResult("BrainForge Q-Learning V3 (Dueling-DQN)")
+    res = BacktestResult("BrainForge Q-Learning V4 (Dueling-DRQN)")
     if symbol != "EURUSD": return res
     import onnxruntime as ort
     
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'ai_lab'))
-    model_path = os.path.join(base_dir, 'models', 'brain_qlearning_v3.onnx')
+    model_path = os.path.join(base_dir, 'models', 'brain_qlearning_v4.onnx')
     data_path = os.path.join(base_dir, 'data', 'processed', f'{symbol}_M15_features.parquet')
     
     if not os.path.exists(model_path) or not os.path.exists(data_path):
@@ -885,19 +885,21 @@ def sim_brainforge_qlearning(symbol="EURUSD"):
     position = 0
     entry_price = 0.0
     PIP_SIZE = 0.0001
+    COMMISSION_PER_LOT = 7.0
     
     for i in range(10, len(df)):
         window = df[features].iloc[i-10:i].values
-        state = window.flatten().astype(np.float32)
+        state = window.astype(np.float32).reshape(1, 10, 33)
         
-        q_values = session.run(None, {input_name: state.reshape(1, -1)})[0][0]
+        q_values = session.run(None, {input_name: state})[0][0]
         action = np.argmax(q_values)
         
         curr = df.iloc[i]
         price = curr['close']
         hour = pd.Timestamp(curr['time']).hour
         
-        if action == 0 and position <= 0:
+        # Training Actions: 0=Hold, 1=Buy, 2=Sell, 3=Close
+        if action == 1 and position <= 0:
             if position == -1:
                 pnl = (entry_price - price) / PIP_SIZE * 10.0 - COMMISSION_PER_LOT
                 res.add_trade(pnl, hour, "SELL", 0, 0)
