@@ -1,6 +1,5 @@
 @echo off
 cd /d "%~dp0"
-set HUGGINGFACE_TOKEN=YOUR_HUGGINGFACE_TOKEN
 echo ==========================================================
 echo    TX3 PRO BOT - ARRANQUE INTELIGENTE
 echo ==========================================================
@@ -32,16 +31,12 @@ if errorlevel 1 (
 )
 
 :: --- 3. CREDENCIALES ---
-set TELEGRAM_BOT_TOKEN=8407569871:AAFwcNzt8Mk0U0Bp3MGwT6OAaxHzRhy-2zg
-set TELEGRAM_CHAT_ID=1176201993
-set DASHBOARD_SECRET=tx3-pro-bot-secret
-set HUGGINGFACE_TOKEN=YOUR_HUGGINGFACE_TOKEN
-set GEMINI_API_KEY=YOUR_GEMINI_API_KEY
-
-:: --- CREDENCIALES FTMO (Rellena esto) ---
-set MT5_LOGIN=1513537066
-set MT5_PASSWORD=d2CNAhT@fQ53t
-set MT5_SERVER=FTMO-Demo
+if exist "secrets.bat" (
+    echo [i] Cargando credenciales seguras desde secrets.bat...
+    call secrets.bat
+) else (
+    echo [WARNING] No se encontro secrets.bat. Se usaran variables de entorno del sistema.
+)
 
 echo [4/4] Arrancando Bot Principal (Fase 1 FTMO con Python 3.12)...
 echo ==========================================================

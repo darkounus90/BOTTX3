@@ -47,6 +47,7 @@ wheels/
 .coverage
 htmlcov/
 venv312/
+secrets.bat
 data/raw/
 data/processed/
 data/*.json

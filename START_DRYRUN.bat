@@ -19,11 +19,12 @@ if not exist "data\rf_model_NAS100.pkl" (
 echo.
 
 :: Credenciales (mismas que produccion)
-set TELEGRAM_BOT_TOKEN=8407569871:AAFwcNzt8Mk0U0Bp3MGwT6OAaxHzRhy-2zg
-set TELEGRAM_CHAT_ID=1176201993
-set DASHBOARD_SECRET=tx3-pro-bot-secret
-set HUGGINGFACE_TOKEN=YOUR_HUGGINGFACE_TOKEN
-set GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+if exist "secrets.bat" (
+    echo [i] Cargando credenciales seguras desde secrets.bat...
+    call secrets.bat
+) else (
+    echo [WARNING] No se encontro secrets.bat. Se usaran variables de entorno del sistema.
+)
 
 echo [3/3] 🧪 Arrancando Bot en MODO PRUEBA (DRY RUN) - Fase 1...
 echo    ✅ El bot analizara el mercado en tiempo real
