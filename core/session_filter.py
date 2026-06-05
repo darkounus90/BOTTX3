@@ -158,10 +158,16 @@ class SessionFilter:
                 "name": "🔬 AFTERNOON REVERSION (Tarde NY)",
                 "active_strats": ["Z-Score (GBP)", "ILS Sweep", "IFS SMC"]
             }
+        elif 17 <= h < 18:
+            return {
+                "id": "HIBERNATION",
+                "name": "⛔ ROLLOVER KILLZONE (Spreads Extremos)",
+                "active_strats": []
+            }
         else:
             return {
                 "id": "HIBERNATION",
-                "name": "💤 HIBERNACIÓN (Mercado Cerrado / Rollover / Asia)",
+                "name": "💤 HIBERNACIÓN (Mercado Cerrado / Asia)",
                 "active_strats": []
             }
 

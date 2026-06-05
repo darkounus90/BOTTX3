@@ -728,6 +728,10 @@ class TX3ProBot:
         
         while self.running:
             try:
+                # Limpieza de memoria (previene Memory Leaks por Pandas/PyTorch)
+                import gc
+                gc.collect()
+                
                 # ─── Heartbeat (Evitar silencios largos) ─────────
                 now = datetime.now()
                 self._last_loop_timestamp = sleep_module.time() # Actualizar Watchdog
