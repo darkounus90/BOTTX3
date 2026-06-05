@@ -66,8 +66,8 @@ echo   Esto puede tomar 30-60 segundos. Analizando miles de velas...
 echo ═══════════════════════════════════════════════════════════════
 echo.
 
-echo [2/2] 🚀 Analizando Portafolio Forex Oficial de los ultimos 90 Dias (EURUSD, GBPUSD)...
-"%PY_EXE%" scripts\strategy_backtester.py --days 90 --symbols EURUSD,GBPUSD
+echo [2/2] 🚀 Analizando Portafolio Forex Oficial de los ultimos 90 Dias (EURUSD)...
+"%PY_EXE%" scripts\strategy_backtester.py --days 90 --symbols EURUSD
 
 echo.
 echo ╔══════════════════════════════════════════════════════════════╗
