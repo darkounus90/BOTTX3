@@ -41,7 +41,7 @@ if exist "secrets.bat" (
 echo [4/4] Arrancando Bot Principal (Fase 1 FTMO con Python 3.12)...
 echo ==========================================================
 :: Lanzar el Dashboard web en Modo App de forma automatica y paralela
-start /b cmd /c "timeout /t 5 > nul && start msedge --app=http://localhost:5050 || start chrome --app=http://localhost:5050 || start http://localhost:5050"
+start /b cmd /c "timeout /t 5 > nul && start http://localhost:5050"
 
 venv312\Scripts\python.exe main.py --phase 1
 
