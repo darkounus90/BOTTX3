@@ -49,6 +49,9 @@ htmlcov/
 venv312/
 data/raw/
 data/processed/
+data/*.json
+data/*.csv
+data/*.db
 logs/
 MT5_Portable/
 *.parquet
