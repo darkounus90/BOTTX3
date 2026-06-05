@@ -855,6 +855,72 @@ def sim_brainforge_v5(df, symbol):
     return res
 
 
+def sim_brainforge_qlearning(symbol="EURUSD"):
+    res = BacktestResult("BrainForge Q-Learning ONNX")
+    if symbol != "EURUSD": return res
+    import onnxruntime as ort
+    
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'ai_lab'))
+    model_path = os.path.join(base_dir, 'models', 'brain_qlearning_v1.onnx')
+    data_path = os.path.join(base_dir, 'data', 'processed', f'{symbol}_M15_features.parquet')
+    
+    if not os.path.exists(model_path) or not os.path.exists(data_path):
+        return res
+        
+    session = ort.InferenceSession(model_path, providers=['CPUExecutionProvider'])
+    input_name = session.get_inputs()[0].name
+    
+    df = pd.read_parquet(data_path)
+    
+    features = [c for c in df.columns if c not in ['time', 'target']]
+    if len(features) != 33:
+        return res
+        
+    df = df.dropna(subset=features)
+    df = df.iloc[-2000:]
+    if len(df) < 20: return res
+    
+    import numpy as np
+    
+    position = 0
+    entry_price = 0.0
+    PIP_SIZE = 0.0001
+    
+    for i in range(10, len(df)):
+        window = df[features].iloc[i-10:i].values
+        state = window.flatten().astype(np.float32)
+        
+        q_values = session.run(None, {input_name: state.reshape(1, -1)})[0][0]
+        action = np.argmax(q_values)
+        
+        curr = df.iloc[i]
+        price = curr['close']
+        hour = pd.Timestamp(curr['time']).hour
+        
+        if action == 0 and position <= 0:
+            if position == -1:
+                pnl = (entry_price - price) / PIP_SIZE * 10.0 - COMMISSION_PER_LOT
+                res.add_trade(pnl, hour, "SELL", 0, 0)
+            position = 1
+            entry_price = price
+        elif action == 1 and position >= 0:
+            if position == 1:
+                pnl = (price - entry_price) / PIP_SIZE * 10.0 - COMMISSION_PER_LOT
+                res.add_trade(pnl, hour, "BUY", 0, 0)
+            position = -1
+            entry_price = price
+        elif action == 3 and position != 0:
+            if position == 1:
+                pnl = (price - entry_price) / PIP_SIZE * 10.0 - COMMISSION_PER_LOT
+                res.add_trade(pnl, hour, "BUY", 0, 0)
+            elif position == -1:
+                pnl = (entry_price - price) / PIP_SIZE * 10.0 - COMMISSION_PER_LOT
+                res.add_trade(pnl, hour, "SELL", 0, 0)
+            position = 0
+            entry_price = 0.0
+            
+    return res
+
 def run_backtest(symbol="EURUSD", days=365, z=2.5, adx=45):
     if not mt5.initialize(): 
         print("❌ Error: MetaTrader 5 no está abierto o no pudo conectar.")
@@ -890,7 +956,8 @@ def run_backtest(symbol="EURUSD", days=365, z=2.5, adx=45):
         # EURUSD: Especialista Tendencial y Sniper AI
         results = [
             sim_ttm_squeeze(m15.copy(), h1, symbol),
-            sim_brainforge_v5(m15.copy(), symbol)
+            sim_brainforge_v5(m15.copy(), symbol),
+            sim_brainforge_qlearning(symbol)
         ]
     elif symbol == "GBPUSD":
         # GBPUSD: Desactivado por alta volatilidad

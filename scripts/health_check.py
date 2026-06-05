@@ -1,83 +1,109 @@
 import os
 import sys
-import psutil
 import time
-import shutil
-from datetime import datetime, timedelta
+import psutil
 import logging
+from datetime import datetime
+import json
+import urllib.request
+import urllib.error
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from utils.telegram_notifier import TelegramNotifier
-from utils.logger import BotLogger
+# ═══════════════════════════════════════════════════════════════
+# CONFIGURACIÓN DEL GUARDIÁN DEL VPS
+# ═══════════════════════════════════════════════════════════════
 
-logger = BotLogger(name="HealthCheck")
-telegram = TelegramNotifier(logger)
+# Umbrales críticos (Porcentaje 0-100)
+CPU_CRITICAL_THRESHOLD = 85.0
+RAM_CRITICAL_THRESHOLD = 85.0
+DISK_CRITICAL_THRESHOLD = 90.0
 
-WARNING_THRESHOLD = 80.0
+# Intervalo de revisión en segundos (ej: cada 60 segundos)
+CHECK_INTERVAL_SEC = 60
 
-def get_system_health():
-    cpu = psutil.cpu_percent(interval=1)
-    ram = psutil.virtual_memory().percent
-    disk = psutil.disk_usage('/').percent
-    return cpu, ram, disk
+# Webhook de Discord/Telegram (Pon aquí tu URL para recibir alertas en tu móvil)
+WEBHOOK_URL = "" 
 
-def rotate_logs():
-    logger.info("Verificando rotación de logs...")
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    logs_dir = os.path.join(base_dir, 'logs')
-    backup_dir = os.path.join(logs_dir, 'backup')
-    
-    if not os.path.exists(backup_dir):
-        os.makedirs(backup_dir)
+# Configuración de Logging
+log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs")
+os.makedirs(log_dir, exist_ok=True)
+log_file = os.path.join(log_dir, "vps_health.log")
+
+logging.basicConfig(
+    filename=log_file,
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
+# ═══════════════════════════════════════════════════════════════
+# FUNCIONES
+# ═══════════════════════════════════════════════════════════════
+
+def send_webhook_alert(message: str):
+    """Envía una alerta de emergencia al Webhook si está configurado"""
+    if not WEBHOOK_URL:
+        return
         
-    now = time.time()
-    thirty_days_ago = now - (30 * 24 * 60 * 60)
-    
-    rotated_count = 0
-    if os.path.exists(logs_dir):
-        for filename in os.listdir(logs_dir):
-            if filename.endswith(".log") or filename.endswith(".txt"):
-                filepath = os.path.join(logs_dir, filename)
-                if os.path.isfile(filepath):
-                    file_mtime = os.path.getmtime(filepath)
-                    if file_mtime < thirty_days_ago:
-                        try:
-                            shutil.move(filepath, os.path.join(backup_dir, filename))
-                            rotated_count += 1
-                        except Exception as e:
-                            logger.error(f"No se pudo mover el log {filename}: {e}")
-                            
-    if rotated_count > 0:
-        logger.info(f"Rotación completada: {rotated_count} archivos movidos a backup.")
-    else:
-        logger.info("No hay logs antiguos para rotar.")
+    try:
+        # Detectar si es Discord o Slack (formato JSON básico)
+        payload = json.dumps({"content": f"🚨 **VPS ALERTA CRÍTICA** 🚨\n{message}"}).encode('utf-8')
+        req = urllib.request.Request(WEBHOOK_URL, data=payload, headers={'Content-Type': 'application/json'})
+        urllib.request.urlopen(req, timeout=5)
+    except Exception as e:
+        logging.error(f"Error enviando Webhook: {e}")
 
-def check_health():
-    logger.info("Iniciando chequeo de salud del VPS...")
-    cpu, ram, disk = get_system_health()
+def monitor_system():
+    print("🛡️ Guardián del VPS Iniciado. Monitoreando Recursos (Presiona Ctrl+C para detener)...")
+    logging.info("Servicio Health Check iniciado.")
     
-    logger.info(f"Métricas actuales -> CPU: {cpu}% | RAM: {ram}% | Disco: {disk}%")
+    alert_cooldown = 0
     
-    warnings = []
-    if cpu > WARNING_THRESHOLD:
-        warnings.append(f"⚠️ CPU al {cpu}%")
-    if ram > WARNING_THRESHOLD:
-        warnings.append(f"⚠️ RAM al {ram}%")
-    if disk > WARNING_THRESHOLD:
-        warnings.append(f"⚠️ Disco al {disk}%")
-        
-    if warnings:
-        msg = "🚨 *ALERTA DE RECURSOS VPS* 🚨\n"
-        msg += "El servidor está bajo alto estrés:\n\n"
-        msg += "\n".join(warnings)
-        msg += "\n\nRevise el Administrador de Tareas para evitar bloqueos del Bot FTMO."
-        
-        logger.warning("Umbrales superados. Enviando alerta a Telegram...")
-        telegram._send(msg)
-        logger.info("Alerta enviada.")
-    else:
-        logger.info("El servidor opera dentro de los límites normales.")
+    while True:
+        try:
+            # Obtener métricas reales
+            cpu_usage = psutil.cpu_percent(interval=1)
+            ram = psutil.virtual_memory()
+            ram_usage = ram.percent
+            disk_usage = psutil.disk_usage('/').percent
+            
+            alerts = []
+            
+            if cpu_usage >= CPU_CRITICAL_THRESHOLD:
+                alerts.append(f"🔥 CPU Sobrecargada: {cpu_usage}% (Límite: {CPU_CRITICAL_THRESHOLD}%)")
+                
+            if ram_usage >= RAM_CRITICAL_THRESHOLD:
+                alerts.append(f"💥 RAM Agotándose: {ram_usage}% (Límite: {RAM_CRITICAL_THRESHOLD}%)")
+                
+            if disk_usage >= DISK_CRITICAL_THRESHOLD:
+                alerts.append(f"💾 Disco casi Lleno: {disk_usage}% (Límite: {DISK_CRITICAL_THRESHOLD}%)")
+                
+            # Si hay alguna alerta y ya pasó el cooldown
+            if alerts:
+                msg = " | ".join(alerts)
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️ ALERTA: {msg}")
+                logging.warning(msg)
+                
+                if alert_cooldown <= 0:
+                    send_webhook_alert(msg)
+                    # Esperar 5 minutos antes de volver a enviar spam al webhook
+                    alert_cooldown = 5 * 60 
+            else:
+                # Todo normal
+                sys.stdout.write(f"\r[{datetime.now().strftime('%H:%M:%S')}] ✅ Estado OK | CPU: {cpu_usage:05.1f}% | RAM: {ram_usage:05.1f}% | Disco: {disk_usage:05.1f}%    ")
+                sys.stdout.flush()
+                
+            if alert_cooldown > 0:
+                alert_cooldown -= CHECK_INTERVAL_SEC
+                
+            time.sleep(CHECK_INTERVAL_SEC - 1) # Descontamos 1 seg del psutil
+            
+        except KeyboardInterrupt:
+            print("\n🛑 Guardián detenido por el usuario.")
+            logging.info("Servicio Health Check detenido.")
+            break
+        except Exception as e:
+            logging.error(f"Error inesperado en loop: {e}")
+            time.sleep(10)
 
 if __name__ == "__main__":
-    rotate_logs()
-    check_health()
+    monitor_system()
