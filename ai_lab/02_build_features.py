@@ -71,9 +71,16 @@ def build_features():
     df = pd.read_parquet(raw_path)
     print(f"✅ Cargadas {len(df):,} velas históricas.")
     
-    # --- FEATURES TEMPORALES ---
-    df['hour'] = df['time'].dt.hour
-    df['day_of_week'] = df['time'].dt.dayofweek
+    # --- FEATURES TEMPORALES (Ciclicas) ---
+    # En lugar de horas lineales, usamos seno/coseno para mapear un reloj biológico circular de 24h
+    hours = df['time'].dt.hour + (df['time'].dt.minute / 60.0)
+    df['hour_sin'] = np.sin(2 * np.pi * hours / 24.0)
+    df['hour_cos'] = np.cos(2 * np.pi * hours / 24.0)
+    
+    # Lo mismo para los dias de la semana (5 dias de trading)
+    days = df['time'].dt.dayofweek
+    df['day_sin'] = np.sin(2 * np.pi * days / 5.0)
+    df['day_cos'] = np.cos(2 * np.pi * days / 5.0)
     
     # --- INDICADORES TÉCNICOS (V3 Institucional) ---
     PIP_SIZE = 0.0001
@@ -84,9 +91,17 @@ def build_features():
     df['ema50'] = df['close'].ewm(span=50, adjust=False).mean()
     df['sma200'] = df['close'].rolling(200).mean()
     
+    # --- MULTI-TIMEFRAME PROXIES ---
+    # Simulamos la tendencia macroeconómica: EMA de 50 en H1 equivale a EMA de 200 en M15 (50 * 4 velas)
+    # EMA de 200 en H4 equivale a EMA de 3200 en M15 (200 * 16 velas)
+    df['ema_H1_50'] = df['close'].ewm(span=200, adjust=False).mean()
+    df['sma_H4_200'] = df['close'].rolling(3200).mean()
+    
     df['dist_ema9_21_pips'] = (df['ema9'] - df['ema21']) / PIP_SIZE
     df['dist_close_ema50_pips'] = (df['close'] - df['ema50']) / PIP_SIZE
     df['dist_close_sma200_pips'] = (df['close'] - df['sma200']) / PIP_SIZE
+    df['dist_macro_H1_pips'] = (df['close'] - df['ema_H1_50']) / PIP_SIZE
+    df['dist_macro_H4_pips'] = (df['close'] - df['sma_H4_200']) / PIP_SIZE
     
     # Osciladores clásicos y StochRSI
     df['rsi14'] = calc_rsi(df['close'], 14)
@@ -117,6 +132,19 @@ def build_features():
     df['return_1_pips'] = df['close'].diff(1) / PIP_SIZE
     df['return_3_pips'] = df['close'].diff(3) / PIP_SIZE
     df['return_5_pips'] = df['close'].diff(5) / PIP_SIZE
+    
+    # --- PRICE ACTION / SMC FEATURES ---
+    # Entender la anatomía de la vela es crítico para encontrar liquidez (mechas = rechazo)
+    df['body_size_pips'] = (df['close'] - df['open']).abs() / PIP_SIZE
+    df['candle_dir'] = np.where(df['close'] >= df['open'], 1, -1)
+    
+    # Tamaño de la mecha superior e inferior
+    df['upper_wick_pips'] = (df['high'] - df[['open', 'close']].max(axis=1)) / PIP_SIZE
+    df['lower_wick_pips'] = (df[['open', 'close']].min(axis=1) - df['low']) / PIP_SIZE
+    
+    # Proporción de rechazo (qué porcentaje de la vela total es pura mecha)
+    total_range = (df['high'] - df['low']) / PIP_SIZE
+    df['wick_rejection_ratio'] = (df['upper_wick_pips'] + df['lower_wick_pips']) / (total_range + 1e-9)
     
     # --- TARGET (TRIPLE BARRERA) ---
     df['target'] = apply_triple_barrier(df, tp_pips=40, sl_pips=20, pip_size=0.0001, max_candles=40)
