@@ -182,6 +182,9 @@ class AIBrainStrategy(BaseStrategy):
         if len(X_live) != self.seq_length:
             return None
             
+        if np.isnan(X_live).any():
+            X_live = np.nan_to_num(X_live, nan=0.0)
+            
         try:
             X_scaled = self.scaler.transform(X_live)
             X_tensor = torch.tensor(X_scaled, dtype=torch.float32).unsqueeze(0).to(self.device)

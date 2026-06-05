@@ -115,7 +115,7 @@ class TradingEnv:
             if self.position != 1:
                 self.position = 1
                 self.entry_price = current_price
-                reward -= 1.0 # Cost of spread/overtrading penalty
+                reward -= 20.0 # Costo brutal de Spread/Comisión
                 
         elif action == 2: # SELL
             if self.position == 1: # Close long
@@ -124,7 +124,7 @@ class TradingEnv:
             if self.position != -1:
                 self.position = -1
                 self.entry_price = current_price
-                reward -= 1.0 # Cost of spread/overtrading penalty
+                reward -= 20.0 # Costo brutal de Spread/Comisión
                 
         elif action == 3: # CLOSE
             if self.position == 1:
@@ -135,13 +135,21 @@ class TradingEnv:
                 self.balance += pnl
             self.position = 0
             
-        # Calculate Equity
+        # Calcular PnL Flotante Actual
         unrealized_pnl = 0.0
         if self.position == 1:
             unrealized_pnl = (current_price - self.entry_price) * lot_size
         elif self.position == -1:
             unrealized_pnl = (self.entry_price - current_price) * lot_size
+
+        # Recompensas Swing Trading por HOLD
+        if action == 0 and self.position != 0:
+            if unrealized_pnl > 0:
+                reward += 2.0 # Premio a la paciencia (Dejar Correr)
+            elif unrealized_pnl < 0:
+                reward -= 5.0 # Castigo a la agonía (No cortar rápido)
             
+        # Calculate Equity
         prev_equity = self.equity
         self.equity = self.balance + unrealized_pnl
         
@@ -157,7 +165,7 @@ class TradingEnv:
         drawdown = (self.max_equity - self.equity) / self.max_equity
         done = False
         
-        if drawdown >= 0.02: # 2% Drawdown (Límite FTMO simulado ajustado al episodio)
+        if drawdown >= 0.02: # 2% Drawdown (Límite FTMO)
             reward -= 200.0 # Castigo Severo (Bancarrota)
             done = True
             
@@ -281,9 +289,9 @@ def train_dqn():
         print(f"⚔️ Episodio {episode+1:03d}/{EPISODES} | Recompensa Acumulada: {total_reward:10.2f} | Epsilon: {epsilon:.3f} | Equity Final: ${env.equity:,.2f}", flush=True)
         
     writer.close()
-    print("\n🔄 Exportando Agente AlphaGo a formato ONNX...")
+    print("\n🔄 Exportando Agente AlphaGo V2 a formato ONNX...")
     dummy_input = torch.randn(1, input_size, device=device)
-    onnx_path = os.path.join(os.path.dirname(__file__), "models", "brain_qlearning_v1.onnx")
+    onnx_path = os.path.join(os.path.dirname(__file__), "models", "brain_qlearning_v2.onnx")
     os.makedirs(os.path.dirname(onnx_path), exist_ok=True)
     
     # Manejar deprecaciones limpiamente

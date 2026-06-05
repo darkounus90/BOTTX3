@@ -856,12 +856,12 @@ def sim_brainforge_v5(df, symbol):
 
 
 def sim_brainforge_qlearning(symbol="EURUSD"):
-    res = BacktestResult("BrainForge Q-Learning ONNX")
+    res = BacktestResult("BrainForge Q-Learning V3 (Dueling-DQN)")
     if symbol != "EURUSD": return res
     import onnxruntime as ort
     
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'ai_lab'))
-    model_path = os.path.join(base_dir, 'models', 'brain_qlearning_v1.onnx')
+    model_path = os.path.join(base_dir, 'models', 'brain_qlearning_v3.onnx')
     data_path = os.path.join(base_dir, 'data', 'processed', f'{symbol}_M15_features.parquet')
     
     if not os.path.exists(model_path) or not os.path.exists(data_path):
