@@ -1,4 +1,5 @@
 import os
+import sys
 import pandas as pd
 import numpy as np
 import joblib
@@ -7,6 +8,10 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
+
+if sys.platform == 'win32':
+    import codecs
+    sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
 
 class ForexDataset(Dataset):
     def __init__(self, X, y):
@@ -20,29 +25,26 @@ class ForexDataset(Dataset):
         return self.X[idx], self.y[idx]
 
 class LSTMBrainNet(nn.Module):
-    def __init__(self, input_size, hidden_size=64, num_layers=2, num_classes=3, dropout=0.2):
+    def __init__(self, input_size, hidden_size=32, num_layers=1, num_classes=3, dropout=0.5):
         super(LSTMBrainNet, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         
-        # LSTM Layer (Batch First: input is [batch, seq, feature])
+        # Reducción drástica de neuronas y capas para evitar memorización
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, 
                             batch_first=True, dropout=dropout if num_layers > 1 else 0)
         
-        # Attention / Fully Connected
-        self.fc1 = nn.Linear(hidden_size, 32)
+        # Dropout gigante del 50% para matar neuronas aleatoriamente y forzar generalización
+        self.fc1 = nn.Linear(hidden_size, 16)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(dropout)
-        self.fc2 = nn.Linear(32, num_classes)
+        self.fc2 = nn.Linear(16, num_classes)
         
     def forward(self, x):
-        # x.shape = (batch, seq_len, input_size)
         h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
         c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
         
         out, _ = self.lstm(x, (h0, c0))
-        
-        # Tomamos el output de la ultima vela de la secuencia
         out = out[:, -1, :] 
         
         out = self.fc1(out)
@@ -62,9 +64,8 @@ def create_sequences(data, targets, seq_length):
 def train_dl_model():
     print("🧠 [BrainForge V5] Iniciando Entrenamiento Deep Learning (LSTM)...")
     
-    # FORZAMOS CPU: La RTX 5070 (Blackwell sm_120) es demasiado nueva para PyTorch oficial
-    device = torch.device('cpu')
-    print(f"🖥️ Dispositivo de Entrenamiento: {device} (Modo de Fuerza Bruta)")
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"🖥️ Dispositivo de Entrenamiento: {device}")
     
     data_path = os.path.join(os.path.dirname(__file__), 'data', 'processed', 'EURUSD_M15_features.parquet')
     if not os.path.exists(data_path):
@@ -73,11 +74,10 @@ def train_dl_model():
         
     df = pd.read_parquet(data_path)
     
-    # Mismas variables que V5 en ai_brain_strategy
+    # Exclusivamente features ESTACIONARIAS (Sin precios absolutos)
     features_list = [
         'tick_volume', 'spread',
         'hour_sin', 'hour_cos', 'day_sin', 'day_cos', 
-        'ema9', 'ema21', 'ema50', 'sma200',
         'dist_ema9_21_pips', 'dist_close_ema50_pips', 'dist_close_sma200_pips',
         'dist_macro_H1_pips', 'dist_macro_H4_pips',
         'rsi14', 'stoch_rsi', 'atr14_pips', 
@@ -109,8 +109,13 @@ def train_dl_model():
     val_loader = DataLoader(val_dataset, batch_size=256, shuffle=False)
     
     model = LSTMBrainNet(input_size=len(features_list)).to(device)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    
+    # Ponderación de pesos (Class Imbalance Penalization)
+    class_weights = torch.tensor([1.0, 1.0, 1.5]).to(device)
+    criterion = nn.CrossEntropyLoss(weight=class_weights)
+    
+    # Weight Decay pesado para castigar sobreajuste (Regularización L2)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
     
     EPOCHS = 50
     best_loss = float('inf')

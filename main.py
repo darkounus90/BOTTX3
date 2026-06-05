@@ -127,13 +127,7 @@ class TX3ProBot:
                     AIBrainStrategy(logger=self.logger, symbol=symbol)
                 ]
                 self.logger.info(f"✅ ESTRATEGIA CARGADA: [TTM Squeeze Pro] → {symbol}")
-                self.logger.info(f"✅ ESTRATEGIA CARGADA: [BrainForge V3 AI] → {symbol}")
-            elif symbol == "GBPUSD":
-                # 🏆 GBPUSD: Especialista en Reversión (Atrapa latigazos)
-                self.strategies[symbol] = [
-                    ZScoreReversionStrategy(logger=self.logger, symbol=symbol)
-                ]
-                self.logger.info(f"✅ ESTRATEGIA CARGADA: [Z-Score Reversion] → {symbol}")
+                self.logger.info(f"✅ ESTRATEGIA CARGADA: [BrainForge V5 LSTM] → {symbol}")
             else:
                 self.strategies[symbol] = []
 

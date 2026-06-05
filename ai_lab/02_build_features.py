@@ -152,6 +152,12 @@ def build_features():
     # Limpiar nulos generados por indicadores y triple barrera
     df = df.dropna().reset_index(drop=True)
     
+    # 🧹 MATEMÁTICAS CUANTITATIVAS: Eliminar precios absolutos (No-estacionarios)
+    # Las Redes Neuronales LSTM se confunden (Overfitting) si les damos precios puros.
+    # Solo deben ver distancias (pips), osciladores, y derivados estacionarios.
+    non_stationary_cols = ['ema9', 'ema21', 'ema50', 'sma200', 'ema_H1_50', 'sma_H4_200']
+    df = df.drop(columns=non_stationary_cols)
+    
     print(f"📊 Dataset final: {len(df):,} registros.")
     
     # Análisis de balanceo de clases

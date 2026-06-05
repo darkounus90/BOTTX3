@@ -17,8 +17,19 @@ def simulate():
         return
         
     df = pd.read_parquet(data_path)
-    exclude = ['time', 'open', 'high', 'low', 'close', 'target']
-    features = [c for c in df.columns if c not in exclude]
+    features = [
+        'tick_volume', 'spread',
+        'hour_sin', 'hour_cos', 'day_sin', 'day_cos', 
+        'dist_ema9_21_pips', 'dist_close_ema50_pips', 'dist_close_sma200_pips',
+        'dist_macro_H1_pips', 'dist_macro_H4_pips',
+        'rsi14', 'stoch_rsi', 'atr14_pips', 
+        'macd', 'macd_signal', 'macd_hist', 
+        'bbw', 'zscore20', 
+        'roc_15', 'roc_30',
+        'return_1_pips', 'return_3_pips', 'return_5_pips',
+        'body_size_pips', 'candle_dir', 'upper_wick_pips', 
+        'lower_wick_pips', 'wick_rejection_ratio'
+    ]
     
     # 1. Recuperar exactamente el Test Ciego del Trainer (Último 10%)
     test_size = int(len(df) * 0.10)
@@ -29,22 +40,65 @@ def simulate():
     
     print(f"✅ Evaluando sobre {len(test_df):,} velas inéditas (Aprox. últimos 1.5 años).")
     
-    # 2. Cargar el Cerebro V3
-    model_path = os.path.join(os.path.dirname(__file__), "models", "brain_v3.pkl")
-    if not os.path.exists(model_path):
-        print("❌ Cerebro V3 no encontrado.")
+    # 2. Cargar el Cerebro V5 (LSTM) y Scaler
+    models_dir = os.path.join(os.path.dirname(__file__), "models")
+    model_path = os.path.join(models_dir, "brain_v5_lstm.pth")
+    scaler_path = os.path.join(models_dir, "scaler_v5.pkl")
+    
+    if not os.path.exists(model_path) or not os.path.exists(scaler_path):
+        print("❌ Cerebro V5 LSTM o Scaler no encontrados.")
         return
         
-    model = joblib.load(model_path)
-    try:
-        model.set_params(device="cpu")
-    except:
-        pass
+    scaler = joblib.load(scaler_path)
+    
+    # Importar torch localmente para la inferencia
+    import torch
+    import torch.nn as nn
+    
+    class LSTMBrainNet(nn.Module):
+        def __init__(self, input_size, hidden_size=32, num_layers=1, num_classes=3, dropout=0.5):
+            super(LSTMBrainNet, self).__init__()
+            self.hidden_size = hidden_size
+            self.num_layers = num_layers
+            self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout if num_layers > 1 else 0)
+            self.fc1 = nn.Linear(hidden_size, 16)
+            self.relu = nn.ReLU()
+            self.dropout = nn.Dropout(dropout)
+            self.fc2 = nn.Linear(16, num_classes)
+            
+        def forward(self, x):
+            h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
+            c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
+            out, _ = self.lstm(x, (h0, c0))
+            out = out[:, -1, :] 
+            out = self.fc1(out)
+            out = self.relu(out)
+            out = self.dropout(out)
+            out = self.fc2(out)
+            return out
+
+    device = torch.device('cpu')
+    model = LSTMBrainNet(input_size=len(features))
+    model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
+    model.eval()
         
-    # 3. Inferencia
-    print("🤖 IA V3 Extrayendo probabilidades...")
-    probs = model.predict_proba(X_test)
-    prob_win = probs[:, 2] 
+    # 3. Inferencia (Crear secuencias de 60 velas para todo el set de test)
+    print("🤖 IA V5 LSTM Extrayendo probabilidades de tensores 3D...")
+    
+    X_raw = test_df[features].values
+    X_scaled = scaler.transform(X_raw)
+    
+    seq_length = 60
+    prob_win = np.zeros(len(test_df))
+    
+    # No podemos predecir los primeros 60 registros por falta de contexto
+    with torch.no_grad():
+        for i in range(seq_length, len(test_df)):
+            seq = X_scaled[i-seq_length:i]
+            seq_tensor = torch.tensor(seq, dtype=torch.float32).unsqueeze(0).to(device)
+            outputs = model(seq_tensor)
+            probs = torch.softmax(outputs, dim=1)[0]
+            prob_win[i] = probs[2].item()
     
     # Evaluar en múltiples umbrales
     thresholds = [0.25, 0.40, 0.60]
