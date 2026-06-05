@@ -140,10 +140,10 @@ def train_transformer_model():
     class_weights = torch.tensor([1.0, 1.0, 1.5]).to(device)
     criterion = nn.CrossEntropyLoss(weight=class_weights)
     
-    # Optimizer (AdamW recommended for Transformers)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, weight_decay=1e-4)
+    # Optimizer (AdamW recommended for Transformers) con lr microscópico
+    optimizer = torch.optim.AdamW(model.parameters(), lr=0.0001, weight_decay=1e-3)
     
-    EPOCHS = 15
+    EPOCHS = 50
     best_loss = float('inf')
     
     models_dir = os.path.join(os.path.dirname(__file__), 'models')
