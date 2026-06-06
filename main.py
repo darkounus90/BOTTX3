@@ -1222,10 +1222,25 @@ class TX3ProBot:
             # Si han pasado más de 10 min sin actividad en el loop
             if inactivity_seconds > 600:
                 if not self._watchdog_notified:
-                    msg = "🚨 ALERTA CRÍTICA: El loop principal del bot no responde desde hace +10 min. Posible congelamiento detectado."
+                    msg = "🚨 ALERTA CRÍTICA: El loop principal del bot no responde desde hace +10 min. Posible congelamiento detectado (MT5 API Bloqueada)."
                     self.logger.critical(msg)
                     self.telegram.notify_error(msg)
+                    
+                    # 1. Notificar al Dashboard en tiempo real
+                    try:
+                        from dashboard.app import update_dashboard_data, add_dashboard_log
+                        update_dashboard_data({"status": "FROZEN", "bot_status": "❌ ERROR CRÍTICO (FROZEN)"})
+                        add_dashboard_log("CRITICAL: Bot congelado (+10 min). Forzando auto-reinicio a nivel de hardware...", level="ERROR")
+                    except Exception as e:
+                        self.logger.error(f"Error actualizando dashboard en Watchdog: {e}")
+                        
                     self._watchdog_notified = True
+                    
+                    # 2. SUICIDIO DE PROCESO (Para activar el Auto-Restart del .bat)
+                    self.logger.critical("💀 EJECUTANDO HARD RESET (os._exit(1)) EN 5 SEGUNDOS...")
+                    sleep_module.sleep(5) # Dar tiempo al WebSocket de llegar al navegador
+                    import os
+                    os._exit(1) # Mata todo instantáneamente sin esperar bloqueos de GIL
             else:
                 # Resetear notificación si el loop volvió a la vida
                 self._watchdog_notified = False
