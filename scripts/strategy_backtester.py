@@ -188,8 +188,8 @@ def sim_liquidity_sweep(df, df_h1, symbol):
             if signal == "SELL" and curr['close'] > curr['lsma']: continue
             if signal == "BUY" and curr['close'] < curr['lsma']: continue
                 
-            sl = max(round(curr['atr']*1.5 / pip / 10, 1), 12.0)
-            tp = max(round(curr['atr']*3.0 / pip / 10, 1), 24.0)
+            sl = max(round(curr['atr']*1.5 / pip, 1), 12.0)
+            tp = max(round(curr['atr']*3.0 / pip, 1), 24.0)
             pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+50].to_dict('records'), symbol)
             res.add_trade(pnl, h, signal, sl, tp)
             
@@ -225,8 +225,8 @@ def sim_zscore_reversion(df, df_h1, symbol, z_thresh=2.5):
                 res.filtered += 1
                 continue
 
-            sl = max(round(curr['atr']*1.5 / pip / 10, 1), 15)
-            tp = max(round(curr['atr']*2.5 / pip / 10, 1), 25)
+            sl = max(round(curr['atr']*1.5 / pip, 1), 15)
+            tp = max(round(curr['atr']*2.5 / pip, 1), 25)
             pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+50].to_dict('records'), symbol)
             res.add_trade(pnl, h, signal, sl, tp)
     return res
@@ -437,8 +437,8 @@ def sim_institutional_flow(df_m5, df_m15, df_h1, symbol):
                     signal = "SELL"
                     
         if signal:
-            sl = max(round(curr['atr']*1.2 / pip / 10, 1), 10.0)
-            tp = max(round(curr['atr']*3.5 / pip / 10, 1), 30.0) # 1:3 RR
+            sl = max(round(curr['atr']*1.2 / pip, 1), 10.0)
+            tp = max(round(curr['atr']*3.5 / pip, 1), 30.0) # 1:3 RR
             pnl = calculate_pnl(signal, curr['close'], sl, tp, df_m5.iloc[i+1:i+100].to_dict('records'), symbol)
             res.add_trade(pnl, h, signal, sl, tp)
             
@@ -500,7 +500,7 @@ def sim_bollinger_rsi(df, df_h1, symbol):
         if signal:
             if last_signal_time == prev['time']: continue
             last_signal_time = prev['time']
-            atr_pips = prev['atr'] / pip / 10
+            atr_pips = prev['atr'] / pip
             sl = max(round(atr_pips * 1.5, 1), 8.0)
             tp = max(round(atr_pips * 2.0, 1), 15.0)
             pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+100].to_dict('records'), symbol)
@@ -552,7 +552,7 @@ def sim_ttm_squeeze(df, df_h1, symbol):
                 res.filtered += 1
                 continue
                 
-            atr_pips = prev['atr'] / pip / 10
+            atr_pips = prev['atr'] / pip
             sl = max(15.0, round(atr_pips * 1.5, 1))
             tp = max(30.0, round(atr_pips * 4.0, 1))
             pnl = calculate_pnl(signal, curr['close'], sl, tp, df.iloc[i+1:i+100].to_dict('records'), symbol)
@@ -1073,7 +1073,7 @@ def sim_xgboost_ai(df, df_h1, symbol):
                 
             # SL y TP dinámicos
             tr = max(curr['high'] - curr['low'], abs(curr['high'] - df.iloc[i-1]['close']), abs(curr['low'] - df.iloc[i-1]['close']))
-            atr_pips = tr / pip / 10
+            atr_pips = tr / pip
             if atr_pips < 5: atr_pips = 10
             
             if "US100" in symbol or "NAS" in symbol:

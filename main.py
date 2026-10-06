@@ -121,13 +121,12 @@ class TX3ProBot:
         for symbol in BotConfig.WATCHLIST:
             if symbol == "EURUSD":
                 # 🏆 EURUSD: Especialista Tendencial y BrainForge AI
-                from strategy.ai_brain_strategy import AIBrainStrategy
-                self.strategies[symbol] = [
-                    TTMSqueezeStrategy(logger=self.logger, symbol=symbol),
-                    AIBrainStrategy(logger=self.logger, symbol=symbol)
-                ]
+                self.strategies[symbol] = [TTMSqueezeStrategy(logger=self.logger, symbol=symbol)]
                 self.logger.info(f"✅ ESTRATEGIA CARGADA: [TTM Squeeze Pro] → {symbol}")
-                self.logger.info(f"✅ ESTRATEGIA CARGADA: [BrainForge V5 LSTM] → {symbol}")
+                if getattr(BotConfig, "AI_BRAIN_ENABLED", False):
+                    from strategy.ai_brain_strategy import AIBrainStrategy
+                    self.strategies[symbol].append(AIBrainStrategy(logger=self.logger, symbol=symbol))
+                    self.logger.info(f"✅ ESTRATEGIA CARGADA: [BrainForge V5 LSTM] → {symbol}")
             else:
                 self.strategies[symbol] = []
 

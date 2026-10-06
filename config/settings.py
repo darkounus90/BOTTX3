@@ -87,6 +87,11 @@ class BotConfig:
     NEWS_KILLZONES_ENABLED = True        # Cierre agresivo ante noticias clave
     PORTFOLIO_REBALANCING = True         
     Q_LEARNING_ENABLED = False           
+    # ⚠️ BrainForge V5 LSTM DESACTIVADO (revisión de rentabilidad): solo compra (nunca vende), su "PF 1.64"
+    # salió de ai_lab/04_simulate_trading.py, que cuenta una operación por CADA vela sobre el umbral (trades
+    # solapados), no cobra spread/comisión en ganadoras/perdedoras y evalúa sobre datos usados para elegir el
+    # modelo. Reactivar solo tras un backtest honesto con los features corregidos.
+    AI_BRAIN_ENABLED = False
     HEDGING_ENABLED = False              
     
     MODE_FILTERS = "STRICT"              
@@ -100,7 +105,13 @@ class BotConfig:
     MIN_RR_RATIO = 1.5
 
     # ─── TRAILING STOP ────────────────────────────────────────────────
-    TRAILING_STOP_ENABLED = True
+    # ⚠️ DESACTIVADO (revisión de rentabilidad): el backtest de TTM Squeeze se validó con SL/TP FIJOS
+    # (SL 1.5 ATR, TP 4 ATR). En vivo este módulo cambiaba el sistema por completo:
+    #   - Trailing a 4 pips del precio desde +8 pips, Break-Even (+1 pip) al llegar a 1x ATR (~7 pips),
+    #     cierre parcial del 50% en 1R y cierres por el Oráculo IA.
+    #   → Las ganancias quedaban en +1..+8 pips y las pérdidas completas (-15..-20 pips) + spread + comisión.
+    # Solo reactivar después de backtestear EXACTAMENTE esta gestión de salida y comprobar que mejora el PF.
+    TRAILING_STOP_ENABLED = False
     TRAILING_ACTIVATION_PIPS = 8         # Asegurar break even un poco más tarde para no ahogar el ruido
     TRAILING_STEP_PIPS = 4               
 
@@ -124,6 +135,7 @@ class BotConfig:
     NEWS_FILTER_ENABLED = True
     NEWS_AVOID_MINUTES_BEFORE = 45       # Ser todavía más precavido
     NEWS_AVOID_MINUTES_AFTER = 30        
+    NEWS_API_RETRY_MINUTES = 10          # Si la API de noticias falla, se bloquea y reintenta cada N min (antes: bloqueaba el día entero)
 
 
 class TelegramConfig:

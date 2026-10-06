@@ -1,4 +1,5 @@
 import os
+import time
 import joblib
 import pandas as pd
 import numpy as np
@@ -64,7 +65,9 @@ class AIBrainStrategy(BaseStrategy):
         else:
             self.logger.warning(f"⏳ Cerebro V5 no encontrado. Asegúrate de haber entrenado el modelo localmente.")
 
-        self.bars_needed = 250
+        # El feature 'dist_macro_H4_pips' usa una SMA de 3200 velas M15: con 250 velas era SIEMPRE NaN → 0
+        # (en el entrenamiento sí tenía valores reales). 3200 + 60 de secuencia + margen.
+        self.bars_needed = 3300
         # UMBRAL SNIPER: Probado que por encima del 40% genera Profit Factor 1.64
         self.confidence_threshold = 0.40 
         
@@ -87,6 +90,17 @@ class AIBrainStrategy(BaseStrategy):
         tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
         return tr.rolling(window=period, min_periods=1).mean()
 
+    def _server_utc_offset_seconds(self) -> int:
+        """
+        MT5 entrega el 'time' de las velas en hora del SERVIDOR del broker (FTMO: GMT+2/GMT+3),
+        pero el modelo se entrenó con HistData convertido a UTC. Estimamos el offset con el último tick
+        (redondeado a 30 min) para alinear los features horarios con el entrenamiento.
+        """
+        tick = mt5.symbol_info_tick(self.symbol)
+        if tick is None or not tick.time:
+            return 0
+        return int(round((tick.time - time.time()) / 1800.0) * 1800)
+
     def generate_signal(self) -> dict | None:
         if not self.model:
             return None
@@ -98,9 +112,15 @@ class AIBrainStrategy(BaseStrategy):
         rates = mt5.copy_rates_from_pos(self.symbol, self.timeframe, 0, self.bars_needed)
         if rates is None or len(rates) < self.bars_needed:
             return None
+
+        # Solo inferir una vez por vela cerrada (el loop principal corre cada 1 segundo)
+        last_closed_raw = rates[-2]['time']
+        if getattr(self, '_last_processed_bar', None) == last_closed_raw:
+            return None
+        self._last_processed_bar = last_closed_raw
             
         df = pd.DataFrame(rates)
-        df['time'] = pd.to_datetime(df['time'], unit='s', utc=True)
+        df['time'] = pd.to_datetime(df['time'] - self._server_utc_offset_seconds(), unit='s', utc=True)
         
         # 2. Reconstruir Features de Tiempo Real (Sólo ESTACIONARIAS)
         PIP_SIZE = 0.0001

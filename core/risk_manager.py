@@ -331,7 +331,48 @@ class RiskManager:
         self.logger.separator("═")
 
     # ──────────────────────────────────────────────────────────────────────────
-    # EL RESTO DEL ARCHIVO ES IDÉNTICO AL ORIGINAL
-    # (check_and_hedge_crashing_positions, _emergency_protect_position,
-    #  emergency_close_all) — omitidos aquí por brevedad, copiarlos sin cambios.
+    # CIERRE DE EMERGENCIA
     # ──────────────────────────────────────────────────────────────────────────
+
+    def emergency_close_all(self, max_attempts: int = 3) -> int:
+        """
+        Cierra a mercado TODAS las posiciones del bot (filtradas por magic number).
+        Usado por: cierre de emergencia por drawdown, cierre de viernes y /flat en Telegram.
+        Reintenta las posiciones que fallen. Retorna cuántas se cerraron.
+        """
+        closed = 0
+        for attempt in range(max_attempts):
+            positions = mt5.positions_get()
+            bot_positions = [p for p in (positions or []) if p.magic == BotConfig.MAGIC_NUMBER]
+            if not bot_positions:
+                break
+
+            for pos in bot_positions:
+                tick = mt5.symbol_info_tick(pos.symbol)
+                if tick is None:
+                    self.logger.error(f"Sin precio para cerrar #{pos.ticket} ({pos.symbol})")
+                    continue
+
+                is_buy = pos.type == mt5.ORDER_TYPE_BUY
+                request = {
+                    "action": mt5.TRADE_ACTION_DEAL,
+                    "symbol": pos.symbol,
+                    "volume": pos.volume,
+                    "type": mt5.ORDER_TYPE_SELL if is_buy else mt5.ORDER_TYPE_BUY,
+                    "position": pos.ticket,
+                    "price": tick.bid if is_buy else tick.ask,
+                    "deviation": BotConfig.DEVIATION,
+                    "magic": BotConfig.MAGIC_NUMBER,
+                    "comment": "EMERGENCY_CLOSE",
+                    "type_time": mt5.ORDER_TIME_GTC,
+                    "type_filling": mt5.ORDER_FILLING_IOC,
+                }
+                result = mt5.order_send(request)
+                if result is not None and result.retcode == mt5.TRADE_RETCODE_DONE:
+                    closed += 1
+                    self.logger.warning(f"🚨 Cerrada #{pos.ticket} ({pos.symbol}) | P&L: ${pos.profit:+,.2f}")
+                else:
+                    err = result.comment if result else "Unknown"
+                    self.logger.error(f"Fallo cerrando #{pos.ticket} (intento {attempt + 1}/{max_attempts}): {err}")
+
+        return closed

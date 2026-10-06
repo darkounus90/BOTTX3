@@ -80,15 +80,12 @@ class NewsFilter:
         if not self.enabled:
             return True
 
-        # 🛡️ PILAR 5 / MITIGACIÓN 4: Fail-Safe Absoluto si el servidor de noticias muere.
-        if getattr(self, "api_failed_today", False):
-            self.logger.critical(f"🛑 [FAIL-SAFE ACTIVO] API de Noticias inaccesible. Operativa BLOQUEADA en {symbol} para evitar cisne negro.")
-            return False
-
+        # 🛡️ PILAR 5 / MITIGACIÓN 4: Fail-Safe si el servidor de noticias muere.
+        # _get_todays_events() reintenta la API cada NEWS_API_RETRY_MINUTES mientras falle.
         events = self._get_todays_events()
-        
-        # Volvemos a chequear por si la bandera se activó dentro del intento de arriba
+
         if getattr(self, "api_failed_today", False):
+            self.logger.critical(f"🛑 [FAIL-SAFE ACTIVO] API de Noticias inaccesible. Operativa BLOQUEADA en {symbol} hasta el próximo reintento.")
             return False
 
         if not events:
@@ -182,11 +179,17 @@ class NewsFilter:
         if self._cache_date == today:
             return self._cached_events
 
+        # Si la API falló hace poco, esperar al próximo reintento (evita martillar la API / 429)
+        retry_at = getattr(self, "_retry_at", None)
+        if retry_at is not None and now < retry_at:
+            return []
+
         try:
             events = self._fetch_events_from_api()
             self._cached_events = events
             self._cache_date = today
             self.api_failed_today = False
+            self._retry_at = None
             if events:
                 self.logger.info(f"📰 {len(events)} eventos económicos detectados hoy")
             else:
@@ -196,13 +199,18 @@ class NewsFilter:
         except Exception as e:
             self.logger.error(f"🚨 [CRUCIAL] Fallo crónico obteniendo calendario económico: {e}")
             # 🛡️ MITIGACIÓN 4: Anulamos el peligroso schedule estático. Si no hay certeza 100%, NO SE OPERA.
+            # Antes un solo fallo (timeout de 3s o 429) bloqueaba TODO el día. Ahora se reintenta cada N minutos.
+            already_failed = getattr(self, "api_failed_today", False)
             self.api_failed_today = True
-            self._cache_date = today # Evita spam infinito de reintentos hoy
-            
-            # Notificar por Telegram que el bot está ciego
+            self._retry_at = now + timedelta(minutes=getattr(BotConfig, "NEWS_API_RETRY_MINUTES", 10))
+
+            if already_failed:
+                return []
+
+            # Notificar por Telegram que el bot está ciego (solo en el primer fallo)
             from utils.telegram_notifier import TelegramNotifier
             tg = TelegramNotifier(self.logger)
-            tg._send(f"🚨 <b>FAIL-SAFE ACTIVADO</b> 🚨\n\nEl servidor de Calendario Económico está caído o bloqueando al bot.\nPor protección de cuenta de fondeo, <b>todas las operaciones algorítmicas quedan SUSPENDIDAS</b> hasta que se restaure la conexión.\n\n<code>Error: {e}</code>")
+            tg._send(f"🚨 <b>FAIL-SAFE ACTIVADO</b> 🚨\n\nEl servidor de Calendario Económico está caído o bloqueando al bot.\nPor protección de cuenta de fondeo, <b>todas las operaciones algorítmicas quedan SUSPENDIDAS</b> hasta que se restaure la conexión (reintento automático cada pocos minutos).\n\n<code>Error: {e}</code>")
             
             return []
 
